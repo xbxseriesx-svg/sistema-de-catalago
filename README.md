@@ -1,30 +1,63 @@
 # Asteryon Catálogo Digital
 
-Protótipo funcional do sistema desenhado na conversa, com dois módulos no mesmo código:
+Sistema de catálogo empresarial com dois módulos separados na produção:
 
-- **Portal público:** `/` (em produção: `www.empresa.com.br`)
-- **Painel administrativo:** `/admin` (em produção: `admin.empresa.com.br`)
+- **Portal público:** domínio oficial da empresa, sem login para o visitante.
+- **Painel administrativo:** subdomínio `admin`, com editor visual e publicação controlada.
 
-## Funcionalidades já implementadas no protótipo
+## Editor Visual — versão avançada
 
-- Portal público sem login.
-- Pesquisa instantânea por produto, marca, código, departamento, categoria, seção e subcategoria.
-- Hierarquia de catálogo e navegação por departamento.
-- Ficha de produto com preço opcional e campos configuráveis.
-- Promoções que podem misturar produtos de diferentes estruturas.
-- Painel ADMIN com login de demonstração.
-- Dashboard de acessos/interesse.
-- Editor visual com preview em tempo real.
-- Rascunho separado da versão pública + botão **Publicar alterações**.
-- Personalização de marca, cores, banner e tema.
-- Temas: Padrão, Natal, Black Friday, Dia das Mães, Dia dos Pais, Dia das Crianças, Ano Novo e Carnaval.
-- Importação de produtos por Excel/CSV via SheetJS.
-- Associação automática de imagens pelo código do produto (`10001.png`, `10001_2.png`).
-- Cadastro/edição de produtos.
-- Árvore de departamentos/categorias/seções/subcategorias.
-- Analytics básicos para produtos, pesquisas, departamentos e promoções.
-- Responsividade desktop/tablet/mobile.
-- `supabase/schema.sql` com base inicial para migração ao banco real.
+O editor foi redesenhado para funcionar como um construtor visual livre:
+
+- Clique em qualquer elemento da página para abrir suas propriedades na barra lateral.
+- Todos os elementos editáveis exibem menu de **três pontos** e identificação ao passar o mouse.
+- Blocos podem ser **arrastados e reposicionados** diretamente na prévia.
+- Cards de produto podem ter estilo individual: largura, posição, fundo, texto, borda, raio, imagem, altura da imagem, sombra, alinhamento e botão.
+- Barra de pesquisa com edição separada de largura, largura máxima, altura, raio, cores, borda, fonte e placeholder.
+- Logo da empresa e favicon/ícone com upload, substituição e remoção.
+- Caixas de texto livres podem ser adicionadas, editadas, movidas e excluídas.
+- Cores podem ser escolhidas pela paleta **ou digitadas em código hexadecimal** (`#RRGGBB`).
+- Biblioteca de blocos com vários modelos sugeridos de banners e cards.
+- Banners permitem imagem, remoção da imagem, altura, overlay, alinhamento, texto, CTA e cores.
+- Preview em Desktop, Tablet e Celular.
+- Rascunho separado do conteúdo público.
+
+## Produtos
+
+- Filtros por texto/código, departamento, categoria, marca e visibilidade de preço.
+- Preço opcional.
+- Upload e remoção de imagem.
+- Campos da ficha pública escolhidos pelo ADMIN.
+- Importação Excel/CSV.
+- Associação automática de PNG/JPG pelo código do produto (`10001.png`, `10001_2.png`).
+- Alterações de produto ficam no rascunho e só chegam ao Portal ao publicar.
+
+## Estrutura 100% editável
+
+Cada empresa pode criar sua própria árvore de navegação, sem quantidade fixa de níveis ou nomes obrigatórios. Exemplos:
+
+- Departamentos → Categorias → Seções → Subcategorias.
+- Distribuições → Marca → Linha → Família.
+- Segmentos, coleções, aplicações ou qualquer estrutura própria.
+
+A regra principal continua: **produto segue sua classificação normal; somente Promoções podem misturar livremente produtos de estruturas diferentes.**
+
+## Temas pré-criados
+
+- Padrão
+- Natal
+- Black Friday
+- Dia das Mães
+- Dia dos Pais
+- Dia das Crianças
+- Ano Novo
+- Carnaval
+
+Cada tema possui paleta e efeitos animados próprios e pode ser usado como ponto de partida para customização no Editor Visual.
+
+## Analytics
+
+Métricas de interesse para produtos, pesquisas, departamentos e promoções. A arquitetura está preparada para ampliar a granularidade por categoria, seção, subcategoria, banner e card.
 
 ## Rodar localmente
 
@@ -35,22 +68,19 @@ npm run dev
 
 Abra:
 
-- `http://localhost:5173/` — portal público
-- `http://localhost:5173/admin` — painel ADMIN
+- `http://localhost:5173/` — Portal Público
+- `http://localhost:5173/admin` — Painel ADMIN
 
-No modo demonstração o login apenas libera o painel localmente. Antes de produção, substituir por Supabase Auth.
+## Publicação
 
-## Próxima etapa para produção
+O ADMIN trabalha em rascunho. O Portal Público usa somente a última versão publicada. Ao clicar em **Publicar alterações**, configuração visual, produtos e promoções do rascunho são promovidos para a versão pública.
 
-1. Criar/conectar projeto Supabase.
-2. Executar `supabase/schema.sql`.
-3. Criar Storage para produtos, banners, logos e encartes.
-4. Substituir `localStorage` por queries Supabase.
-5. Implementar RLS por empresa/usuário.
-6. Subir o código ao GitHub.
-7. Configurar Cloudflare para domínio oficial e subdomínio `admin`.
-8. Adicionar cache, rate limit, proteção de upload e auditoria.
+## Produção planejada
 
-## Regra de publicação
+`GitHub → Supabase/PostgreSQL + Storage → Cloudflare`
 
-O editor trabalha sempre no rascunho. O portal público usa apenas a configuração publicada. O botão **Publicar alterações** promove o rascunho para a versão visível ao público.
+- `www.empresa.com.br` → Portal Público
+- `admin.empresa.com.br` → Painel Administrativo
+- Supabase Auth + RLS + auditoria
+- Storage para produtos, logos, banners e encartes
+- Cloudflare para domínio, cache, HTTPS, rate limit e proteção
