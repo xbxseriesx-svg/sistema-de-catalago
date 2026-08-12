@@ -1,0 +1,69 @@
+import React, { useEffect } from 'react'
+import { Eye, Monitor, Redo2, Rocket, Save, Smartphone, Tablet, Undo2, X } from 'lucide-react'
+import { AsteryonMark } from '../components/AsteryonMark'
+import { BuilderWorkspace } from './BuilderWorkspace'
+import { DocumentPreview } from './DocumentPreview'
+import { PublishDialog } from './PublishDialog'
+import { useEditorStore } from './store'
+import type { Device } from './types'
+
+export function EditorShell() {
+  const history = useEditorStore(s => s.history)
+  const device = useEditorStore(s => s.device)
+  const setDevice = useEditorStore(s => s.setDevice)
+  const undo = useEditorStore(s => s.undo)
+  const redo = useEditorStore(s => s.redo)
+  const saveDraft = useEditorStore(s => s.saveDraft)
+  const setPreviewMode = useEditorStore(s => s.setPreviewMode)
+  const previewMode = useEditorStore(s => s.previewMode)
+  const setPublishDialogOpen = useEditorStore(s => s.setPublishDialogOpen)
+  const createSnapshot = useEditorStore(s => s.createSnapshot)
+  const processScheduled = useEditorStore(s => s.processScheduled)
+  const sandboxes = useEditorStore(s => s.sandboxes)
+  const activeSandboxId = useEditorStore(s => s.activeSandboxId)
+  const switchSandbox = useEditorStore(s => s.switchSandbox)
+  const scheduledAt = useEditorStore(s => s.scheduledAt)
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const mod = event.ctrlKey || event.metaKey
+      if (!mod || event.key.toLowerCase() !== 'z') return
+      event.preventDefault()
+      if (event.shiftKey) redo(); else undo()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [undo, redo])
+
+  useEffect(() => {
+    const snapshotTimer = window.setInterval(() => createSnapshot('Snapshot automático · 5 minutos'), 5 * 60 * 1000)
+    const scheduleTimer = window.setInterval(processScheduled, 30 * 1000)
+    return () => { window.clearInterval(snapshotTimer); window.clearInterval(scheduleTimer) }
+  }, [createSnapshot, processScheduled])
+
+  const devices: Array<{ id: Device; icon: React.ReactNode; label: string }> = [
+    { id: 'desktop', icon: <Monitor size={17} />, label: 'Desktop' },
+    { id: 'tablet', icon: <Tablet size={17} />, label: 'Tablet' },
+    { id: 'mobile', icon: <Smartphone size={17} />, label: 'Mobile' },
+  ]
+
+  return <div className="editor-app">
+    <header className="editor-topbar">
+      <div className="editor-brand"><AsteryonMark size={30} /><div><strong>ASTERYON</strong><small>EDITOR VISUAL PRO</small></div></div>
+      <div className="topbar-page"><span>Rascunho</span><strong>{history.present.name}</strong><select value={activeSandboxId} onChange={e => switchSandbox(e.target.value)}>{sandboxes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>{scheduledAt ? <small>Agendado: {new Date(scheduledAt).toLocaleString('pt-BR')}</small> : null}</div>
+      <div className="topbar-devices">{devices.map(item => <button key={item.id} className={device === item.id ? 'active' : ''} onClick={() => setDevice(item.id)} title={item.label}>{item.icon}<span>{item.label}</span></button>)}</div>
+      <div className="topbar-actions">
+        <button disabled={!history.past.length} onClick={undo} title="Desfazer (Ctrl+Z)"><Undo2 size={17} /> Undo</button>
+        <button disabled={!history.future.length} onClick={redo} title="Refazer (Ctrl+Shift+Z)"><Redo2 size={17} /> Redo</button>
+        <button onClick={saveDraft}><Save size={17} /> Salvar</button>
+        <button onClick={() => setPreviewMode(true)}><Eye size={17} /> Preview</button>
+        <button className="topbar-publish" onClick={() => setPublishDialogOpen(true)}><Rocket size={17} /> Publicar</button>
+      </div>
+    </header>
+
+    <BuilderWorkspace />
+    <PublishDialog />
+
+    {previewMode ? <div className="visitor-preview-overlay"><div className="visitor-preview-top"><div><strong>Modo Visitante</strong><span>Visualização limpa e idêntica ao portal público do rascunho.</span></div><button onClick={() => setPreviewMode(false)}><X /> Fechar</button></div><div className={`visitor-preview-frame preview-${device}`}><DocumentPreview document={history.present} device={device} visitorMode /></div></div> : null}
+  </div>
+}
