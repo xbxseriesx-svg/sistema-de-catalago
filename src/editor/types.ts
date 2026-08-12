@@ -2,7 +2,7 @@ export type Device = 'desktop' | 'tablet' | 'mobile'
 export type PublishStatus = 'draft' | 'preview' | 'scheduled' | 'published' | 'archived'
 
 export type BlockType =
-  | 'container' | 'row' | 'column' | 'header' | 'search' | 'hero' | 'banner' | 'carousel'
+  | 'frame' | 'container' | 'row' | 'column' | 'header' | 'search' | 'hero' | 'banner' | 'carousel'
   | 'card' | 'product' | 'showcase' | 'category' | 'brand' | 'distribution'
   | 'promotion' | 'text' | 'button' | 'image' | 'video' | 'gallery' | 'faq'
   | 'form' | 'footer' | 'map' | 'html'
@@ -26,7 +26,7 @@ export interface DeviceStyle {
   paddingBottom?: number
   paddingLeft?: number
   fontSize?: number
-  textAlign?: 'left' | 'center' | 'right'
+  textAlign?: 'left' | 'center' | 'right' | 'justify'
   display?: 'block' | 'flex' | 'grid'
   positionMode?: 'flow' | 'free'
   x?: number
@@ -40,6 +40,8 @@ export interface BlockStyle {
   color?: string
   gradient?: string
   backgroundImage?: string
+  backgroundSize?: 'cover' | 'contain' | 'auto'
+  backgroundPosition?: string
   borderColor?: string
   borderWidth?: number
   borderRadius?: number
@@ -93,8 +95,12 @@ export interface DesignSystem {
 
 export interface IdentityConfig {
   companyName: string
+  showCompanyName: boolean
   logo: string
   mobileLogo: string
+  logoWidth: number
+  logoHeight: number
+  brandGap: number
   favicon: string
   pwaIcon: string
   watermark: string
@@ -109,6 +115,25 @@ export interface ThemeConfig {
   animateMobile: boolean
 }
 
+export interface CanvasDeviceConfig {
+  width: number
+  height: number
+}
+
+export interface CanvasConfig {
+  background: string
+  gradient: string
+  backgroundImage: string
+  backgroundSize: 'cover' | 'contain' | 'auto'
+  backgroundPosition: string
+  showGrid: boolean
+  snapToGrid: boolean
+  gridSize: number
+  desktop: CanvasDeviceConfig
+  tablet: CanvasDeviceConfig
+  mobile: CanvasDeviceConfig
+}
+
 export interface EditorDocument {
   id: string
   pageId: string
@@ -118,6 +143,7 @@ export interface EditorDocument {
   designSystem: DesignSystem
   identity: IdentityConfig
   theme: ThemeConfig
+  canvas: CanvasConfig
   updatedAt: string
 }
 
