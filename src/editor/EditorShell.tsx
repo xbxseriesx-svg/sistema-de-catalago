@@ -3,7 +3,7 @@ import { Eye, FileUp, Monitor, Redo2, Rocket, Save, Smartphone, Sparkles, Tablet
 import { AsteryonAI } from '../ai/AsteryonAI'
 import { ImportPanel } from '../catalog/ImportPanel'
 import { AsteryonMark } from '../components/AsteryonMark'
-import { HostingerCanvasWorkspace } from './HostingerCanvasWorkspace'
+import { CreativeCanvasWorkspace } from './CreativeCanvasWorkspace'
 import { DocumentPreview } from './DocumentPreview'
 import { PublishDialog } from './PublishDialog'
 import { useEditorStore } from './store'
@@ -30,6 +30,8 @@ export function EditorShell() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      const target=event.target as HTMLElement
+      if(target.closest('input,textarea,select,[contenteditable="true"]')) return
       const mod = event.ctrlKey || event.metaKey
       if (!mod || event.key.toLowerCase() !== 'z') return
       event.preventDefault()
@@ -53,23 +55,23 @@ export function EditorShell() {
 
   return <div className="editor-app">
     <header className="editor-topbar">
-      <div className="editor-brand"><AsteryonMark size={30} /><div><strong>ASTERYON</strong><small>EDITOR LIVRE</small></div></div>
+      <div className="editor-brand"><AsteryonMark size={30} /><div><strong>ASTERYON</strong><small>EDITOR CRIATIVO</small></div></div>
       <div className="topbar-page"><span>Rascunho</span><strong>{history.present.name}</strong><select value={activeSandboxId} onChange={e => switchSandbox(e.target.value)}>{sandboxes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>{scheduledAt ? <small>Agendado: {new Date(scheduledAt).toLocaleString('pt-BR')}</small> : null}</div>
       <div className="topbar-scroll-zone">
         <div className="topbar-devices">{devices.map(item => <button key={item.id} className={device === item.id ? 'active' : ''} onClick={() => setDevice(item.id)} title={item.label}>{item.icon}<span>{item.label}</span></button>)}</div>
         <div className="topbar-actions">
-          <button className="topbar-ai" onClick={() => setAiOpen(true)} title="Abrir ASTERYON AI"><Sparkles size={17} /><span>ASTERYON AI</span></button>
           <button onClick={() => setImportOpen(true)} title="Importar Excel e imagens"><FileUp size={17} /><span>Importar</span></button>
-          <button disabled={!history.past.length} onClick={undo} title="Desfazer (Ctrl+Z)"><Undo2 size={17} /><span>Undo</span></button>
-          <button disabled={!history.future.length} onClick={redo} title="Refazer (Ctrl+Shift+Z)"><Redo2 size={17} /><span>Redo</span></button>
+          <button disabled={!history.past.length} onClick={undo} title="Desfazer (Ctrl+Z)"><Undo2 size={17} /><span>Desfazer</span></button>
+          <button disabled={!history.future.length} onClick={redo} title="Refazer (Ctrl+Shift+Z)"><Redo2 size={17} /><span>Refazer</span></button>
           <button onClick={saveDraft}><Save size={17} /><span>Salvar</span></button>
           <button onClick={() => setPreviewMode(true)}><Eye size={17} /><span>Preview</span></button>
+          <button className="topbar-ai" onClick={() => setAiOpen(true)} title="ASTERYON AI · recurso auxiliar"><Sparkles size={17} /><span>IA</span></button>
           <button className="topbar-publish" onClick={() => setPublishDialogOpen(true)}><Rocket size={17} /><span>Publicar</span></button>
         </div>
       </div>
     </header>
 
-    <HostingerCanvasWorkspace />
+    <CreativeCanvasWorkspace />
     <PublishDialog />
     <AsteryonAI open={aiOpen} onClose={() => setAiOpen(false)} />
     <ImportPanel open={importOpen} onClose={() => setImportOpen(false)} />
