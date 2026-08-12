@@ -10,6 +10,7 @@ on:
       - feature/editor-freedom-v2
       - feature/hostinger-free-canvas
       - feature/import-produtos-winthor
+      - feature/editor-creative-v3
 
 jobs:
   build:
