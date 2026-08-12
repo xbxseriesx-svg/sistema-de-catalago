@@ -1,9 +1,9 @@
-name: Windows 11 Full Local AI Installer
+name: Windows 11 Creative Editor Installer
 
 on:
   push:
     branches:
-      - build/windows11-full-local-ai
+      - feature/editor-creative-v3
   workflow_dispatch:
 
 jobs:
@@ -47,11 +47,11 @@ jobs:
         shell: pwsh
         run: |
           @"
-          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 TESTE 1.7 / CANVAS LIVRE
-          ==================================================================
+          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 TESTE 1.8 / EDITOR CRIATIVO V3
+          ======================================================================
 
           INSTALAÇÃO
-          1. Execute ASTERYON_Catalogo_Setup_Windows11_TESTE_1.7.0-test.exe.
+          1. Execute ASTERYON_Catalogo_Setup_Windows11_TESTE_1.8.0-test.exe.
           2. Escolha a pasta de instalação.
           3. O instalador cria atalhos no Menu Iniciar e Área de Trabalho.
 
@@ -59,49 +59,62 @@ jobs:
           E-mail: admin@empresa.com.br
           Senha: admin123
 
-          CANVAS LIVRE — ESTILO CONSTRUTOR VISUAL
-          - A página inteira agora é uma prancheta de posicionamento livre.
-          - Arraste QUALQUER item da biblioteca e solte diretamente no ponto desejado da página.
-          - Banner, Hero, Vitrine, Produto, Card, Texto, Imagem, Vídeo, Galeria, Pesquisa, Header, Footer, Frame, Container, Linha e Coluna podem ser posicionados livremente.
-          - Não existe mais obrigação de encaixar o elemento em uma linha ou seção para poder movê-lo.
-          - Passe o mouse no elemento para exibir a alça azul de arraste.
-          - Selecione o elemento e arraste também pela própria superfície quando não estiver sobre botão/campo interativo.
-          - Redimensionamento livre pelas 8 alças: quatro lados e quatro cantos.
-          - X, Y, largura, altura, camada e rotação podem ser informados manualmente no painel do elemento.
-          - Os antigos atalhos de largura fixa em porcentagem não aparecem no canvas livre.
-          - Elementos podem se sobrepor.
-          - Clique com o botão direito no elemento para Duplicar, Trazer para frente, Enviar para trás, Bloquear ou Excluir.
-          - Grade e Snap continuam opcionais em Página.
-          - Zoom disponível no topo da prancheta.
+          NOVO EDITOR CRIATIVO
+          - Página em branco como ponto de partida.
+          - Biblioteca simplificada com modo Iniciante e Avançado.
+          - Texto: clique em Texto e depois na página para começar; duplo clique edita diretamente no canvas.
+          - Imagem, botão, vídeo, forma e produto podem ficar em qualquer posição.
+          - Não existe obrigação de Container, Linha, Coluna ou Grid.
+          - Elementos podem se sobrepor livremente.
+          - Resize livre pelas oito alças.
+          - Guias visuais ajudam no alinhamento sem prender o elemento.
+          - Shift + clique permite selecionar mais de um objeto.
+          - Ctrl + D duplica.
+          - Ctrl + G agrupa.
+          - Ctrl + Shift + G desagrupa.
+          - Ctrl + ] traz uma camada para frente.
+          - Ctrl + [ envia uma camada para trás.
+          - Setas movem 1 px; Shift + seta move 10 px.
+          - Delete remove os objetos selecionados.
 
-          PAINEL DIREITO
-          - Elemento: altera somente o item selecionado.
-          - Página: altera apenas fundo, imagem, dimensões da página, grade e snap.
-          - Global: tokens e estilos globais.
-          - Identidade: logo, nome e dimensões da marca.
-          - Tema: efeitos e presets.
+          CAMADAS
+          - Abra a aba Camadas no painel esquerdo.
+          - Arraste itens para reorganizar profundidade.
+          - Ocultar, bloquear e renomear ficam na própria árvore.
+          - Objetos sobrepostos também podem ser escolhidos por uma lista diretamente no canvas.
 
-          CONTEÚDO E CATÁLOGO
-          - Vitrines continuam conectadas aos dados, mas o bloco inteiro pode ser movido e redimensionado livremente.
-          - Cards e produtos podem ser usados isoladamente em qualquer posição.
-          - Frames e estruturas podem receber conteúdo interno quando você quiser agrupar elementos.
-          - A barra de pesquisa é um elemento independente e pode ser colocada onde quiser.
+          OBJETOS ATÔMICOS
+          - Produto não é mais um card fechado.
+          - Ao adicionar Produto, imagem, marca, nome, preço e botão são objetos independentes dentro de um grupo.
+          - Vitrine também é criada como composição desmontável.
+          - Cabeçalho, Rodapé e Categoria seguem a mesma filosofia.
+          - Use Desagrupar para transformar modelos em objetos totalmente independentes.
 
-          IA GRATUITA — OLLAMA COM DIAGNÓSTICO
-          - Abra ASTERYON AI > Configuração > Preparar IA automaticamente.
-          - O programa detecta o Ollama, inicia a API local, baixa o modelo e executa autoteste real.
-          - Modelo recomendado: Qwen3 4B.
-          - Diagnóstico mostra API, versão, executável, modelo, autoteste, último erro e logs.
-          - Pesquisa web é opcional e somente como inspiração.
-          - Fluxo: Gerar -> Preview -> Aprovar -> Aplicar ao Rascunho.
+          PAINEL DIREITO SIMPLIFICADO
+          - Aparência: cor, fonte, tamanho, transparência, sombra e borda arredondada.
+          - Posição: X, Y, largura, altura e rotação.
+          - Camadas: Frente, Topo, Trás, Fundo, Bloquear e Ocultar.
+          - Opções técnicas ficam escondidas em Mais opções.
+          - Fundo da página aparece quando nenhum objeto está selecionado.
+
+          HISTÓRICO VISUAL
+          - Aba Histórico exibe miniaturas simplificadas dos snapshots.
+          - É possível restaurar um estado anterior com um clique.
+
+          RESPONSIVIDADE
+          - Use somente Desktop, Tablet e Mobile na barra superior.
+          - Cada modo mantém dimensões e posições próprias.
 
           IMPORTAÇÃO
-          - Botão Importar na barra superior.
-          - Planilhas .xlsx/.xls/.csv.
-          - Imagens por código: 10001.png, 10001_2.jpg ou 10001-1.webp.
+          - A configuração mais nova da planilha Winthor está incluída nesta versão.
+          - Formatos: .xlsx, .xls e .csv.
+
+          IA
+          - ASTERYON AI permanece disponível como recurso auxiliar.
+          - A prioridade desta versão é o Editor Criativo.
 
           OBSERVAÇÃO
-          - O instalador de teste não possui assinatura digital comercial; o SmartScreen pode mostrar aviso.
+          - Instalador de teste sem assinatura digital comercial; o SmartScreen pode mostrar aviso.
           "@ | Set-Content -Path release/LEIA-ME_ASTERYON_Windows11_TESTE.txt -Encoding UTF8
 
       - name: Package installer and guide
@@ -114,7 +127,7 @@ jobs:
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: ASTERYON-Catalogo-Windows11-v1.7-Unrestricted-Canvas
+          name: ASTERYON-Catalogo-Windows11-v1.8-Creative-Editor
           path: |
             release/ASTERYON_Catalogo_Setup_Windows11_TESTE_*.exe
             release/LEIA-ME_ASTERYON_Windows11_TESTE.txt
