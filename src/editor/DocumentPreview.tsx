@@ -1,13 +1,14 @@
 import React from 'react'
 import type { BuilderBlock, Device, EditorDocument } from './types'
-import { BlockContent, PortalSurface } from './BlockRenderer'
+import { BlockContent, PortalSurface, positionStyleForBlock } from './BlockRenderer'
 
 const nestingTypes: BuilderBlock['type'][] = ['container', 'row', 'column']
 
 function VisitorBlock({ block, document, device }: { block: BuilderBlock; document: EditorDocument; device: Device }) {
   if (block.hidden || block.hiddenOn[device]) return null
   const children = document.blocks.filter(b => b.parentId === block.id).sort((a, b) => a.order - b.order)
-  return <BlockContent block={block} document={document} device={device}>{nestingTypes.includes(block.type) ? children.map(child => <VisitorBlock key={child.id} block={child} document={document} device={device} />) : null}</BlockContent>
+  const content = <BlockContent block={block} document={document} device={device}>{nestingTypes.includes(block.type) ? children.map(child => <VisitorBlock key={child.id} block={child} document={document} device={device} />) : null}</BlockContent>
+  return <div className={block.style[device]?.positionMode === 'free' ? 'visitor-free-block' : 'visitor-flow-block'} style={positionStyleForBlock(block, device)}>{content}</div>
 }
 
 export function DocumentPreview({ document, device = 'desktop', visitorMode = true }: { document: EditorDocument; device?: Device; visitorMode?: boolean }) {
