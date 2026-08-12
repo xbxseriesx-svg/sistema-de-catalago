@@ -1,13 +1,16 @@
 {
   "name": "asteryon-catalogo",
-  "version": "1.0.0",
+  "version": "1.1.0-test",
   "private": true,
   "type": "module",
+  "main": "desktop/main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "desktop": "npm run build && electron .",
+    "dist:win": "npm run build && electron-builder --win nsis --x64"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
@@ -29,9 +32,45 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "electron": "43.2.0",
+    "electron-builder": "^26.0.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "typescript": "^5.7.2",
     "vite": "^6.0.1"
+  },
+  "build": {
+    "appId": "br.com.asteryon.catalogo.test",
+    "productName": "ASTERYON Catálogo Digital TESTE",
+    "copyright": "ASTERYON",
+    "asar": true,
+    "files": [
+      "dist/**/*",
+      "desktop/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "ASTERYON_Catalogo_Setup_Windows11_TESTE_${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "ASTERYON Catálogo Digital TESTE",
+      "uninstallDisplayName": "ASTERYON Catálogo Digital TESTE",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true
+    }
   }
 }
