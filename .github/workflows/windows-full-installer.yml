@@ -1,0 +1,120 @@
+name: Windows 11 Full Local AI Installer
+
+on:
+  push:
+    branches:
+      - build/windows11-full-local-ai
+  workflow_dispatch:
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build web application
+        run: npm run build
+
+      - name: Setup Python for icon generation
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate ASTERYON icon
+        run: |
+          python -m pip install pillow
+          python desktop/make_icon.py
+
+      - name: Build Windows installer
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npx electron-builder --win nsis --x64 --publish never
+
+      - name: Create test guide
+        shell: pwsh
+        run: |
+          @"
+          ASTERYON CATÁLOGO DIGITAL — INSTALADOR WINDOWS 11 TESTE
+          ========================================================
+
+          INSTALAÇÃO
+          1. Execute ASTERYON_Catalogo_Setup_Windows11_TESTE_1.1.0-test.exe.
+          2. Escolha a pasta de instalação.
+          3. O instalador cria atalhos no Menu Iniciar e Área de Trabalho.
+          4. Na primeira abertura o ASTERYON abre diretamente no Painel Administrativo local.
+
+          LOGIN ADMIN LOCAL
+          E-mail: admin@empresa.com.br
+          Senha: admin123
+
+          CONFIGURAÇÃO DA IA
+          1. Abra ASTERYON AI.
+          2. A primeira abertura exibe Configuração segura da IA.
+          3. Cole sua API Key da OpenAI diretamente no programa.
+          4. Escolha o modelo de texto e clique em Salvar e testar.
+          5. A chave fica criptografada pelo mecanismo seguro do Windows/Electron.
+          6. A chave NÃO fica no código, instalador ou GitHub.
+
+          IA ONLINE LIBERADA PARA TESTE
+          - Temas
+          - Planos de fundo
+          - Layouts
+          - Landing pages
+          - Estrutura de catálogo
+          - Textos e copy
+          - Banners
+          - Campanhas
+          - Análise de design
+          - Sugestões UX/UI
+          - Pesquisa online controlada
+          - Geração real de imagens com GPT Image 2
+
+          REGRAS DE SEGURANÇA
+          - IA trabalha somente em rascunho.
+          - Nunca publica automaticamente.
+          - Fluxo: Gerar -> Preview -> Aprovar -> Aplicar ao Rascunho.
+          - Pesquisa online é apenas inspiração para tendências, datas, paletas, branding, marketing, UX/UI e campanhas.
+          - O ASTERYON bloqueia aplicação direta de URLs/imagens encontradas na internet e não aceita código gerado pela IA.
+          - Imagens são geradas pela IA e salvas localmente na pasta de dados do aplicativo.
+
+          DADOS LOCAIS
+          - Editor, histórico e rascunhos usam armazenamento local da aplicação.
+          - Imagens geradas ficam no diretório de dados do usuário do ASTERYON.
+          - Desinstalar o programa não apaga automaticamente seus dados de teste.
+
+          OBSERVAÇÃO
+          - A API da OpenAI possui cobrança separada da assinatura do ChatGPT.
+          - O instalador de teste não possui assinatura digital comercial; o SmartScreen pode mostrar aviso.
+          "@ | Set-Content -Path release/LEIA-ME_ASTERYON_Windows11_TESTE.txt -Encoding UTF8
+
+      - name: Package installer and guide
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem release -Filter "ASTERYON_Catalogo_Setup_Windows11_TESTE_*.exe" | Select-Object -First 1
+          if (-not $installer) { throw "Instalador não encontrado" }
+          Compress-Archive -Path $installer.FullName,release/LEIA-ME_ASTERYON_Windows11_TESTE.txt -DestinationPath release/ASTERYON_Catalogo_Windows11_TESTE_Completo.zip -Force
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ASTERYON-Catalogo-Windows11-Full-AI-Teste
+          path: |
+            release/ASTERYON_Catalogo_Setup_Windows11_TESTE_*.exe
+            release/LEIA-ME_ASTERYON_Windows11_TESTE.txt
+            release/ASTERYON_Catalogo_Windows11_TESTE_Completo.zip
+          if-no-files-found: error
+          retention-days: 14
