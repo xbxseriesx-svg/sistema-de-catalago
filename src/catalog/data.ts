@@ -1,4 +1,5 @@
 import type { SourceType } from '../editor/types'
+import { loadImportedProducts } from './imports'
 
 export interface CatalogProduct {
   code: string
@@ -27,25 +28,23 @@ export const demoProducts: CatalogProduct[] = [
   { code: '10006', name: 'Detergente Neutro 500ml', brand: 'Ypê', department: 'Limpeza', category: 'Cozinha', section: 'Detergentes', subcategory: 'Neutro', distribution: 'Química Amparo', price: '1,79', showPrice: true, createdAt: '2026-08-08', views: 640, searches: 190, image: 'https://images.unsplash.com/photo-1583947581924-860bda6a26df?auto=format&fit=crop&w=800&q=80' },
 ]
 
+export const getCatalogProducts = (): CatalogProduct[] => {
+  if (typeof window === 'undefined') return demoProducts
+  const imported = loadImportedProducts()
+  return imported.length ? imported : demoProducts
+}
+
 const pathKey = (product: CatalogProduct) => `${product.department}::${product.category}::${product.section}`
 
-/**
- * Regra estrutural do catálogo ASTERYON:
- * - uma vitrine comum nunca mistura Departamento/Categoria/Seção;
- * - apenas source=promotion pode retornar caminhos diferentes.
- * Em produção, o escopo virá do nó/rota em que o bloco foi inserido. No modo
- * demonstração, quando não há escopo explícito, o primeiro resultado define
- * o caminho seguro da vitrine.
- */
 export const resolveSmartProducts = (source: SourceType, value = '', limit = 8): CatalogProduct[] => {
-  let products = [...demoProducts]
+  let products = [...getCatalogProducts()]
   const normalized = value.trim().toLowerCase()
 
   switch (source) {
     case 'category': products = products.filter(p => p.category.toLowerCase() === normalized); break
     case 'brand': products = products.filter(p => p.brand.toLowerCase() === normalized); break
     case 'distribution': products = products.filter(p => p.distribution.toLowerCase() === normalized); break
-    case 'promotion': products = products.filter(p => ['10001', '10003', '10005'].includes(p.code)); break
+    case 'promotion': products = products.filter(p => p.featured || ['10001', '10003', '10005'].includes(p.code)); break
     case 'mostViewed': products.sort((a, b) => b.views - a.views); break
     case 'mostSearched': products.sort((a, b) => b.searches - a.searches); break
     case 'newest': products.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)); break
@@ -57,6 +56,5 @@ export const resolveSmartProducts = (source: SourceType, value = '', limit = 8):
     const safePath = pathKey(products[0])
     products = products.filter(product => pathKey(product) === safePath)
   }
-
   return products.slice(0, Math.max(1, limit))
 }
