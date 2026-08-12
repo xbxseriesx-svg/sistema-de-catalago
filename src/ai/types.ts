@@ -32,7 +32,7 @@ export interface AsteryonAiProposal {
   title: string
   summary: string
   createdAt: string
-  source: 'safe-local-engine' | 'supabase-provider'
+  source: 'safe-local-engine' | 'supabase-provider' | 'desktop-openai'
   prompt: string
   structured: Record<string, unknown>
   findings?: AsteryonAiFinding[]
