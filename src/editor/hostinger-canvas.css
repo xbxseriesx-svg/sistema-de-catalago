@@ -1,0 +1,26 @@
+/* ASTERYON unrestricted canvas — inspired by modern visual site builders */
+.hostinger-workspace{grid-template-columns:264px minmax(560px,1fr) 430px!important;background:#cfd7df}
+.hostinger-library{z-index:60}
+.hostinger-library .library-heading p strong{color:#0f5d8e}
+.hostinger-canvas-wrap{position:relative;min-width:0;overflow:hidden;background:#cfd7df}
+.hostinger-canvas-viewport{height:100%;overflow:auto;padding:62px 72px 180px;display:flex;justify-content:center;align-items:flex-start}
+.hostinger-device-shell{flex:0 0 auto;background:#fff;box-shadow:0 18px 70px rgba(11,29,46,.28);border:1px solid #aeb9c4;transition:transform .12s ease}
+.hostinger-device-shell .portal-surface{width:100%!important;min-height:0!important;margin:0!important;overflow:visible!important}
+.hostinger-canvas-stage{position:relative;overflow:visible;background-color:#f5f7fa;background-repeat:no-repeat;isolation:isolate}
+.hostinger-canvas-stage.show-grid{background-image:linear-gradient(to right,rgba(35,88,128,.08) 1px,transparent 1px),linear-gradient(to bottom,rgba(35,88,128,.08) 1px,transparent 1px);background-size:8px 8px}
+.hostinger-canvas-stage.drag-over{outline:3px solid #3a9be8;outline-offset:4px}
+.hostinger-empty-hint{position:absolute;left:50%;top:180px;transform:translateX(-50%);width:min(520px,80%);padding:28px;border:2px dashed #aac0d2;border-radius:18px;background:rgba(255,255,255,.86);text-align:center;color:#61758a;pointer-events:none}
+.hostinger-empty-hint strong,.hostinger-empty-hint span{display:block}.hostinger-empty-hint strong{font-size:18px;color:#244760;margin-bottom:7px}.hostinger-empty-hint span{font-size:12px;line-height:1.55}
+.hostinger-canvas-toolbar{position:absolute;z-index:90;top:11px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:5px;background:#0c2035;color:#dfeaf5;border:1px solid #365570;border-radius:11px;padding:5px 7px;box-shadow:0 8px 24px rgba(0,0,0,.28)}
+.hostinger-canvas-toolbar>span{font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;color:#93abc2;padding:0 6px}.hostinger-canvas-toolbar button{height:29px;border:1px solid #31506c;background:#172d45;color:#edf5fb;border-radius:7px;padding:0 8px}.hostinger-canvas-toolbar strong{font-size:10px;min-width:42px;text-align:center}
+.hostinger-free-block{position:absolute;min-width:20px;min-height:20px;box-sizing:border-box;outline:1px solid transparent;outline-offset:2px;transition:outline-color .08s ease;touch-action:none}
+.hostinger-free-block:hover{outline-color:#69a9d7}.hostinger-free-block.selected{outline:2px solid #1686d9;outline-offset:3px}.hostinger-free-block.locked{outline-style:dashed}.hostinger-free-block>.hostinger-drag-handle{position:absolute;z-index:220;left:0;top:-31px;height:27px;max-width:min(260px,100%);border:0;border-radius:7px 7px 0 0;background:#1686d9;color:#fff;display:flex;align-items:center;gap:6px;padding:0 9px;font-size:10px;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;pointer-events:none;box-shadow:0 4px 12px rgba(0,55,95,.22)}
+.hostinger-free-block.selected>.hostinger-drag-handle,.hostinger-free-block:hover>.hostinger-drag-handle{opacity:1;pointer-events:auto}.hostinger-free-block>.hostinger-drag-handle span{overflow:hidden;text-overflow:ellipsis}.hostinger-free-block>.hostinger-drag-handle:active{cursor:grabbing}.hostinger-free-block>.hostinger-drag-handle{cursor:grab}
+.hostinger-free-block .visual-resize-shell{width:100%!important;min-height:inherit}.hostinger-free-block .visual-width-presets{display:none!important}.hostinger-free-block .visual-size-badge{top:auto!important;bottom:-27px!important;left:0!important;background:#0c2035!important;color:#eaf3fb!important}
+.hostinger-free-block .free-move-handle{display:none!important}
+.hostinger-nested-stage{position:relative;min-height:120px;width:100%;overflow:visible}
+.hostinger-context-menu{position:fixed;z-index:5000;width:210px;background:#fff;border:1px solid #d9e1e8;border-radius:12px;padding:6px;box-shadow:0 18px 50px rgba(8,25,42,.25)}
+.hostinger-context-menu button{width:100%;border:0;background:transparent;border-radius:8px;padding:9px 10px;display:flex;align-items:center;gap:8px;text-align:left;color:#33485e;font-size:11px;font-weight:800}.hostinger-context-menu button:hover{background:#eef6fc;color:#0f5d8e}.hostinger-context-menu button.danger{color:#b42333}.hostinger-context-menu button.danger:hover{background:#fff0f1}
+.hostinger-drag-overlay{background:#0f5d8e!important;color:#fff!important;border-color:#3c91ca!important;box-shadow:0 10px 28px rgba(8,35,55,.28)}
+.hostinger-library-item{touch-action:none}
+@media(max-width:1280px){.hostinger-workspace{grid-template-columns:230px minmax(480px,1fr) 370px!important}.hostinger-canvas-viewport{padding-left:42px;padding-right:42px}.hostinger-free-block>.hostinger-drag-handle{max-width:180px}}
