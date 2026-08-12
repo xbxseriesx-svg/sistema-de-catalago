@@ -9,7 +9,7 @@ on:
 jobs:
   build-installer:
     runs-on: windows-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,11 +47,11 @@ jobs:
         shell: pwsh
         run: |
           @"
-          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 TESTE 1.4
+          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 TESTE 1.5
           =================================================
 
           INSTALAÇÃO
-          1. Execute ASTERYON_Catalogo_Setup_Windows11_TESTE_1.4.0-test.exe.
+          1. Execute ASTERYON_Catalogo_Setup_Windows11_TESTE_1.5.0-test.exe.
           2. Escolha a pasta de instalação.
           3. O instalador cria atalhos no Menu Iniciar e Área de Trabalho.
 
@@ -59,32 +59,35 @@ jobs:
           E-mail: admin@empresa.com.br
           Senha: admin123
 
-          IA GRATUITA — OLLAMA
+          IA GRATUITA — CORREÇÃO COMPLETA OLLAMA
           - Abra ASTERYON AI > Configuração.
-          - Se o Ollama não estiver ativo, use Instalar Ollama.
+          - Use o botão Preparar IA automaticamente.
+          - O ASTERYON instala/ativa o Ollama quando necessário, baixa o modelo selecionado via API local oficial e executa um teste real.
           - Modelo recomendado: Qwen3 4B.
-          - Use Preparar modelo e testar. O ASTERYON aguarda o download concluir e só libera a IA depois do autoteste real.
-          - O painel diferencia: Ollama ausente / modelo ausente / IA local pronta.
-          - Pesquisa web gratuita só é usada quando marcada e apenas como inspiração.
-          - Geração gráfica local pesada ainda não está incluída; a IA cria briefing original de imagem.
+          - A geração só é liberada quando o modelo realmente estiver instalado e respondendo.
+          - Erros do Ollama agora aparecem na tela; o sistema não mascara falha do desktop com um fallback silencioso.
+          - Pesquisa web é opcional e somente como inspiração.
 
-          EDIÇÃO VISUAL
-          - Fontes foram removidas da barra superior e ficam no painel direito.
-          - Aba Bloco: fonte específica do elemento selecionado.
-          - Aba Design: fonte principal e secundária globais.
-          - Banner, card e demais blocos selecionados exibem alças azuis para redimensionar largura e altura diretamente no canvas.
-          - Atalhos de largura: Auto, 50%, 75% e 100%.
-          - O ajuste é independente para Desktop, Tablet e Mobile.
+          EDITOR LIVRE
+          - Cada elemento tem edição própria e contextual.
+          - Clique no fundo para editar somente o fundo/página.
+          - Clique em texto, card, banner, busca etc. para editar somente aquele elemento.
+          - Banner, Hero, Card, Texto, Imagem, Botão e Barra de Pesquisa podem usar Modo Livre.
+          - No Modo Livre, use Mover para arrastar o elemento no canvas e as alças para redimensionar.
+          - X, Y, largura, altura, camada e rotação são independentes por Desktop/Tablet/Mobile.
+          - Presets: Auto, 25%, 33%, 50%, 66%, 75% e 100%.
+          - Elementos não são mais forçados a preencher 100% da página quando selecionados.
+
+          EDIÇÃO POR ITEM
+          - Fontes ficam no painel correto, não na barra superior.
+          - Título, subtítulo, descrição e CTA de banners/cards possuem controles separados.
+          - A Barra de Pesquisa agora é um elemento independente: pode adicionar, duplicar, mover ou excluir quando quiser.
+          - A busca antiga embutida no Header pode ser desligada.
 
           IMPORTAÇÃO
           - Botão Importar na barra superior.
           - Planilhas .xlsx/.xls/.csv.
           - Imagens por código: 10001.png, 10001_2.jpg ou 10001-1.webp.
-
-          INTERFACE
-          - Botão Sair no canto superior direito e abaixo dos overlays da IA para não sobrepor janelas.
-          - Barra superior reorganizada com espaço reservado para Sair.
-          - Desktop, Tablet e Mobile disponíveis.
 
           SEGURANÇA DA IA
           - Gerar -> Preview -> Aprovar -> Aplicar ao Rascunho.
@@ -106,7 +109,7 @@ jobs:
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: ASTERYON-Catalogo-Windows11-v1.4-Corrigido
+          name: ASTERYON-Catalogo-Windows11-v1.5-FreeCanvas-AI
           path: |
             release/ASTERYON_Catalogo_Setup_Windows11_TESTE_*.exe
             release/LEIA-ME_ASTERYON_Windows11_TESTE.txt
