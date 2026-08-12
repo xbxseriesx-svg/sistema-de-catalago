@@ -152,7 +152,6 @@ export interface PublishedVersion {
 
 export interface Sandbox {
   id: string
-  pageId: string
   name: string
   createdAt: string
   document: EditorDocument
