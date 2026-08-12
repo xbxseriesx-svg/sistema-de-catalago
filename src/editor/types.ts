@@ -2,7 +2,7 @@ export type Device = 'desktop' | 'tablet' | 'mobile'
 export type PublishStatus = 'draft' | 'preview' | 'scheduled' | 'published' | 'archived'
 
 export type BlockType =
-  | 'container' | 'row' | 'column' | 'header' | 'hero' | 'banner' | 'carousel'
+  | 'container' | 'row' | 'column' | 'header' | 'search' | 'hero' | 'banner' | 'carousel'
   | 'card' | 'product' | 'showcase' | 'category' | 'brand' | 'distribution'
   | 'promotion' | 'text' | 'button' | 'image' | 'video' | 'gallery' | 'faq'
   | 'form' | 'footer' | 'map' | 'html'
@@ -14,6 +14,7 @@ export type SourceType =
 export interface DeviceStyle {
   width?: string
   minHeight?: number
+  height?: number
   columns?: number
   gap?: number
   marginTop?: number
@@ -27,6 +28,11 @@ export interface DeviceStyle {
   fontSize?: number
   textAlign?: 'left' | 'center' | 'right'
   display?: 'block' | 'flex' | 'grid'
+  positionMode?: 'flow' | 'free'
+  x?: number
+  y?: number
+  zIndex?: number
+  rotate?: number
 }
 
 export interface BlockStyle {
@@ -126,41 +132,8 @@ export interface EditorPage {
   updatedAt: string
 }
 
-export interface ActivityEntry {
-  id: string
-  at: string
-  action: string
-  label: string
-  blockId?: string
-}
-
-export interface Snapshot {
-  id: string
-  at: string
-  label: string
-  document: EditorDocument
-}
-
-export interface PublishedVersion {
-  id: string
-  number: number
-  at: string
-  status: PublishStatus
-  label: string
-  document: EditorDocument
-}
-
-export interface Sandbox {
-  id: string
-  name: string
-  createdAt: string
-  document: EditorDocument
-}
-
-export interface SavedTemplate {
-  id: string
-  name: string
-  type: BlockType
-  createdAt: string
-  block: BuilderBlock
-}
+export interface ActivityEntry { id: string; at: string; action: string; label: string; blockId?: string }
+export interface Snapshot { id: string; at: string; label: string; document: EditorDocument }
+export interface PublishedVersion { id: string; number: number; at: string; status: PublishStatus; label: string; document: EditorDocument }
+export interface Sandbox { id: string; name: string; createdAt: string; document: EditorDocument }
+export interface SavedTemplate { id: string; name: string; type: BlockType; createdAt: string; block: BuilderBlock }
