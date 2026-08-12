@@ -3,7 +3,7 @@ import { Eye, FileUp, Monitor, Redo2, Rocket, Save, Smartphone, Sparkles, Tablet
 import { AsteryonAI } from '../ai/AsteryonAI'
 import { ImportPanel } from '../catalog/ImportPanel'
 import { AsteryonMark } from '../components/AsteryonMark'
-import { BuilderWorkspace } from './BuilderWorkspace'
+import { HostingerCanvasWorkspace } from './HostingerCanvasWorkspace'
 import { DocumentPreview } from './DocumentPreview'
 import { PublishDialog } from './PublishDialog'
 import { useEditorStore } from './store'
@@ -53,7 +53,7 @@ export function EditorShell() {
 
   return <div className="editor-app">
     <header className="editor-topbar">
-      <div className="editor-brand"><AsteryonMark size={30} /><div><strong>ASTERYON</strong><small>EDITOR VISUAL PRO</small></div></div>
+      <div className="editor-brand"><AsteryonMark size={30} /><div><strong>ASTERYON</strong><small>EDITOR LIVRE</small></div></div>
       <div className="topbar-page"><span>Rascunho</span><strong>{history.present.name}</strong><select value={activeSandboxId} onChange={e => switchSandbox(e.target.value)}>{sandboxes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>{scheduledAt ? <small>Agendado: {new Date(scheduledAt).toLocaleString('pt-BR')}</small> : null}</div>
       <div className="topbar-scroll-zone">
         <div className="topbar-devices">{devices.map(item => <button key={item.id} className={device === item.id ? 'active' : ''} onClick={() => setDevice(item.id)} title={item.label}>{item.icon}<span>{item.label}</span></button>)}</div>
@@ -69,11 +69,11 @@ export function EditorShell() {
       </div>
     </header>
 
-    <BuilderWorkspace />
+    <HostingerCanvasWorkspace />
     <PublishDialog />
     <AsteryonAI open={aiOpen} onClose={() => setAiOpen(false)} />
     <ImportPanel open={importOpen} onClose={() => setImportOpen(false)} />
 
-    {previewMode ? <div className="visitor-preview-overlay"><div className="visitor-preview-top"><div><strong>Modo Visitante</strong><span>Visualização limpa e idêntica ao portal público do rascunho.</span></div><button onClick={() => setPreviewMode(false)}><X /> Fechar</button></div><div className={`visitor-preview-frame preview-${device}`}><DocumentPreview document={history.present} device={device} visitorMode /></div></div> : null}
+    {previewMode ? <div className="visitor-preview-overlay"><div className="visitor-preview-top"><div><strong>Modo Visitante</strong><span>Visualização limpa do rascunho.</span></div><button onClick={() => setPreviewMode(false)}><X /> Fechar</button></div><div className={`visitor-preview-frame preview-${device}`}><DocumentPreview document={history.present} device={device} visitorMode /></div></div> : null}
   </div>
 }
