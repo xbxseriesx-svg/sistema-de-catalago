@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - feature/editor-visual-pro
+      - feature/asteryon-ai
 
 jobs:
   build:
