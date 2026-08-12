@@ -9,6 +9,7 @@ on:
       - feature/asteryon-ai
       - feature/editor-freedom-v2
       - feature/hostinger-free-canvas
+      - feature/import-produtos-winthor
 
 jobs:
   build:
