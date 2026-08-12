@@ -2,7 +2,7 @@ import React from 'react'
 import type { BuilderBlock, Device, EditorDocument } from './types'
 import { BlockContent, PortalSurface, positionStyleForBlock } from './BlockRenderer'
 
-const nestingTypes: BuilderBlock['type'][] = ['container', 'row', 'column']
+const nestingTypes: BuilderBlock['type'][] = ['frame','container','row','column','header','hero','banner','carousel','card','showcase','promotion','category','brand','distribution','footer']
 
 function VisitorBlock({ block, document, device }: { block: BuilderBlock; document: EditorDocument; device: Device }) {
   if (block.hidden || block.hiddenOn[device]) return null
@@ -13,5 +13,6 @@ function VisitorBlock({ block, document, device }: { block: BuilderBlock; docume
 
 export function DocumentPreview({ document, device = 'desktop', visitorMode = true }: { document: EditorDocument; device?: Device; visitorMode?: boolean }) {
   const roots = document.blocks.filter(b => b.parentId === null).sort((a, b) => a.order - b.order)
-  return <PortalSurface document={document} device={device} visitorMode={visitorMode}>{roots.map(block => <VisitorBlock key={block.id} block={block} document={document} device={device} />)}</PortalSurface>
+  const config = document.canvas?.[device]
+  return <PortalSurface document={document} device={device} visitorMode={visitorMode}><div className="visitor-canvas-stage" style={{ position:'relative', minHeight:config?.height || 1600 }}>{roots.map(block => <VisitorBlock key={block.id} block={block} document={document} device={device} />)}</div></PortalSurface>
 }
