@@ -1,0 +1,112 @@
+name: Windows 11 Local QA EXE
+
+on:
+  push:
+    branches:
+      - build/windows11-local-qa
+  workflow_dispatch:
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install PyInstaller
+        run: python -m pip install --upgrade pip pyinstaller
+
+      - name: Build Windows executable
+        shell: pwsh
+        run: |
+          pyinstaller --noconfirm --clean --onefile --windowed `
+            --name "ASTERYON_Catalogo_Windows11_QA" `
+            --add-data "dist;web" `
+            --distpath windows-package `
+            --workpath pyinstaller-build `
+            --specpath pyinstaller-spec `
+            tools/windows_local_launcher.py
+
+      - name: Create local test instructions
+        shell: pwsh
+        run: |
+          @"
+          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 QA LOCAL
+          ==================================================
+
+          Arquivo: ASTERYON_Catalogo_Windows11_QA.exe
+
+          Como usar:
+          1. Execute o EXE.
+          2. O painel local do ASTERYON será aberto.
+          3. Use "Abrir Portal Público" para testar o catálogo publicado.
+          4. Use "Abrir Painel ADMIN" para testar o Editor Visual.
+
+          LOGIN ADMIN LOCAL
+          E-mail: admin@empresa.com.br
+          Senha: admin123
+
+          FUNÇÕES DISPONÍVEIS PARA TESTE LOCAL
+          - Portal Público
+          - Painel ADMIN
+          - Editor Visual Pro
+          - Drag & Drop
+          - Biblioteca de blocos
+          - Propriedades por bloco
+          - Desktop / Tablet / Mobile
+          - Design System
+          - Identidade Visual
+          - Temas
+          - Undo / Redo
+          - Histórico / Snapshots
+          - Sandboxes
+          - Time Machine
+          - Preview
+          - Publicação controlada local
+          - ASTERYON AI com motor local seguro
+          - Fluxo IA: Gerar -> Preview -> Aprovar -> Aplicar ao Rascunho
+
+          IMPORTANTE
+          - Esta versão é de avaliação local e não altera nenhum portal real.
+          - Os dados ficam no armazenamento local do navegador deste computador.
+          - Supabase real, Storage real, pesquisa online real e geração final de imagens por IA
+            exigem infraestrutura/credenciais externas e não são simulados como se fossem reais.
+          - O executável não possui assinatura digital comercial; o Windows SmartScreen pode exibir aviso.
+
+          Base do código: branch main / commit 2ac8e83c7208dc4e4aade03201121d7fe384842c
+          "@ | Set-Content -Path windows-package/LEIA-ME_Asteryon_Windows11_QA.txt -Encoding UTF8
+
+      - name: Create ZIP package
+        shell: pwsh
+        run: |
+          Compress-Archive -Path windows-package/ASTERYON_Catalogo_Windows11_QA.exe,windows-package/LEIA-ME_Asteryon_Windows11_QA.txt -DestinationPath windows-package/ASTERYON_Catalogo_Windows11_QA.zip -Force
+
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ASTERYON-Catalogo-Windows11-QA
+          path: |
+            windows-package/ASTERYON_Catalogo_Windows11_QA.exe
+            windows-package/LEIA-ME_Asteryon_Windows11_QA.txt
+            windows-package/ASTERYON_Catalogo_Windows11_QA.zip
+          if-no-files-found: error
+          retention-days: 14
