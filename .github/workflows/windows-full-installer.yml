@@ -47,11 +47,11 @@ jobs:
         shell: pwsh
         run: |
           @"
-          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 TESTE 1.2
+          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 TESTE 1.3
           =================================================
 
           INSTALAÇÃO
-          1. Execute o instalador ASTERYON_Catalogo_Setup_Windows11_TESTE_1.2.0-test.exe.
+          1. Execute ASTERYON_Catalogo_Setup_Windows11_TESTE_1.3.0-test.exe.
           2. Escolha a pasta de instalação.
           3. O instalador cria atalhos no Menu Iniciar e Área de Trabalho.
 
@@ -59,24 +59,27 @@ jobs:
           E-mail: admin@empresa.com.br
           Senha: admin123
 
-          IA GRATUITA
-          - Abra ASTERYON AI > Configuração.
-          - Clique em Instalar Ollama. O Windows iniciará a instalação gratuita.
-          - Depois clique em Verificar/Salvar e em Baixar modelo.
+          IA GRATUITA CORRIGIDA
+          - ASTERYON AI > Configuração usa Ollama local, sem API Key e sem créditos.
+          - Clique em Instalar Ollama se ele ainda não estiver instalado.
           - Modelo recomendado: Qwen3 4B.
-          - Não usa API Key nem créditos pagos.
-          - A pesquisa web só é usada quando marcada e serve apenas como inspiração.
+          - Clique em Baixar modelo e aguarde concluir.
+          - Salvar e testar só confirma IA pronta quando o modelo selecionado realmente está instalado e responde.
+          - O painel diferencia: Ollama ausente / Ollama ativo sem modelo / Ollama + modelo pronto / motor interno de contingência.
+          - Pesquisa web gratuita só é usada quando marcada, exclusivamente como inspiração.
+          - Geração gráfica local NÃO é anunciada como pronta: nesta versão a IA entrega briefing original de imagem.
 
           IMPORTAÇÃO
           - Botão Importar na barra superior.
           - Planilhas .xlsx/.xls/.csv.
           - Imagens por código: 10001.png, 10001_2.jpg ou 10001-1.webp.
-          - Os dados ficam localmente no computador para teste.
+          - Dados ficam localmente no computador para teste.
 
-          FONTES E INTERFACE
+          INTERFACE
+          - Botão Sair fixado no canto superior direito, sem sobrepor os controles.
           - Barra superior reorganizada com rolagem horizontal quando necessário.
           - Seletor global com fontes populares.
-          - Desktop, Tablet e Mobile continuam disponíveis.
+          - Desktop, Tablet e Mobile disponíveis.
 
           SEGURANÇA DA IA
           - Gerar -> Preview -> Aprovar -> Aplicar ao Rascunho.
@@ -85,8 +88,6 @@ jobs:
           - Não copia conteúdo da Internet.
 
           OBSERVAÇÃO
-          - O motor de texto e pesquisa é gratuito/local.
-          - Geração de imagens local pesada ainda exige módulo opcional compatível com GPU (ex.: ComfyUI); nesta versão a IA gera briefing/prompt original.
           - O instalador de teste não possui assinatura digital comercial; o SmartScreen pode mostrar aviso.
           "@ | Set-Content -Path release/LEIA-ME_ASTERYON_Windows11_TESTE.txt -Encoding UTF8
 
@@ -100,7 +101,7 @@ jobs:
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: ASTERYON-Catalogo-Windows11-Free-AI-Teste
+          name: ASTERYON-Catalogo-Windows11-v1.3-Corrigido
           path: |
             release/ASTERYON_Catalogo_Setup_Windows11_TESTE_*.exe
             release/LEIA-ME_ASTERYON_Windows11_TESTE.txt
