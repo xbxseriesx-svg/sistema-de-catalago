@@ -27,6 +27,16 @@ export const demoProducts: CatalogProduct[] = [
   { code: '10006', name: 'Detergente Neutro 500ml', brand: 'Ypê', department: 'Limpeza', category: 'Cozinha', section: 'Detergentes', subcategory: 'Neutro', distribution: 'Química Amparo', price: '1,79', showPrice: true, createdAt: '2026-08-08', views: 640, searches: 190, image: 'https://images.unsplash.com/photo-1583947581924-860bda6a26df?auto=format&fit=crop&w=800&q=80' },
 ]
 
+const pathKey = (product: CatalogProduct) => `${product.department}::${product.category}::${product.section}`
+
+/**
+ * Regra estrutural do catálogo ASTERYON:
+ * - uma vitrine comum nunca mistura Departamento/Categoria/Seção;
+ * - apenas source=promotion pode retornar caminhos diferentes.
+ * Em produção, o escopo virá do nó/rota em que o bloco foi inserido. No modo
+ * demonstração, quando não há escopo explícito, o primeiro resultado define
+ * o caminho seguro da vitrine.
+ */
 export const resolveSmartProducts = (source: SourceType, value = '', limit = 8): CatalogProduct[] => {
   let products = [...demoProducts]
   const normalized = value.trim().toLowerCase()
@@ -41,6 +51,11 @@ export const resolveSmartProducts = (source: SourceType, value = '', limit = 8):
     case 'newest': products.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)); break
     case 'featured': products = products.filter(p => p.featured); break
     case 'manual': default: break
+  }
+
+  if (source !== 'promotion' && products.length) {
+    const safePath = pathKey(products[0])
+    products = products.filter(product => pathKey(product) === safePath)
   }
 
   return products.slice(0, Math.max(1, limit))
