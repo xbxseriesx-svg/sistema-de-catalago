@@ -54,16 +54,13 @@ export function AsteryonAI({ open, onClose }: Props) {
     setError('')
     setNotice('')
     try {
-      const result = await requestAsteryonAiProposal(text, document)
+      const result = await requestAsteryonAiProposal(text, document, researchRequested)
       setProposal({
         ...result,
         research: {
           ...result.research,
           requested: researchRequested,
           allowedScopes: ASTERYON_AI_ALLOWED_RESEARCH_SCOPES,
-          note: researchRequested
-            ? 'Pesquisa foi solicitada. O provider só pode usar as categorias permitidas como inspiração; o motor local não consulta a internet.'
-            : result.research.note,
         },
       })
     } catch (err) {
