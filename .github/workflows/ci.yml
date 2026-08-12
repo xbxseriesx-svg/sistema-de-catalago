@@ -8,6 +8,7 @@ on:
       - feature/editor-visual-pro
       - feature/asteryon-ai
       - feature/editor-freedom-v2
+      - feature/hostinger-free-canvas
 
 jobs:
   build:
