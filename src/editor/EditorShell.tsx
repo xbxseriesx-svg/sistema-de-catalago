@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
-import { Eye, Monitor, Redo2, Rocket, Save, Smartphone, Sparkles, Tablet, Undo2, X } from 'lucide-react'
+import { Eye, FileUp, Monitor, Redo2, Rocket, Save, Smartphone, Sparkles, Tablet, Undo2, X } from 'lucide-react'
 import { AsteryonAI } from '../ai/AsteryonAI'
+import { ImportPanel } from '../catalog/ImportPanel'
 import { AsteryonMark } from '../components/AsteryonMark'
 import { BuilderWorkspace } from './BuilderWorkspace'
 import { DocumentPreview } from './DocumentPreview'
@@ -25,6 +26,7 @@ export function EditorShell() {
   const switchSandbox = useEditorStore(s => s.switchSandbox)
   const scheduledAt = useEditorStore(s => s.scheduledAt)
   const [aiOpen, setAiOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -53,20 +55,24 @@ export function EditorShell() {
     <header className="editor-topbar">
       <div className="editor-brand"><AsteryonMark size={30} /><div><strong>ASTERYON</strong><small>EDITOR VISUAL PRO</small></div></div>
       <div className="topbar-page"><span>Rascunho</span><strong>{history.present.name}</strong><select value={activeSandboxId} onChange={e => switchSandbox(e.target.value)}>{sandboxes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>{scheduledAt ? <small>Agendado: {new Date(scheduledAt).toLocaleString('pt-BR')}</small> : null}</div>
-      <div className="topbar-devices">{devices.map(item => <button key={item.id} className={device === item.id ? 'active' : ''} onClick={() => setDevice(item.id)} title={item.label}>{item.icon}<span>{item.label}</span></button>)}</div>
-      <div className="topbar-actions">
-        <button className="topbar-ai" onClick={() => setAiOpen(true)} title="Abrir ASTERYON AI"><Sparkles size={17} /> ASTERYON AI</button>
-        <button disabled={!history.past.length} onClick={undo} title="Desfazer (Ctrl+Z)"><Undo2 size={17} /> Undo</button>
-        <button disabled={!history.future.length} onClick={redo} title="Refazer (Ctrl+Shift+Z)"><Redo2 size={17} /> Redo</button>
-        <button onClick={saveDraft}><Save size={17} /> Salvar</button>
-        <button onClick={() => setPreviewMode(true)}><Eye size={17} /> Preview</button>
-        <button className="topbar-publish" onClick={() => setPublishDialogOpen(true)}><Rocket size={17} /> Publicar</button>
+      <div className="topbar-scroll-zone">
+        <div className="topbar-devices">{devices.map(item => <button key={item.id} className={device === item.id ? 'active' : ''} onClick={() => setDevice(item.id)} title={item.label}>{item.icon}<span>{item.label}</span></button>)}</div>
+        <div className="topbar-actions">
+          <button className="topbar-ai" onClick={() => setAiOpen(true)} title="Abrir ASTERYON AI"><Sparkles size={17} /><span>ASTERYON AI</span></button>
+          <button onClick={() => setImportOpen(true)} title="Importar Excel e imagens"><FileUp size={17} /><span>Importar</span></button>
+          <button disabled={!history.past.length} onClick={undo} title="Desfazer (Ctrl+Z)"><Undo2 size={17} /><span>Undo</span></button>
+          <button disabled={!history.future.length} onClick={redo} title="Refazer (Ctrl+Shift+Z)"><Redo2 size={17} /><span>Redo</span></button>
+          <button onClick={saveDraft}><Save size={17} /><span>Salvar</span></button>
+          <button onClick={() => setPreviewMode(true)}><Eye size={17} /><span>Preview</span></button>
+          <button className="topbar-publish" onClick={() => setPublishDialogOpen(true)}><Rocket size={17} /><span>Publicar</span></button>
+        </div>
       </div>
     </header>
 
     <BuilderWorkspace />
     <PublishDialog />
     <AsteryonAI open={aiOpen} onClose={() => setAiOpen(false)} />
+    <ImportPanel open={importOpen} onClose={() => setImportOpen(false)} />
 
     {previewMode ? <div className="visitor-preview-overlay"><div className="visitor-preview-top"><div><strong>Modo Visitante</strong><span>Visualização limpa e idêntica ao portal público do rascunho.</span></div><button onClick={() => setPreviewMode(false)}><X /> Fechar</button></div><div className={`visitor-preview-frame preview-${device}`}><DocumentPreview document={history.present} device={device} visitorMode /></div></div> : null}
   </div>
