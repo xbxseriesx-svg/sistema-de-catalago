@@ -67,7 +67,6 @@ function applyRemotePatch(document: EditorDocument, patch: unknown): EditorDocum
   if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return document
   const next = structuredClone(document)
   const source = patch as Record<string, unknown>
-
   if (source.designSystem && typeof source.designSystem === 'object' && !Array.isArray(source.designSystem)) {
     const allowed = new Set(['primaryFont','secondaryFont','primaryColor','secondaryColor','accentColor','pageBackground','cardBackground','cardRadius','buttonRadius','borderColor','shadow','spacingUnit'])
     for (const [key, value] of Object.entries(source.designSystem as Record<string, unknown>)) {
@@ -76,7 +75,6 @@ function applyRemotePatch(document: EditorDocument, patch: unknown): EditorDocum
       if (safe !== undefined) (next.designSystem as unknown as Record<string, unknown>)[key] = safe
     }
   }
-
   if (source.theme && typeof source.theme === 'object' && !Array.isArray(source.theme)) {
     const allowed = new Set(['name','enabled','intensity','particles','animateDesktop','animateMobile'])
     for (const [key, value] of Object.entries(source.theme as Record<string, unknown>)) {
@@ -85,7 +83,6 @@ function applyRemotePatch(document: EditorDocument, patch: unknown): EditorDocum
       if (safe !== undefined) (next.theme as unknown as Record<string, unknown>)[key] = safe
     }
   }
-
   if (Array.isArray(source.blocks)) {
     for (const operation of source.blocks.slice(0, 30)) {
       if (!operation || typeof operation !== 'object' || Array.isArray(operation)) continue
@@ -97,14 +94,8 @@ function applyRemotePatch(document: EditorDocument, patch: unknown): EditorDocum
       const target = peers[index]
       if (!target) continue
       target.props = { ...target.props, ...sanitizeProps(op.props) }
-      target.style = {
-        ...target.style,
-        ...sanitizeStyle(op.style),
-        desktop: { ...target.style.desktop, ...sanitizeDevice(op.desktop) },
-        tablet: { ...target.style.tablet, ...sanitizeDevice(op.tablet) },
-        mobile: { ...target.style.mobile, ...sanitizeDevice(op.mobile) },
-      }
-      target.meta = { ...target.meta, updatedAt: new Date().toISOString(), version: target.meta.version + 1, status: 'draft' }
+      target.style = { ...target.style, ...sanitizeStyle(op.style), desktop:{...target.style.desktop,...sanitizeDevice(op.desktop)}, tablet:{...target.style.tablet,...sanitizeDevice(op.tablet)}, mobile:{...target.style.mobile,...sanitizeDevice(op.mobile)} }
+      target.meta = { ...target.meta, updatedAt:new Date().toISOString(), version:target.meta.version + 1, status:'draft' }
     }
   }
   next.status = 'draft'
@@ -121,9 +112,7 @@ function normalizeFindings(input: unknown): AsteryonAiFinding[] | undefined {
     return {
       severity: (allowedSeverity.has(String(row.severity)) ? String(row.severity) : 'info') as AsteryonAiFinding['severity'],
       area: (allowedArea.has(String(row.area)) ? String(row.area) : 'hierarchy') as AsteryonAiFinding['area'],
-      title: String(row.title || 'Sugestão'),
-      description: String(row.description || ''),
-      suggestion: String(row.suggestion || ''),
+      title: String(row.title || 'Sugestão'), description: String(row.description || ''), suggestion: String(row.suggestion || ''),
     }
   })
 }
@@ -143,7 +132,7 @@ export async function requestAsteryonAiProposal(prompt: string, document: Editor
       findings: normalizeFindings(remote.findings) || local.findings,
       imagePrompt: remote.imagePrompt || local.imagePrompt,
       previewDocument: preview,
-      source: 'desktop-openai',
+      source: 'desktop-ollama',
       prompt,
       productionTouched: false,
       requiresApproval: true,
@@ -152,53 +141,21 @@ export async function requestAsteryonAiProposal(prompt: string, document: Editor
         used: Boolean(remote.researchUsed),
         allowedScopes: ASTERYON_AI_ALLOWED_RESEARCH_SCOPES,
         note: researchRequested
-          ? 'Pesquisa online usada somente como inspiração nas categorias autorizadas. Nenhum conteúdo da web é aplicado diretamente.'
-          : 'Proposta criada pela IA online sem pesquisa web.',
+          ? (remote.researchUsed ? 'Pesquisa web gratuita usada somente como inspiração. Nenhum conteúdo externo foi aplicado diretamente.' : 'Pesquisa foi solicitada, mas não retornou referências; a resposta foi produzida localmente pelo Ollama.')
+          : 'Proposta produzida localmente pelo Ollama sem pesquisa web.',
       },
     }
   } catch {
-    // Se não estiver no desktop, se a chave ainda não foi configurada ou se a API estiver indisponível,
-    // seguimos para o provider Supabase/fallback local sem afetar o rascunho.
+    // O Ollama pode estar ausente ou sem modelo. O motor interno permanece apenas como contingência segura.
   }
 
   if (hasSupabase && supabase) {
     try {
-      const { data, error } = await supabase.functions.invoke('asteryon-ai', {
-        body: {
-          prompt,
-          researchRequested,
-          context: {
-            pageId: document.pageId,
-            pageName: document.name,
-            theme: document.theme,
-            designSystem: document.designSystem,
-            blockTypes: document.blocks.map(block => block.type),
-          },
-          constraints: {
-            draftOnly: true,
-            autoPublish: false,
-            productionWrite: false,
-            executableCode: false,
-            copyProtectedContent: false,
-          },
-        },
-      })
-      if (!error && isProposal(data)) return { ...data, source: 'supabase-provider', productionTouched: false, requiresApproval: true }
-    } catch {
-      // O provider é opcional. Em caso de indisponibilidade, o motor local seguro assume.
-    }
+      const { data, error } = await supabase.functions.invoke('asteryon-ai', { body: { prompt, researchRequested, context:{pageId:document.pageId,pageName:document.name,theme:document.theme,designSystem:document.designSystem,blockTypes:document.blocks.map(block=>block.type)}, constraints:{draftOnly:true,autoPublish:false,productionWrite:false,executableCode:false,copyProtectedContent:false} } })
+      if (!error && isProposal(data)) return { ...data, source:'supabase-provider', productionTouched:false, requiresApproval:true }
+    } catch {}
   }
 
   const local = generateAsteryonAiProposal(prompt, document)
-  return {
-    ...local,
-    research: {
-      ...local.research,
-      requested: researchRequested,
-      used: false,
-      note: researchRequested
-        ? 'Pesquisa solicitada, mas nenhum provider online estava disponível. O motor local gerou a proposta sem consultar a internet.'
-        : local.research.note,
-    },
-  }
+  return { ...local, research:{...local.research,requested:researchRequested,used:false,note:researchRequested?'Ollama/modelo indisponível. A proposta foi gerada pelo motor interno de contingência sem consultar a Internet.':local.research.note} }
 }
