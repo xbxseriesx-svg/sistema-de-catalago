@@ -1,63 +1,186 @@
-# Asteryon Catálogo Digital
+# ASTERYON Catálogo Digital
 
-Sistema de catálogo empresarial com dois módulos separados na produção:
+Plataforma de catálogo empresarial com dois módulos separados em produção:
 
-- **Portal público:** domínio oficial da empresa, sem login para o visitante.
-- **Painel administrativo:** subdomínio `admin`, com editor visual e publicação controlada.
+- **Portal Público:** domínio oficial da empresa, sem login para o visitante.
+- **Painel Administrativo:** subdomínio `admin`, com construção visual e publicação controlada.
 
-## Editor Visual — versão avançada
+## Editor Visual Pro
 
-O editor foi redesenhado para funcionar como um construtor visual livre:
+O Editor Visual trabalha **somente sobre rascunhos**. O Portal Público lê exclusivamente a última versão publicada.
 
-- Clique em qualquer elemento da página para abrir suas propriedades na barra lateral.
-- Todos os elementos editáveis exibem menu de **três pontos** e identificação ao passar o mouse.
-- Blocos podem ser **arrastados e reposicionados** diretamente na prévia.
-- Cards de produto podem ter estilo individual: largura, posição, fundo, texto, borda, raio, imagem, altura da imagem, sombra, alinhamento e botão.
-- Barra de pesquisa com edição separada de largura, largura máxima, altura, raio, cores, borda, fonte e placeholder.
-- Logo da empresa e favicon/ícone com upload, substituição e remoção.
-- Caixas de texto livres podem ser adicionadas, editadas, movidas e excluídas.
-- Cores podem ser escolhidas pela paleta **ou digitadas em código hexadecimal** (`#RRGGBB`).
-- Biblioteca de blocos com vários modelos sugeridos de banners e cards.
-- Banners permitem imagem, remoção da imagem, altura, overlay, alinhamento, texto, CTA e cores.
-- Preview em Desktop, Tablet e Celular.
-- Rascunho separado do conteúdo público.
+Layout inspirado em ferramentas profissionais de construção visual:
 
-## Produtos
+- Barra superior: **Undo · Redo · Salvar · Preview · Publicar**.
+- Biblioteca de blocos à esquerda.
+- Preview WYSIWYG em tempo real no centro.
+- Painel contextual de propriedades à direita.
+- Modos independentes **Desktop · Tablet · Mobile**.
 
-- Filtros por texto/código, departamento, categoria, marca e visibilidade de preço.
-- Preço opcional.
-- Upload e remoção de imagem.
-- Campos da ficha pública escolhidos pelo ADMIN.
-- Importação Excel/CSV.
-- Associação automática de PNG/JPG pelo código do produto (`10001.png`, `10001_2.png`).
-- Alterações de produto ficam no rascunho e só chegam ao Portal ao publicar.
+### Drag & Drop
 
-## Estrutura 100% editável
+Implementado com `dnd-kit`:
 
-Cada empresa pode criar sua própria árvore de navegação, sem quantidade fixa de níveis ou nomes obrigatórios. Exemplos:
+- reordenação de seções e blocos;
+- componentes aninháveis em Container, Linha e Coluna;
+- indicadores **Inserir acima · Inserir abaixo · Inserir dentro**;
+- blocos bloqueados não podem ser movidos;
+- biblioteca pode ser arrastada para o canvas.
 
-- Departamentos → Categorias → Seções → Subcategorias.
-- Distribuições → Marca → Linha → Família.
-- Segmentos, coleções, aplicações ou qualquer estrutura própria.
+### Biblioteca de blocos
 
-A regra principal continua: **produto segue sua classificação normal; somente Promoções podem misturar livremente produtos de estruturas diferentes.**
+Container, Linha, Coluna, Header, Banner Hero, Banner Interno, Carrossel, Card, Produto, Vitrine, Categoria, Marca, Distribuição, Promoção, Texto, Botão, Imagem, Vídeo, Galeria, FAQ, Formulário, Rodapé, Mapa e HTML customizado isolado em `iframe sandbox`.
 
-## Temas pré-criados
+### Blocos inteligentes
+
+Vitrines suportam origem:
+
+- Manual
+- Categoria
+- Marca
+- Distribuição
+- Promoção
+- Mais acessados
+- Mais pesquisados
+- Mais recentes
+- Destaques
+
+A camada `src/catalog/data.ts` contém o resolver de demonstração. Em produção, a mesma interface passa a buscar os dados no Supabase.
+
+### Propriedades contextuais
+
+Ao selecionar um bloco, o painel direito disponibiliza controles específicos para:
+
+- conteúdo;
+- tipografia;
+- layout por dispositivo;
+- largura, altura, colunas, gap, margem e padding;
+- cores por paleta ou hexadecimal;
+- gradiente e imagem de fundo;
+- borda, radius e sombra;
+- hover e transição;
+- visibilidade Desktop/Tablet/Mobile;
+- metadados do Inspector Avançado.
+
+Todo bloco possui ações rápidas para **Duplicar, Excluir, Ocultar, Bloquear, Copiar Estilo, Colar Estilo e Salvar como Template**.
+
+## Design System Global
+
+Controla tokens reutilizáveis de:
+
+- fonte principal e secundária;
+- cor primária, secundária e destaque;
+- fundo geral e dos cards;
+- bordas e sombras;
+- radius de cards e botões;
+- unidade de espaçamento.
+
+## Identidade Visual
+
+Área dedicada a:
+
+- Logo Principal
+- Logo Mobile
+- Favicon
+- Ícone PWA
+- Marca d'água
+
+O sistema também inclui o novo símbolo ASTERYON, baseado no conceito **Aster = Estrela**, combinando uma estrela geométrica com a letra `A`.
+
+## Temas
+
+Temas nativos:
 
 - Padrão
 - Natal
 - Black Friday
+- Carnaval
 - Dia das Mães
 - Dia dos Pais
 - Dia das Crianças
 - Ano Novo
-- Carnaval
 
-Cada tema possui paleta e efeitos animados próprios e pode ser usado como ponto de partida para customização no Editor Visual.
+O motor permite controlar intensidade, partículas e animações por Desktop/Mobile. A arquitetura deixa a geração de novos temas por IA isolada em um provider externo, sem expor credenciais no frontend.
 
-## Analytics
+## Undo, Redo e Histórico
 
-Métricas de interesse para produtos, pesquisas, departamentos e promoções. A arquitetura está preparada para ampliar a granularidade por categoria, seção, subcategoria, banner e card.
+Estado do editor mantido com Zustand no formato:
+
+```ts
+{
+  past: [],
+  present: {},
+  future: []
+}
+```
+
+Atalhos:
+
+- `Ctrl + Z` — Undo
+- `Ctrl + Shift + Z` — Redo
+
+Snapshots automáticos são criados:
+
+- a cada 25 ações;
+- a cada 5 minutos.
+
+O Histórico Visual registra as ações, e os snapshots podem ser restaurados.
+
+## Sandbox e Time Machine
+
+- Vários rascunhos paralelos podem existir sem afetar a produção.
+- Uma versão publicada pode ser restaurada para rascunho.
+- Versões podem ser duplicadas em novos Sandboxes.
+- Publicações anteriores são preservadas como versões arquivadas.
+
+## Preview e Publicação
+
+O **Modo Visitante** remove todos os controles administrativos e renderiza o rascunho exatamente como portal.
+
+Antes da publicação, o sistema exibe:
+
+- resumo das mudanças;
+- blocos criados, alterados e removidos;
+- mudanças em banners, vitrines, tema, rodapé, design system e identidade;
+- comparação lado a lado **Publicado x Novo Rascunho**.
+
+Estados previstos:
+
+`draft → preview → scheduled → published → archived`
+
+A publicação cria uma nova versão imutável e mantém as anteriores disponíveis para restauração.
+
+## Supabase
+
+A migração `supabase/migrations/202608120001_editor_visual_pro.sql` adiciona:
+
+- `site_pages`
+- `site_sandboxes`
+- `site_drafts`
+- `site_versions`
+- `editor_snapshots`
+- `editor_activity`
+- `component_templates`
+- `design_systems`
+- `visual_identity`
+
+Também cria o bucket privado `catalog-editor-assets` e a função transacional `publish_site_draft`.
+
+O Portal Público deve consultar apenas a versão apontada por `site_pages.published_version_id`, impedindo que um rascunho seja exibido acidentalmente.
+
+A Edge Function `supabase/functions/publish-scheduled` processa publicações agendadas quando acionada por um scheduler/cron seguro.
+
+## Stack
+
+- React 18
+- TypeScript
+- Vite
+- Tailwind CSS
+- dnd-kit
+- Zustand
+- Zod
+- React Hook Form
+- Supabase / PostgreSQL / Storage
 
 ## Rodar localmente
 
@@ -66,21 +189,26 @@ npm install
 npm run dev
 ```
 
-Abra:
-
 - `http://localhost:5173/` — Portal Público
-- `http://localhost:5173/admin` — Painel ADMIN
+- `http://localhost:5173/admin` — Editor Visual Pro
 
-## Publicação
+Validação:
 
-O ADMIN trabalha em rascunho. O Portal Público usa somente a última versão publicada. Ao clicar em **Publicar alterações**, configuração visual, produtos e promoções do rascunho são promovidos para a versão pública.
+```bash
+npm run typecheck
+npm run build
+```
 
-## Produção planejada
+O GitHub Actions executa typecheck e build antes da integração na branch `main`.
+
+## Produção
+
+Arquitetura planejada:
 
 `GitHub → Supabase/PostgreSQL + Storage → Cloudflare`
 
 - `www.empresa.com.br` → Portal Público
 - `admin.empresa.com.br` → Painel Administrativo
-- Supabase Auth + RLS + auditoria
+- Supabase Auth + RLS por empresa/usuário
 - Storage para produtos, logos, banners e encartes
-- Cloudflare para domínio, cache, HTTPS, rate limit e proteção
+- Cloudflare para domínio, HTTPS, CDN, cache, rate limit e proteção
