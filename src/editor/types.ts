@@ -115,6 +115,17 @@ export interface EditorDocument {
   updatedAt: string
 }
 
+export interface EditorPage {
+  id: string
+  slug: string
+  name: string
+  order: number
+  active: boolean
+  document: EditorDocument
+  createdAt: string
+  updatedAt: string
+}
+
 export interface ActivityEntry {
   id: string
   at: string
@@ -141,6 +152,7 @@ export interface PublishedVersion {
 
 export interface Sandbox {
   id: string
+  pageId: string
   name: string
   createdAt: string
   document: EditorDocument
