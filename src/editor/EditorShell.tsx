@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react'
-import { Eye, Monitor, Redo2, Rocket, Save, Smartphone, Tablet, Undo2, X } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { Eye, Monitor, Redo2, Rocket, Save, Smartphone, Sparkles, Tablet, Undo2, X } from 'lucide-react'
+import { AsteryonAI } from '../ai/AsteryonAI'
 import { AsteryonMark } from '../components/AsteryonMark'
 import { BuilderWorkspace } from './BuilderWorkspace'
 import { DocumentPreview } from './DocumentPreview'
@@ -23,6 +24,7 @@ export function EditorShell() {
   const activeSandboxId = useEditorStore(s => s.activeSandboxId)
   const switchSandbox = useEditorStore(s => s.switchSandbox)
   const scheduledAt = useEditorStore(s => s.scheduledAt)
+  const [aiOpen, setAiOpen] = useState(false)
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -53,6 +55,7 @@ export function EditorShell() {
       <div className="topbar-page"><span>Rascunho</span><strong>{history.present.name}</strong><select value={activeSandboxId} onChange={e => switchSandbox(e.target.value)}>{sandboxes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>{scheduledAt ? <small>Agendado: {new Date(scheduledAt).toLocaleString('pt-BR')}</small> : null}</div>
       <div className="topbar-devices">{devices.map(item => <button key={item.id} className={device === item.id ? 'active' : ''} onClick={() => setDevice(item.id)} title={item.label}>{item.icon}<span>{item.label}</span></button>)}</div>
       <div className="topbar-actions">
+        <button className="topbar-ai" onClick={() => setAiOpen(true)} title="Abrir ASTERYON AI"><Sparkles size={17} /> ASTERYON AI</button>
         <button disabled={!history.past.length} onClick={undo} title="Desfazer (Ctrl+Z)"><Undo2 size={17} /> Undo</button>
         <button disabled={!history.future.length} onClick={redo} title="Refazer (Ctrl+Shift+Z)"><Redo2 size={17} /> Redo</button>
         <button onClick={saveDraft}><Save size={17} /> Salvar</button>
@@ -63,6 +66,7 @@ export function EditorShell() {
 
     <BuilderWorkspace />
     <PublishDialog />
+    <AsteryonAI open={aiOpen} onClose={() => setAiOpen(false)} />
 
     {previewMode ? <div className="visitor-preview-overlay"><div className="visitor-preview-top"><div><strong>Modo Visitante</strong><span>Visualização limpa e idêntica ao portal público do rascunho.</span></div><button onClick={() => setPreviewMode(false)}><X /> Fechar</button></div><div className={`visitor-preview-frame preview-${device}`}><DocumentPreview document={history.present} device={device} visitorMode /></div></div> : null}
   </div>
