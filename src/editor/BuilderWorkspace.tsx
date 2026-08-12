@@ -15,15 +15,13 @@ import type { BlockType, BuilderBlock } from './types'
 import { BlockContent, PortalSurface } from './BlockRenderer'
 import { DocumentPreview } from './DocumentPreview'
 import { PropertiesPanel } from './PropertiesPanel'
+import { VisualResizeHandles } from './VisualResizeHandles'
 
 const nestingTypes: BlockType[] = ['container', 'row', 'column']
 
 function LibraryItem({ type, label, description }: { type: BlockType; label: string; description: string }) {
   const addBlock = useEditorStore(s => s.addBlock)
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `library:${type}`,
-    data: { kind: 'library', type, label },
-  })
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: `library:${type}`, data: { kind: 'library', type, label } })
   return <button ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), opacity: isDragging ? .45 : 1 }} className="library-item" onClick={() => addBlock(type)} {...attributes} {...listeners}><span className="library-icon"><Box size={17} /></span><span><strong>{label}</strong><small>{description}</small></span><GripVertical size={16} /></button>
 }
 
@@ -61,18 +59,12 @@ function LeftLibrary() {
         <button className={tab === 'history' ? 'active' : ''} onClick={() => setTab('history')} title="Histórico"><History size={17} /></button>
         <button className={tab === 'versions' ? 'active' : ''} onClick={() => setTab('versions')} title="Time Machine"><Clock3 size={17} /></button>
       </div>
-
       {tab === 'blocks' && <div className="library-body"><div className="library-heading"><h3>Biblioteca de Blocos</h3><p>Arraste para a página ou clique para inserir.</p></div><label className="library-search"><Search size={15} /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar bloco..." /></label>{Object.entries(groups).map(([group, items]) => <div key={group} className="library-group"><h4>{group}</h4>{items.map(item => <LibraryItem key={item.type} {...item} />)}</div>)}</div>}
-
       {tab === 'templates' && <div className="library-body"><div className="library-heading"><h3>Componentes Salvos</h3><p>Reutilize elementos em qualquer página.</p></div>{templates.length ? templates.map(t => <button className="template-card" key={t.id} onClick={() => addTemplate(t.id)}><strong>{t.name}</strong><small>{t.type} · {new Date(t.createdAt).toLocaleDateString('pt-BR')}</small></button>) : <div className="empty-library">Selecione um bloco e use “Salvar como template”.</div>}</div>}
-
       {tab === 'sandbox' && <div className="library-body"><div className="library-heading"><h3>Sandbox</h3><p>Versões paralelas sem afetar produção.</p></div><button className="library-primary" onClick={() => createSandbox(`Teste ${sandboxes.length + 1}`)}><Plus size={15} /> Nova versão paralela</button>{sandboxes.map(s => <button key={s.id} className={`sandbox-card ${s.id === activeSandboxId ? 'active' : ''}`} onClick={() => switchSandbox(s.id)}><strong>{s.name}</strong><small>{s.id === activeSandboxId ? 'Em edição' : 'Abrir rascunho'} · {new Date(s.createdAt).toLocaleDateString('pt-BR')}</small></button>)}</div>}
-
       {tab === 'history' && <div className="library-body"><div className="library-heading"><h3>Histórico Visual</h3><p>Ações e snapshots automáticos.</p></div>{snapshots.length ? <><h4 className="subheading">Snapshots</h4>{snapshots.map(s => <div className="history-card" key={s.id}><div><strong>{s.label}</strong><small>{new Date(s.at).toLocaleString('pt-BR')}</small></div><button onClick={() => restoreSnapshot(s.id)}><RotateCcw size={14} /></button></div>)}</> : null}<h4 className="subheading">Atividade</h4>{activity.slice(0, 40).map(a => <div className="activity-row" key={a.id}><span>{new Date(a.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span><div><strong>{a.label}</strong><small>{a.action}</small></div></div>)}</div>}
-
       {tab === 'versions' && <div className="library-body"><div className="library-heading"><h3>Time Machine</h3><p>Visualize, compare, restaure ou duplique qualquer versão.</p></div>{versions.map(v => <div className="version-card" key={v.id}><div><strong>Versão {v.number}</strong><small>{v.label}</small><small>{new Date(v.at).toLocaleString('pt-BR')}</small></div><div className="version-actions"><button onClick={() => setVersionInspect({ versionId: v.id, mode: 'view' })} title="Visualizar"><Eye size={14} /></button><button onClick={() => setVersionInspect({ versionId: v.id, mode: 'compare' })} title="Comparar com publicado"><GitCompareArrows size={14} /></button><button onClick={() => restoreVersion(v.id)} title="Restaurar para rascunho"><RotateCcw size={14} /></button><button onClick={() => duplicateVersionToSandbox(v.id, `Versão ${v.number} - cópia`)} title="Duplicar em sandbox"><Copy size={14} /></button></div></div>)}</div>}
     </aside>
-
     {versionInspect && inspectedVersion ? <div className="version-inspect-backdrop" onClick={() => setVersionInspect(null)}><div className={`version-inspect-dialog ${versionInspect.mode}`} onClick={e => e.stopPropagation()}><div className="version-inspect-head"><div><span>TIME MACHINE</span><h3>{versionInspect.mode === 'compare' ? `Comparar Versão ${inspectedVersion.number}` : `Visualizar Versão ${inspectedVersion.number}`}</h3></div><button onClick={() => setVersionInspect(null)}><X size={18} /></button></div>{versionInspect.mode === 'view' ? <div className="version-single-preview"><DocumentPreview document={inspectedVersion.document} device={device} visitorMode /></div> : <div className="version-compare-grid"><div><strong>PUBLICADO ATUAL</strong><div className="version-mini-preview"><DocumentPreview document={published} device={device} visitorMode /></div></div><div><strong>VERSÃO {inspectedVersion.number}</strong><div className="version-mini-preview"><DocumentPreview document={inspectedVersion.document} device={device} visitorMode /></div></div></div>}</div></div> : null}
   </>
 }
@@ -103,13 +95,15 @@ function SortableBlock({ block }: { block: BuilderBlock }) {
   const peerIndex = peers.findIndex(b => b.id === block.id)
   const selected = selectedId === block.id
   const hiddenOnDevice = block.hiddenOn[device]
+  const renderBlock: BuilderBlock = selected ? { ...block, style: { ...block.style, [device]: { ...block.style[device], width: '100%' } } } : block
+  const content = <BlockContent block={renderBlock} document={doc} device={device}>{nestingTypes.includes(block.type) ? <div className="nested-slot"><DropZone id={`drop:${block.id}:inside-start`} parentId={block.id} index={0} position="inside" /><SortableContext items={children.map(c => c.id)} strategy={verticalListSortingStrategy}>{children.map(child => <SortableBlock key={child.id} block={child} />)}</SortableContext><DropZone id={`drop:${block.id}:inside-end`} parentId={block.id} index={children.length} position="inside" /></div> : null}</BlockContent>
 
   return <>
     <DropZone id={`drop:${block.id}:before`} parentId={block.parentId} index={peerIndex} position="before" />
     <div ref={setNodeRef} className={`builder-block ${selected ? 'selected' : ''} ${block.locked ? 'locked' : ''} ${block.hidden ? 'globally-hidden' : ''} ${hiddenOnDevice ? 'device-hidden' : ''}`} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? .35 : undefined }} onClick={e => { e.stopPropagation(); selectBlock(block.id) }}>
       <div className="block-label"><button className="drag-grip" {...attributes} {...listeners} disabled={block.locked}><GripVertical size={14} /></button><span>{block.name}</span>{block.locked ? <Lock size={12} /> : null}<button className="three-dots" onClick={e => { e.stopPropagation(); selectBlock(block.id) }}><MoreVertical size={15} /></button></div>
       {selected ? <BlockActions block={block} /> : null}
-      <BlockContent block={block} document={doc} device={device}>{nestingTypes.includes(block.type) ? <div className="nested-slot"><DropZone id={`drop:${block.id}:inside-start`} parentId={block.id} index={0} position="inside" /><SortableContext items={children.map(c => c.id)} strategy={verticalListSortingStrategy}>{children.map(child => <SortableBlock key={child.id} block={child} />)}</SortableContext><DropZone id={`drop:${block.id}:inside-end`} parentId={block.id} index={children.length} position="inside" /></div> : null}</BlockContent>
+      {selected && !block.locked ? <VisualResizeHandles block={block} device={device}>{content}</VisualResizeHandles> : content}
     </div>
     <DropZone id={`drop:${block.id}:after`} parentId={block.parentId} index={peerIndex + 1} position="after" />
   </>
@@ -128,12 +122,7 @@ export function BuilderWorkspace() {
   const moveBlock = useEditorStore(s => s.moveBlock)
   const [activeLabel, setActiveLabel] = useState('')
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }))
-
-  const onDragStart = (event: DragStartEvent) => {
-    const data = event.active.data.current
-    setActiveLabel(String(data?.label || data?.blockId || 'Bloco'))
-  }
-
+  const onDragStart = (event: DragStartEvent) => { const data = event.active.data.current; setActiveLabel(String(data?.label || data?.blockId || 'Bloco')) }
   const onDragEnd = (event: DragEndEvent) => {
     setActiveLabel('')
     const over = event.over
@@ -149,6 +138,5 @@ export function BuilderWorkspace() {
     }
     if (active?.kind === 'block') moveBlock(String(active.blockId), target.parentId ?? null, Number(target.index || 0))
   }
-
   return <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={onDragStart} onDragEnd={onDragEnd}><div className="builder-workspace"><LeftLibrary /><Canvas /><PropertiesPanel /></div><DragOverlay>{activeLabel ? <div className="drag-overlay"><GripVertical size={16} />{activeLabel}</div> : null}</DragOverlay></DndContext>
 }
