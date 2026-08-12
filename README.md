@@ -64,6 +64,55 @@ Ao selecionar um bloco, o painel direito disponibiliza controles específicos pa
 
 Todo bloco possui ações rápidas para **Duplicar, Excluir, Ocultar, Bloquear, Copiar Estilo, Colar Estilo e Salvar como Template**.
 
+## ASTERYON AI
+
+O Editor possui um copiloto criativo integrado para design, UX, branding, marketing, conteúdo e arquitetura da informação.
+
+Fluxo obrigatório:
+
+`Gerar → Preview → Aprovar → Aplicar ao Rascunho`
+
+A IA **nunca publica**, nunca altera `published`, nunca escreve diretamente em produção e nunca muda preços ou produtos reais automaticamente.
+
+Funções disponíveis na primeira versão:
+
+- criação de temas personalizados;
+- criação de fundos e direção visual;
+- geração de layout para Home/Landing Page;
+- geração de banners e campanhas;
+- geração de copy original;
+- sugestão de estrutura de catálogo;
+- análise de contraste, mobile, espaçamento, acessibilidade, SEO e performance;
+- melhoria visual de página;
+- direção de identidade visual;
+- briefing estruturado para imagens geradas por IA.
+
+O botão **ASTERYON AI** fica na barra superior do Editor Visual. As propostas são exibidas em formato visual e JSON estruturado. Somente propostas aprovadas podem ser aplicadas ao rascunho atual.
+
+### Pesquisa online
+
+A pesquisa é opcional e limitada a inspiração para:
+
+- tendências visuais;
+- datas comemorativas;
+- paletas de cores;
+- branding;
+- marketing;
+- UX/UI;
+- referências de campanhas;
+- padrões visuais modernos.
+
+É proibido copiar textos, slogans, logos, banners, imagens, sites ou layouts de terceiros.
+
+### Provider de IA
+
+O frontend tenta chamar a Edge Function `supabase/functions/asteryon-ai`. As credenciais do provedor ficam exclusivamente no backend, usando:
+
+- `ASTERYON_AI_PROVIDER_URL`
+- `ASTERYON_AI_PROVIDER_KEY`
+
+Se o provider não estiver configurado ou estiver indisponível, o sistema usa um motor local seguro para continuar oferecendo geração estruturada e análise sem tocar na produção.
+
 ## Design System Global
 
 Controla tokens reutilizáveis de:
@@ -100,7 +149,7 @@ Temas nativos:
 - Dia das Crianças
 - Ano Novo
 
-O motor permite controlar intensidade, partículas e animações por Desktop/Mobile. A arquitetura deixa a geração de novos temas por IA isolada em um provider externo, sem expor credenciais no frontend.
+O motor permite controlar intensidade, partículas e animações por Desktop/Mobile. O ASTERYON AI também pode gerar nomes e configurações de temas personalizados, mantendo as credenciais de IA fora do frontend.
 
 ## Undo, Redo e Histórico
 
