@@ -9,7 +9,7 @@ on:
 jobs:
   build-installer:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,11 +47,11 @@ jobs:
         shell: pwsh
         run: |
           @"
-          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 TESTE 1.3
+          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 TESTE 1.4
           =================================================
 
           INSTALAÇÃO
-          1. Execute ASTERYON_Catalogo_Setup_Windows11_TESTE_1.3.0-test.exe.
+          1. Execute ASTERYON_Catalogo_Setup_Windows11_TESTE_1.4.0-test.exe.
           2. Escolha a pasta de instalação.
           3. O instalador cria atalhos no Menu Iniciar e Área de Trabalho.
 
@@ -59,26 +59,31 @@ jobs:
           E-mail: admin@empresa.com.br
           Senha: admin123
 
-          IA GRATUITA CORRIGIDA
-          - ASTERYON AI > Configuração usa Ollama local, sem API Key e sem créditos.
-          - Clique em Instalar Ollama se ele ainda não estiver instalado.
+          IA GRATUITA — OLLAMA
+          - Abra ASTERYON AI > Configuração.
+          - Se o Ollama não estiver ativo, use Instalar Ollama.
           - Modelo recomendado: Qwen3 4B.
-          - Clique em Baixar modelo e aguarde concluir.
-          - Salvar e testar só confirma IA pronta quando o modelo selecionado realmente está instalado e responde.
-          - O painel diferencia: Ollama ausente / Ollama ativo sem modelo / Ollama + modelo pronto / motor interno de contingência.
-          - Pesquisa web gratuita só é usada quando marcada, exclusivamente como inspiração.
-          - Geração gráfica local NÃO é anunciada como pronta: nesta versão a IA entrega briefing original de imagem.
+          - Use Preparar modelo e testar. O ASTERYON aguarda o download concluir e só libera a IA depois do autoteste real.
+          - O painel diferencia: Ollama ausente / modelo ausente / IA local pronta.
+          - Pesquisa web gratuita só é usada quando marcada e apenas como inspiração.
+          - Geração gráfica local pesada ainda não está incluída; a IA cria briefing original de imagem.
+
+          EDIÇÃO VISUAL
+          - Fontes foram removidas da barra superior e ficam no painel direito.
+          - Aba Bloco: fonte específica do elemento selecionado.
+          - Aba Design: fonte principal e secundária globais.
+          - Banner, card e demais blocos selecionados exibem alças azuis para redimensionar largura e altura diretamente no canvas.
+          - Atalhos de largura: Auto, 50%, 75% e 100%.
+          - O ajuste é independente para Desktop, Tablet e Mobile.
 
           IMPORTAÇÃO
           - Botão Importar na barra superior.
           - Planilhas .xlsx/.xls/.csv.
           - Imagens por código: 10001.png, 10001_2.jpg ou 10001-1.webp.
-          - Dados ficam localmente no computador para teste.
 
           INTERFACE
-          - Botão Sair fixado no canto superior direito, sem sobrepor os controles.
-          - Barra superior reorganizada com rolagem horizontal quando necessário.
-          - Seletor global com fontes populares.
+          - Botão Sair no canto superior direito e abaixo dos overlays da IA para não sobrepor janelas.
+          - Barra superior reorganizada com espaço reservado para Sair.
           - Desktop, Tablet e Mobile disponíveis.
 
           SEGURANÇA DA IA
@@ -101,7 +106,7 @@ jobs:
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: ASTERYON-Catalogo-Windows11-v1.3-Corrigido
+          name: ASTERYON-Catalogo-Windows11-v1.4-Corrigido
           path: |
             release/ASTERYON_Catalogo_Setup_Windows11_TESTE_*.exe
             release/LEIA-ME_ASTERYON_Windows11_TESTE.txt
