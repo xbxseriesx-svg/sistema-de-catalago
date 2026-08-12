@@ -36,35 +36,34 @@ export function VisualResizeHandles({block,device,children}:Props){
     }
     const up=()=>{
       window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)
-      const patch:Record<string,unknown>={width:`${Math.max(minWidthFor(block.type),last.width)}px`,height:Math.max(minHeightFor(block.type),last.height)}
-      if(free && (handle.includes('w')||handle.includes('n'))){patch.x=snap(startPosX+last.dx,gridSize,snapEnabled);patch.y=snap(startPosY+last.dy,gridSize,snapEnabled)}
+      const patch:Record<string,unknown>={positionMode:'free',width:`${Math.max(minWidthFor(block.type),last.width)}px`,height:Math.max(minHeightFor(block.type),last.height)}
+      if(handle.includes('w')||handle.includes('n')){patch.x=snap(startPosX+last.dx,gridSize,snapEnabled);patch.y=snap(startPosY+last.dy,gridSize,snapEnabled)}
       updateDeviceStyle(block.id,device,patch,'Elemento redimensionado livremente');setPreview(null)
     }
     window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true})
   }
 
-  const startMove=(event:React.PointerEvent<HTMLButtonElement>)=>{
+  const startMove=(event:React.PointerEvent<HTMLElement>)=>{
     if(!free)return
+    const target=event.target as HTMLElement
+    if(target.closest('button,input,textarea,select,a,[contenteditable="true"]'))return
+    if(event.button!==0)return
     event.preventDefault();event.stopPropagation()
     const startX=event.clientX,startY=event.clientY,x=Number(d.x||0),y=Number(d.y||0)
     let last={dx:0,dy:0}
     const move=(p:PointerEvent)=>{last={dx:p.clientX-startX,dy:p.clientY-startY};setPreview(prev=>({...prev,dx:last.dx,dy:last.dy}))}
     const up=()=>{
       window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)
-      updateDeviceStyle(block.id,device,{x:snap(x+last.dx,gridSize,snapEnabled),y:snap(y+last.dy,gridSize,snapEnabled)},'Elemento movido livremente');setPreview(null)
+      updateDeviceStyle(block.id,device,{positionMode:'free',x:snap(x+last.dx,gridSize,snapEnabled),y:snap(y+last.dy,gridSize,snapEnabled)},'Elemento movido livremente');setPreview(null)
     }
     window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true})
   }
 
   const currentWidth=preview?.width||shellRef.current?.getBoundingClientRect().width||parseFloat(String(d.width||0))||0
   const currentHeight=preview?.height||shellRef.current?.getBoundingClientRect().height||Number(d.height||d.minHeight||0)
-  const shellStyle:React.CSSProperties={
-    width:preview?.width?`${preview.width}px`:undefined,
-    height:preview?.height?`${preview.height}px`:undefined,
-    transform:preview&&(preview.dx||preview.dy)?`translate(${preview.dx||0}px,${preview.dy||0}px)`:undefined,
-  }
+  const shellStyle:React.CSSProperties={width:preview?.width?`${preview.width}px`:undefined,height:preview?.height?`${preview.height}px`:undefined,transform:preview&&(preview.dx||preview.dy)?`translate(${preview.dx||0}px,${preview.dy||0}px)`:undefined}
 
-  return <div ref={shellRef} className={`visual-resize-shell freedom-resize ${free?'free-mode':'flow-mode'}`} style={shellStyle} onClick={e=>e.stopPropagation()}>
+  return <div ref={shellRef} className={`visual-resize-shell freedom-resize ${free?'free-mode':'flow-mode'}`} style={shellStyle} onClick={e=>e.stopPropagation()} onPointerDown={startMove}>
     <div className="visual-resize-content">{children}</div>
     <div className="visual-size-badge">W {Math.round(currentWidth)||'auto'} · H {Math.round(currentHeight)||'auto'}{free?` · X ${Math.round(Number(d.x||0)+(preview?.dx||0))} · Y ${Math.round(Number(d.y||0)+(preview?.dy||0))}`:''}</div>
     {free?<button type="button" className="free-move-handle" aria-label="Mover elemento" title="Arraste para mover" onPointerDown={startMove}><Move size={14}/> Mover</button>:null}
