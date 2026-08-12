@@ -5,6 +5,7 @@ import './styles.css'
 import './improvements.css'
 import './version-inspect.css'
 import './admin/auth.css'
+import './editor/editor-fixes.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
