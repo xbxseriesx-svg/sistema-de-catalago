@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import { AdminGate } from './admin/AdminGate'
 import { EditorShell } from './editor/EditorShell'
 import { DocumentPreview } from './editor/DocumentPreview'
 import { useEditorStore } from './editor/store'
@@ -25,6 +26,6 @@ function PublicPortal() {
 
 export default function App() {
   const path = window.location.pathname
-  if (path === '/admin' || path.startsWith('/admin/')) return <EditorShell />
+  if (path === '/admin' || path.startsWith('/admin/')) return <AdminGate><EditorShell /></AdminGate>
   return <PublicPortal />
 }
