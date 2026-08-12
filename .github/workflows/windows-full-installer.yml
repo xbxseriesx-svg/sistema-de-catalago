@@ -47,56 +47,46 @@ jobs:
         shell: pwsh
         run: |
           @"
-          ASTERYON CATÁLOGO DIGITAL — INSTALADOR WINDOWS 11 TESTE
-          ========================================================
+          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 TESTE 1.2
+          =================================================
 
           INSTALAÇÃO
-          1. Execute ASTERYON_Catalogo_Setup_Windows11_TESTE_1.1.0-test.exe.
+          1. Execute o instalador ASTERYON_Catalogo_Setup_Windows11_TESTE_1.2.0-test.exe.
           2. Escolha a pasta de instalação.
           3. O instalador cria atalhos no Menu Iniciar e Área de Trabalho.
-          4. Na primeira abertura o ASTERYON abre diretamente no Painel Administrativo local.
 
           LOGIN ADMIN LOCAL
           E-mail: admin@empresa.com.br
           Senha: admin123
 
-          CONFIGURAÇÃO DA IA
-          1. Abra ASTERYON AI.
-          2. A primeira abertura exibe Configuração segura da IA.
-          3. Cole sua API Key da OpenAI diretamente no programa.
-          4. Escolha o modelo de texto e clique em Salvar e testar.
-          5. A chave fica criptografada pelo mecanismo seguro do Windows/Electron.
-          6. A chave NÃO fica no código, instalador ou GitHub.
+          IA GRATUITA
+          - Abra ASTERYON AI > Configuração.
+          - Clique em Instalar Ollama. O Windows iniciará a instalação gratuita.
+          - Depois clique em Verificar/Salvar e em Baixar modelo.
+          - Modelo recomendado: Qwen3 4B.
+          - Não usa API Key nem créditos pagos.
+          - A pesquisa web só é usada quando marcada e serve apenas como inspiração.
 
-          IA ONLINE LIBERADA PARA TESTE
-          - Temas
-          - Planos de fundo
-          - Layouts
-          - Landing pages
-          - Estrutura de catálogo
-          - Textos e copy
-          - Banners
-          - Campanhas
-          - Análise de design
-          - Sugestões UX/UI
-          - Pesquisa online controlada
-          - Geração real de imagens com GPT Image 2
+          IMPORTAÇÃO
+          - Botão Importar na barra superior.
+          - Planilhas .xlsx/.xls/.csv.
+          - Imagens por código: 10001.png, 10001_2.jpg ou 10001-1.webp.
+          - Os dados ficam localmente no computador para teste.
 
-          REGRAS DE SEGURANÇA
-          - IA trabalha somente em rascunho.
+          FONTES E INTERFACE
+          - Barra superior reorganizada com rolagem horizontal quando necessário.
+          - Seletor global com fontes populares.
+          - Desktop, Tablet e Mobile continuam disponíveis.
+
+          SEGURANÇA DA IA
+          - Gerar -> Preview -> Aprovar -> Aplicar ao Rascunho.
           - Nunca publica automaticamente.
-          - Fluxo: Gerar -> Preview -> Aprovar -> Aplicar ao Rascunho.
-          - Pesquisa online é apenas inspiração para tendências, datas, paletas, branding, marketing, UX/UI e campanhas.
-          - O ASTERYON bloqueia aplicação direta de URLs/imagens encontradas na internet e não aceita código gerado pela IA.
-          - Imagens são geradas pela IA e salvas localmente na pasta de dados do aplicativo.
-
-          DADOS LOCAIS
-          - Editor, histórico e rascunhos usam armazenamento local da aplicação.
-          - Imagens geradas ficam no diretório de dados do usuário do ASTERYON.
-          - Desinstalar o programa não apaga automaticamente seus dados de teste.
+          - Não altera preços ou produtos reais automaticamente.
+          - Não copia conteúdo da Internet.
 
           OBSERVAÇÃO
-          - A API da OpenAI possui cobrança separada da assinatura do ChatGPT.
+          - O motor de texto e pesquisa é gratuito/local.
+          - Geração de imagens local pesada ainda exige módulo opcional compatível com GPU (ex.: ComfyUI); nesta versão a IA gera briefing/prompt original.
           - O instalador de teste não possui assinatura digital comercial; o SmartScreen pode mostrar aviso.
           "@ | Set-Content -Path release/LEIA-ME_ASTERYON_Windows11_TESTE.txt -Encoding UTF8
 
@@ -110,7 +100,7 @@ jobs:
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: ASTERYON-Catalogo-Windows11-Full-AI-Teste
+          name: ASTERYON-Catalogo-Windows11-Free-AI-Teste
           path: |
             release/ASTERYON_Catalogo_Setup_Windows11_TESTE_*.exe
             release/LEIA-ME_ASTERYON_Windows11_TESTE.txt
