@@ -47,11 +47,11 @@ jobs:
         shell: pwsh
         run: |
           @"
-          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 TESTE 1.6 / FREEDOM V2
-          =================================================================
+          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 TESTE 1.7 / CANVAS LIVRE
+          ==================================================================
 
           INSTALAÇÃO
-          1. Execute ASTERYON_Catalogo_Setup_Windows11_TESTE_1.6.0-test.exe.
+          1. Execute ASTERYON_Catalogo_Setup_Windows11_TESTE_1.7.0-test.exe.
           2. Escolha a pasta de instalação.
           3. O instalador cria atalhos no Menu Iniciar e Área de Trabalho.
 
@@ -59,64 +59,46 @@ jobs:
           E-mail: admin@empresa.com.br
           Senha: admin123
 
-          NOVO EDITOR — FREEDOM V2
-          - Esta versão inicia com uma PRANCHETA LIMPA para você construir a página do zero.
-          - A versão 1.6 usa um novo armazenamento local de teste para não carregar os layouts rígidos da versão 1.5.
-          - Clique em um elemento na biblioteca para inseri-lo diretamente no Modo Livre.
-          - Arraste um elemento da biblioteca para um drop zone quando quiser usar estrutura organizada.
-          - O Modo Livre usa X, Y, largura, altura, camada e rotação em valores reais.
-          - Foram removidos os botões fixos Auto/25%/33%/50%/66%/75%/100% do redimensionamento visual.
-          - O elemento selecionado possui 8 alças: cima, baixo, esquerda, direita e quatro cantos.
-          - Use Mover para posicionar o elemento diretamente na prancheta.
-          - Zoom da prancheta disponível no topo do canvas.
-          - Grade e Snap podem ser ligados/desligados em Página.
+          CANVAS LIVRE — ESTILO CONSTRUTOR VISUAL
+          - A página inteira agora é uma prancheta de posicionamento livre.
+          - Arraste QUALQUER item da biblioteca e solte diretamente no ponto desejado da página.
+          - Banner, Hero, Vitrine, Produto, Card, Texto, Imagem, Vídeo, Galeria, Pesquisa, Header, Footer, Frame, Container, Linha e Coluna podem ser posicionados livremente.
+          - Não existe mais obrigação de encaixar o elemento em uma linha ou seção para poder movê-lo.
+          - Passe o mouse no elemento para exibir a alça azul de arraste.
+          - Selecione o elemento e arraste também pela própria superfície quando não estiver sobre botão/campo interativo.
+          - Redimensionamento livre pelas 8 alças: quatro lados e quatro cantos.
+          - X, Y, largura, altura, camada e rotação podem ser informados manualmente no painel do elemento.
+          - Os antigos atalhos de largura fixa em porcentagem não aparecem no canvas livre.
+          - Elementos podem se sobrepor.
+          - Clique com o botão direito no elemento para Duplicar, Trazer para frente, Enviar para trás, Bloquear ou Excluir.
+          - Grade e Snap continuam opcionais em Página.
+          - Zoom disponível no topo da prancheta.
 
-          PAINEL DIREITO SEPARADO
-          - Elemento: altera SOMENTE o item selecionado.
-          - Página: altera SOMENTE fundo, imagem, tamanho da prancheta e grade.
-          - Global: tokens gerais, fontes e cores globais.
-          - Identidade: nome, logo e dimensões da marca.
-          - Tema: efeitos/presets temáticos.
-          - Ao selecionar um elemento o painel muda automaticamente para Elemento.
+          PAINEL DIREITO
+          - Elemento: altera somente o item selecionado.
+          - Página: altera apenas fundo, imagem, dimensões da página, grade e snap.
+          - Global: tokens e estilos globais.
+          - Identidade: logo, nome e dimensões da marca.
+          - Tema: efeitos e presets.
 
-          CONTEÚDO LIVRE
-          - Frame, Card, Header, Footer, Hero, Banner e Vitrine podem receber elementos internos independentes.
-          - Em componentes com conteúdo pronto, desligue "Usar conteúdo pronto deste componente" para transformá-lo em um quadro vazio.
-          - Dentro de um quadro você pode adicionar Texto, Botão, Imagem, Pesquisa, Card, Produto ou outro Frame.
-          - Cada filho possui edição, posição, tamanho, fonte, fundo e visibilidade próprios.
-          - Existe opção Página > Limpar todos os elementos para começar novamente do zero; Ctrl+Z pode desfazer.
-
-          VITRINE
-          - A vitrine deixou de ser um bloco fechado.
-          - Configure fonte de dados, filtro, quantidade, cabeçalho, kicker e contador.
-          - Escolha individualmente os campos do card: imagem, marca, nome, breadcrumb, preço e botão.
-          - Altere texto do botão, largura mínima, colunas, gap, padding, altura da imagem, radius e fundo dos cards.
-          - Desative o conteúdo pronto da vitrine e monte elementos livres dentro dela quando desejar composição manual.
-
-          LOGO / IDENTIDADE
-          - Logo e nome agora ocupam caixas independentes e não devem se sobrepor.
-          - Ajuste largura máxima, altura máxima e espaçamento logo/nome em Identidade.
-          - O nome pode ser ocultado quando a própria arte da logo já contém o nome da empresa.
+          CONTEÚDO E CATÁLOGO
+          - Vitrines continuam conectadas aos dados, mas o bloco inteiro pode ser movido e redimensionado livremente.
+          - Cards e produtos podem ser usados isoladamente em qualquer posição.
+          - Frames e estruturas podem receber conteúdo interno quando você quiser agrupar elementos.
+          - A barra de pesquisa é um elemento independente e pode ser colocada onde quiser.
 
           IA GRATUITA — OLLAMA COM DIAGNÓSTICO
           - Abra ASTERYON AI > Configuração > Preparar IA automaticamente.
-          - O programa detecta o executável padrão do Ollama, tenta iniciar a API local, baixa o modelo e executa um autoteste real.
+          - O programa detecta o Ollama, inicia a API local, baixa o modelo e executa autoteste real.
           - Modelo recomendado: Qwen3 4B.
-          - A geração só é liberada após um teste real aprovado.
-          - Abra Diagnóstico da IA para verificar API local, versão, executável, modelo instalado, autoteste, último erro e server.log.
-          - O sistema não mascara erro do Ollama com fallback silencioso no aplicativo Windows.
-          - Pesquisa web é opcional e apenas como inspiração.
+          - Diagnóstico mostra API, versão, executável, modelo, autoteste, último erro e logs.
+          - Pesquisa web é opcional e somente como inspiração.
+          - Fluxo: Gerar -> Preview -> Aprovar -> Aplicar ao Rascunho.
 
           IMPORTAÇÃO
           - Botão Importar na barra superior.
           - Planilhas .xlsx/.xls/.csv.
           - Imagens por código: 10001.png, 10001_2.jpg ou 10001-1.webp.
-
-          SEGURANÇA DA IA
-          - Gerar -> Preview -> Aprovar -> Aplicar ao Rascunho.
-          - Nunca publica automaticamente.
-          - Não altera preços ou produtos reais automaticamente.
-          - Não copia conteúdo da Internet.
 
           OBSERVAÇÃO
           - O instalador de teste não possui assinatura digital comercial; o SmartScreen pode mostrar aviso.
@@ -132,7 +114,7 @@ jobs:
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: ASTERYON-Catalogo-Windows11-v1.6-Freedom-V2
+          name: ASTERYON-Catalogo-Windows11-v1.7-Unrestricted-Canvas
           path: |
             release/ASTERYON_Catalogo_Setup_Windows11_TESTE_*.exe
             release/LEIA-ME_ASTERYON_Windows11_TESTE.txt
