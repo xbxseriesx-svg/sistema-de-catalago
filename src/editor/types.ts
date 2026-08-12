@@ -95,7 +95,7 @@ export interface IdentityConfig {
 }
 
 export interface ThemeConfig {
-  name: 'Padrão' | 'Natal' | 'Black Friday' | 'Carnaval' | 'Dia das Mães' | 'Dia dos Pais' | 'Dia das Crianças' | 'Ano Novo'
+  name: string
   enabled: boolean
   intensity: number
   particles: boolean
