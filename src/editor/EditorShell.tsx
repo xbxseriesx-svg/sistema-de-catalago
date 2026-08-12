@@ -9,8 +9,6 @@ import { PublishDialog } from './PublishDialog'
 import { useEditorStore } from './store'
 import type { Device } from './types'
 
-const POPULAR_FONTS = ['Inter','Poppins','Roboto','Open Sans','Montserrat','Lato','Nunito','DM Sans','Work Sans','Rubik','Raleway','Quicksand','Source Sans 3','Archivo','PT Sans','Ubuntu','Merriweather','Lora','Playfair Display','Libre Baskerville','Cormorant Garamond','Bebas Neue','Oswald','Anton','Pacifico','Dancing Script','Great Vibes','Lobster']
-
 export function EditorShell() {
   const history = useEditorStore(s => s.history)
   const device = useEditorStore(s => s.device)
@@ -27,7 +25,6 @@ export function EditorShell() {
   const activeSandboxId = useEditorStore(s => s.activeSandboxId)
   const switchSandbox = useEditorStore(s => s.switchSandbox)
   const scheduledAt = useEditorStore(s => s.scheduledAt)
-  const updateDesignSystem = useEditorStore(s => s.updateDesignSystem)
   const [aiOpen, setAiOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
 
@@ -59,9 +56,6 @@ export function EditorShell() {
       <div className="editor-brand"><AsteryonMark size={30} /><div><strong>ASTERYON</strong><small>EDITOR VISUAL PRO</small></div></div>
       <div className="topbar-page"><span>Rascunho</span><strong>{history.present.name}</strong><select value={activeSandboxId} onChange={e => switchSandbox(e.target.value)}>{sandboxes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>{scheduledAt ? <small>Agendado: {new Date(scheduledAt).toLocaleString('pt-BR')}</small> : null}</div>
       <div className="topbar-scroll-zone">
-        <select className="topbar-font-select" title="Fonte global do catálogo" value={history.present.designSystem.primaryFont} onChange={e => updateDesignSystem({ primaryFont: e.target.value }, 'Fonte global alterada')} style={{fontFamily: history.present.designSystem.primaryFont}}>
-          {POPULAR_FONTS.map(font => <option key={font} value={font} style={{fontFamily:font}}>{font}</option>)}
-        </select>
         <div className="topbar-devices">{devices.map(item => <button key={item.id} className={device === item.id ? 'active' : ''} onClick={() => setDevice(item.id)} title={item.label}>{item.icon}<span>{item.label}</span></button>)}</div>
         <div className="topbar-actions">
           <button className="topbar-ai" onClick={() => setAiOpen(true)} title="Abrir ASTERYON AI"><Sparkles size={17} /><span>ASTERYON AI</span></button>
