@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { ActivityEntry, BuilderBlock, Device, EditorDocument, PublishedVersion, Sandbox, SavedTemplate, Snapshot } from './types'
+import type { ActivityEntry, BuilderBlock, Device, DeviceStyle, EditorDocument, PublishedVersion, Sandbox, SavedTemplate, Snapshot } from './types'
 import { clone, defaultDocument, makeBlock, uid } from './defaults'
 
 interface HistoryState {
@@ -35,7 +35,7 @@ interface EditorState {
   updateBlock: (id: string, patch: Partial<BuilderBlock>, label?: string) => void
   updateBlockProps: (id: string, patch: Record<string, unknown>, label?: string) => void
   updateBlockStyle: (id: string, patch: Partial<BuilderBlock['style']>, label?: string) => void
-  updateDeviceStyle: (id: string, device: Device, patch: Record<string, unknown>, label?: string) => void
+  updateDeviceStyle: (id: string, device: Device, patch: Partial<DeviceStyle>, label?: string) => void
   deleteBlock: (id: string) => void
   duplicateBlock: (id: string) => void
   moveBlock: (id: string, parentId: string | null, index: number) => void
@@ -312,9 +312,12 @@ export const useEditorStore = create<EditorState>()(persist((set, get) => {
       const document = { ...clone(state.history.present), status: 'published' as const, updatedAt: new Date().toISOString() }
       const nextNumber = (state.versions[0]?.number || 0) + 1
       const version: PublishedVersion = { id: uid('version'), number: nextNumber, at: new Date().toISOString(), status: 'published', label, document: clone(document) }
+      const versions: PublishedVersion[] = [version, ...state.versions]
+        .map((v, i): PublishedVersion => i === 0 ? v : { ...v, status: 'archived' as const })
+        .slice(0, 60)
       set({
         published: document,
-        versions: [version, ...state.versions].map((v, i) => i === 0 ? v : { ...v, status: 'archived' }).slice(0, 60),
+        versions,
         publishDialogOpen: false,
         scheduledAt: null,
         activity: [logEntry('PUBLISH', `Versão ${nextNumber} publicada`), ...state.activity],
