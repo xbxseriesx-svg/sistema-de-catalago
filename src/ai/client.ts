@@ -1,161 +1,34 @@
 import { hasSupabase, supabase } from '../lib/supabase'
 import type { BuilderBlock, DeviceStyle, EditorDocument } from '../editor/types'
-import { requestDesktopAiProposal } from '../desktop/client'
+import { getDesktopAiStatus, requestDesktopAiProposal } from '../desktop/client'
 import { generateAsteryonAiProposal } from './engine'
 import { ASTERYON_AI_ALLOWED_RESEARCH_SCOPES } from './policy'
 import type { AsteryonAiFinding, AsteryonAiIntent, AsteryonAiProposal } from './types'
 
-const isProposal = (value: unknown): value is AsteryonAiProposal => {
-  if (!value || typeof value !== 'object') return false
-  const candidate = value as Partial<AsteryonAiProposal>
-  return Boolean(candidate.id && candidate.intent && candidate.title && candidate.structured && candidate.requiresApproval === true && candidate.productionTouched === false)
-}
+const isProposal=(value:unknown):value is AsteryonAiProposal=>{if(!value||typeof value!=='object')return false;const c=value as Partial<AsteryonAiProposal>;return Boolean(c.id&&c.intent&&c.title&&c.structured&&c.requiresApproval===true&&c.productionTouched===false)}
+const allowedIntents:AsteryonAiIntent[]=['theme','background','layout','landing','catalog-structure','copy','banner','campaign','image','design-audit','improve','identity','suggestions']
+const allowedBlockTypes=new Set(['header','search','hero','banner','carousel','card','product','showcase','category','brand','distribution','promotion','text','button','image','video','gallery','faq','form','footer','map','container','row','column'])
+const safeStyleKeys=new Set(['background','color','gradient','borderColor','borderWidth','borderRadius','shadow','fontFamily','fontWeight','letterSpacing','lineHeight','opacity','hoverScale','transitionMs'])
+const safeDeviceKeys=new Set(['width','minHeight','height','columns','gap','marginTop','marginRight','marginBottom','marginLeft','paddingTop','paddingRight','paddingBottom','paddingLeft','fontSize','textAlign','display','positionMode','x','y','zIndex','rotate'])
+const blockedPropFragments=['image','logo','favicon','watermark','pwa','html','script','iframe','srcdoc']
+function safeValue(value:unknown):unknown{if(typeof value==='string'){if(/^https?:\/\//i.test(value.trim())||/javascript:/i.test(value))return undefined;return value.slice(0,5000)}if(typeof value==='number')return Number.isFinite(value)?value:undefined;if(typeof value==='boolean'||value==null)return value;if(Array.isArray(value))return value.slice(0,50).map(safeValue).filter(x=>x!==undefined);return undefined}
+function sanitizeProps(input:unknown){const r:Record<string,unknown>={};if(!input||typeof input!=='object'||Array.isArray(input))return r;for(const [k,v] of Object.entries(input as Record<string,unknown>)){if(blockedPropFragments.some(f=>k.toLowerCase().includes(f)))continue;const s=safeValue(v);if(s!==undefined)r[k]=s}return r}
+function sanitizeStyle(input:unknown){const r:Partial<BuilderBlock['style']>={};if(!input||typeof input!=='object'||Array.isArray(input))return r;for(const [k,v] of Object.entries(input as Record<string,unknown>)){if(!safeStyleKeys.has(k))continue;const s=safeValue(v);if(s!==undefined)(r as Record<string,unknown>)[k]=s}return r}
+function sanitizeDevice(input:unknown):Partial<DeviceStyle>{const r:Partial<DeviceStyle>={};if(!input||typeof input!=='object'||Array.isArray(input))return r;for(const [k,v] of Object.entries(input as Record<string,unknown>)){if(!safeDeviceKeys.has(k))continue;const s=safeValue(v);if(s!==undefined)(r as Record<string,unknown>)[k]=s}return r}
+function applyRemotePatch(document:EditorDocument,patch:unknown):EditorDocument{if(!patch||typeof patch!=='object'||Array.isArray(patch))return document;const next=structuredClone(document);const source=patch as Record<string,unknown>;if(source.designSystem&&typeof source.designSystem==='object'&&!Array.isArray(source.designSystem)){const allowed=new Set(['primaryFont','secondaryFont','primaryColor','secondaryColor','accentColor','pageBackground','cardBackground','cardRadius','buttonRadius','borderColor','shadow','spacingUnit']);for(const [k,v] of Object.entries(source.designSystem as Record<string,unknown>)){if(!allowed.has(k))continue;const s=safeValue(v);if(s!==undefined)(next.designSystem as unknown as Record<string,unknown>)[k]=s}}if(source.theme&&typeof source.theme==='object'&&!Array.isArray(source.theme)){const allowed=new Set(['name','enabled','intensity','particles','animateDesktop','animateMobile']);for(const [k,v] of Object.entries(source.theme as Record<string,unknown>)){if(!allowed.has(k))continue;const s=safeValue(v);if(s!==undefined)(next.theme as unknown as Record<string,unknown>)[k]=s}}if(Array.isArray(source.blocks)){for(const operation of source.blocks.slice(0,30)){if(!operation||typeof operation!=='object'||Array.isArray(operation))continue;const op=operation as Record<string,unknown>;const type=String(op.type||'');if(!allowedBlockTypes.has(type)||type==='html')continue;const peers=next.blocks.filter(b=>b.type===type);const index=Math.max(0,Math.min(Number(op.index||0),peers.length-1));const target=peers[index];if(!target)continue;target.props={...target.props,...sanitizeProps(op.props)};target.style={...target.style,...sanitizeStyle(op.style),desktop:{...target.style.desktop,...sanitizeDevice(op.desktop)},tablet:{...target.style.tablet,...sanitizeDevice(op.tablet)},mobile:{...target.style.mobile,...sanitizeDevice(op.mobile)}};target.meta={...target.meta,updatedAt:new Date().toISOString(),version:target.meta.version+1,status:'draft'}}}next.status='draft';next.updatedAt=new Date().toISOString();return next}
+function normalizeFindings(input:unknown):AsteryonAiFinding[]|undefined{if(!Array.isArray(input))return undefined;const sev=new Set(['info','warning','critical']);const area=new Set(['contrast','typography','mobile','spacing','hierarchy','accessibility','seo','performance']);return input.slice(0,12).map(item=>{const r=item&&typeof item==='object'?item as Record<string,unknown>:{};return {severity:(sev.has(String(r.severity))?String(r.severity):'info') as AsteryonAiFinding['severity'],area:(area.has(String(r.area))?String(r.area):'hierarchy') as AsteryonAiFinding['area'],title:String(r.title||'Sugestão'),description:String(r.description||''),suggestion:String(r.suggestion||'')}})}
 
-const allowedIntents: AsteryonAiIntent[] = ['theme','background','layout','landing','catalog-structure','copy','banner','campaign','image','design-audit','improve','identity','suggestions']
-const allowedBlockTypes = new Set(['header','hero','banner','carousel','card','product','showcase','category','brand','distribution','promotion','text','button','image','video','gallery','faq','form','footer','map','container','row','column'])
-const safeStyleKeys = new Set(['background','color','gradient','borderColor','borderWidth','borderRadius','shadow','fontFamily','fontWeight','letterSpacing','lineHeight','opacity','hoverScale','transitionMs'])
-const safeDeviceKeys = new Set(['width','minHeight','columns','gap','marginTop','marginRight','marginBottom','marginLeft','paddingTop','paddingRight','paddingBottom','paddingLeft','fontSize','textAlign','display'])
-const blockedPropFragments = ['image','logo','favicon','watermark','pwa','html','script','iframe','srcdoc']
+function buildProposal(remote:Awaited<ReturnType<typeof requestDesktopAiProposal>>,prompt:string,document:EditorDocument,researchRequested:boolean):AsteryonAiProposal{const enhanced=remote.enhancedPrompt?.trim()||prompt;const local=generateAsteryonAiProposal(enhanced,document);const preview=applyRemotePatch(local.previewDocument||document,remote.editorPatch);return {...local,intent:(allowedIntents.includes(remote.intent as AsteryonAiIntent)?remote.intent:local.intent) as AsteryonAiIntent,title:remote.title||local.title,summary:remote.summary||local.summary,structured:remote.structured||local.structured,findings:normalizeFindings(remote.findings)||local.findings,imagePrompt:remote.imagePrompt||local.imagePrompt,previewDocument:preview,source:'desktop-ollama',prompt,productionTouched:false,requiresApproval:true,research:{requested:researchRequested,used:Boolean(remote.researchUsed),allowedScopes:ASTERYON_AI_ALLOWED_RESEARCH_SCOPES,note:researchRequested?(remote.researchUsed?'Pesquisa web usada apenas como inspiração; nenhum conteúdo externo foi aplicado diretamente.':'Pesquisa solicitada sem referências úteis; resposta produzida localmente pelo Ollama.'):'Proposta produzida localmente pelo Ollama sem pesquisa web.'}}}
 
-function safeValue(value: unknown): unknown {
-  if (typeof value === 'string') {
-    if (/^https?:\/\//i.test(value.trim())) return undefined
-    if (/javascript:/i.test(value)) return undefined
-    return value.slice(0, 5000)
+export async function requestAsteryonAiProposal(prompt:string,document:EditorDocument,researchRequested=false,selectedBlockId?:string|null):Promise<AsteryonAiProposal>{
+  const desktop=await getDesktopAiStatus()
+  if(desktop?.desktop){
+    if(!desktop.ollamaRunning)throw new Error('Ollama não está ativo. Abra Configuração da IA e use Preparar IA.')
+    if(!desktop.configured)throw new Error(`O modelo ${desktop.textModel} ainda não está instalado. Abra Configuração da IA e use Preparar IA.`)
+    const remote=await requestDesktopAiProposal(prompt,document,researchRequested,selectedBlockId)
+    return buildProposal(remote,prompt,document,researchRequested)
   }
-  if (typeof value === 'number') return Number.isFinite(value) ? value : undefined
-  if (typeof value === 'boolean' || value == null) return value
-  if (Array.isArray(value)) return value.slice(0, 50).map(safeValue).filter(item => item !== undefined)
-  return undefined
-}
-
-function sanitizeProps(input: unknown) {
-  const result: Record<string, unknown> = {}
-  if (!input || typeof input !== 'object' || Array.isArray(input)) return result
-  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
-    const lower = key.toLowerCase()
-    if (blockedPropFragments.some(fragment => lower.includes(fragment))) continue
-    const safe = safeValue(value)
-    if (safe !== undefined) result[key] = safe
-  }
-  return result
-}
-
-function sanitizeStyle(input: unknown) {
-  const result: Partial<BuilderBlock['style']> = {}
-  if (!input || typeof input !== 'object' || Array.isArray(input)) return result
-  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
-    if (!safeStyleKeys.has(key)) continue
-    const safe = safeValue(value)
-    if (safe !== undefined) (result as Record<string, unknown>)[key] = safe
-  }
-  return result
-}
-
-function sanitizeDevice(input: unknown): Partial<DeviceStyle> {
-  const result: Partial<DeviceStyle> = {}
-  if (!input || typeof input !== 'object' || Array.isArray(input)) return result
-  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
-    if (!safeDeviceKeys.has(key)) continue
-    const safe = safeValue(value)
-    if (safe !== undefined) (result as Record<string, unknown>)[key] = safe
-  }
-  return result
-}
-
-function applyRemotePatch(document: EditorDocument, patch: unknown): EditorDocument {
-  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return document
-  const next = structuredClone(document)
-  const source = patch as Record<string, unknown>
-  if (source.designSystem && typeof source.designSystem === 'object' && !Array.isArray(source.designSystem)) {
-    const allowed = new Set(['primaryFont','secondaryFont','primaryColor','secondaryColor','accentColor','pageBackground','cardBackground','cardRadius','buttonRadius','borderColor','shadow','spacingUnit'])
-    for (const [key, value] of Object.entries(source.designSystem as Record<string, unknown>)) {
-      if (!allowed.has(key)) continue
-      const safe = safeValue(value)
-      if (safe !== undefined) (next.designSystem as unknown as Record<string, unknown>)[key] = safe
-    }
-  }
-  if (source.theme && typeof source.theme === 'object' && !Array.isArray(source.theme)) {
-    const allowed = new Set(['name','enabled','intensity','particles','animateDesktop','animateMobile'])
-    for (const [key, value] of Object.entries(source.theme as Record<string, unknown>)) {
-      if (!allowed.has(key)) continue
-      const safe = safeValue(value)
-      if (safe !== undefined) (next.theme as unknown as Record<string, unknown>)[key] = safe
-    }
-  }
-  if (Array.isArray(source.blocks)) {
-    for (const operation of source.blocks.slice(0, 30)) {
-      if (!operation || typeof operation !== 'object' || Array.isArray(operation)) continue
-      const op = operation as Record<string, unknown>
-      const type = String(op.type || '')
-      if (!allowedBlockTypes.has(type) || type === 'html') continue
-      const peers = next.blocks.filter(block => block.type === type)
-      const index = Math.max(0, Math.min(Number(op.index || 0), peers.length - 1))
-      const target = peers[index]
-      if (!target) continue
-      target.props = { ...target.props, ...sanitizeProps(op.props) }
-      target.style = { ...target.style, ...sanitizeStyle(op.style), desktop:{...target.style.desktop,...sanitizeDevice(op.desktop)}, tablet:{...target.style.tablet,...sanitizeDevice(op.tablet)}, mobile:{...target.style.mobile,...sanitizeDevice(op.mobile)} }
-      target.meta = { ...target.meta, updatedAt:new Date().toISOString(), version:target.meta.version + 1, status:'draft' }
-    }
-  }
-  next.status = 'draft'
-  next.updatedAt = new Date().toISOString()
-  return next
-}
-
-function normalizeFindings(input: unknown): AsteryonAiFinding[] | undefined {
-  if (!Array.isArray(input)) return undefined
-  const allowedSeverity = new Set(['info','warning','critical'])
-  const allowedArea = new Set(['contrast','typography','mobile','spacing','hierarchy','accessibility','seo','performance'])
-  return input.slice(0, 12).map(item => {
-    const row = item && typeof item === 'object' ? item as Record<string, unknown> : {}
-    return {
-      severity: (allowedSeverity.has(String(row.severity)) ? String(row.severity) : 'info') as AsteryonAiFinding['severity'],
-      area: (allowedArea.has(String(row.area)) ? String(row.area) : 'hierarchy') as AsteryonAiFinding['area'],
-      title: String(row.title || 'Sugestão'), description: String(row.description || ''), suggestion: String(row.suggestion || ''),
-    }
-  })
-}
-
-export async function requestAsteryonAiProposal(prompt: string, document: EditorDocument, researchRequested = false, selectedBlockId?: string | null): Promise<AsteryonAiProposal> {
-  try {
-    const remote = await requestDesktopAiProposal(prompt, document, researchRequested, selectedBlockId)
-    const enhanced = remote.enhancedPrompt?.trim() || prompt
-    const local = generateAsteryonAiProposal(enhanced, document)
-    const preview = applyRemotePatch(local.previewDocument || document, remote.editorPatch)
-    return {
-      ...local,
-      intent: (allowedIntents.includes(remote.intent as AsteryonAiIntent) ? remote.intent : local.intent) as AsteryonAiIntent,
-      title: remote.title || local.title,
-      summary: remote.summary || local.summary,
-      structured: remote.structured || local.structured,
-      findings: normalizeFindings(remote.findings) || local.findings,
-      imagePrompt: remote.imagePrompt || local.imagePrompt,
-      previewDocument: preview,
-      source: 'desktop-ollama',
-      prompt,
-      productionTouched: false,
-      requiresApproval: true,
-      research: {
-        requested: researchRequested,
-        used: Boolean(remote.researchUsed),
-        allowedScopes: ASTERYON_AI_ALLOWED_RESEARCH_SCOPES,
-        note: researchRequested
-          ? (remote.researchUsed ? 'Pesquisa web gratuita usada somente como inspiração. Nenhum conteúdo externo foi aplicado diretamente.' : 'Pesquisa foi solicitada, mas não retornou referências; a resposta foi produzida localmente pelo Ollama.')
-          : 'Proposta produzida localmente pelo Ollama sem pesquisa web.',
-      },
-    }
-  } catch {
-    // O Ollama pode estar ausente ou sem modelo. O motor interno permanece apenas como contingência segura.
-  }
-
-  if (hasSupabase && supabase) {
-    try {
-      const { data, error } = await supabase.functions.invoke('asteryon-ai', { body: { prompt, researchRequested, context:{pageId:document.pageId,pageName:document.name,theme:document.theme,designSystem:document.designSystem,blockTypes:document.blocks.map(block=>block.type)}, constraints:{draftOnly:true,autoPublish:false,productionWrite:false,executableCode:false,copyProtectedContent:false} } })
-      if (!error && isProposal(data)) return { ...data, source:'supabase-provider', productionTouched:false, requiresApproval:true }
-    } catch {}
-  }
-
-  const local = generateAsteryonAiProposal(prompt, document)
-  return { ...local, research:{...local.research,requested:researchRequested,used:false,note:researchRequested?'Ollama/modelo indisponível. A proposta foi gerada pelo motor interno de contingência sem consultar a Internet.':local.research.note} }
+  if(hasSupabase&&supabase){try{const {data,error}=await supabase.functions.invoke('asteryon-ai',{body:{prompt,researchRequested,context:{pageId:document.pageId,pageName:document.name,theme:document.theme,designSystem:document.designSystem,blockTypes:document.blocks.map(b=>b.type)},constraints:{draftOnly:true,autoPublish:false,productionWrite:false,executableCode:false,copyProtectedContent:false}}});if(!error&&isProposal(data))return {...data,source:'supabase-provider',productionTouched:false,requiresApproval:true}}catch{}}
+  const local=generateAsteryonAiProposal(prompt,document)
+  return {...local,research:{...local.research,requested:researchRequested,used:false,note:researchRequested?'Sem provider online; proposta demonstrativa criada sem pesquisa externa.':local.research.note}}
 }
