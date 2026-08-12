@@ -17,15 +17,22 @@ export function VisualResizeHandles({block,device,children}:Props){
   const free=d.positionMode==='free'
   const [preview,setPreview]=useState<{width?:number;height?:number;dx?:number;dy?:number}|null>(null)
   const gridSize=Math.max(1,Number(canvas?.gridSize||8)), snapEnabled=Boolean(canvas?.snapToGrid)
+  const canvasScale=()=>{
+    const shell=shellRef.current
+    const stage=shell?.closest('[data-asteryon-hostinger-canvas]') as HTMLElement|null
+    if(!stage)return 1
+    const logical=Math.max(1,Number(canvas?.[device]?.width||stage.offsetWidth||1))
+    return Math.max(.1,stage.getBoundingClientRect().width/logical)
+  }
 
   const startResize=(handle:Handle,event:React.PointerEvent<HTMLButtonElement>)=>{
     event.preventDefault();event.stopPropagation()
     const shell=shellRef.current;if(!shell)return
-    const startX=event.clientX,startY=event.clientY,rect=shell.getBoundingClientRect()
-    const startWidth=rect.width,startHeight=rect.height,startPosX=Number(d.x||0),startPosY=Number(d.y||0)
+    const scale=canvasScale(),startX=event.clientX,startY=event.clientY,rect=shell.getBoundingClientRect()
+    const startWidth=rect.width/scale,startHeight=rect.height/scale,startPosX=Number(d.x||0),startPosY=Number(d.y||0)
     let last={width:startWidth,height:startHeight,dx:0,dy:0}
     const move=(p:PointerEvent)=>{
-      const rawDx=p.clientX-startX,rawDy=p.clientY-startY
+      const rawDx=(p.clientX-startX)/scale,rawDy=(p.clientY-startY)/scale
       let width=startWidth,height=startHeight,dx=0,dy=0
       if(handle.includes('e')) width=Math.max(minWidthFor(block.type),startWidth+rawDx)
       if(handle.includes('s')) height=Math.max(minHeightFor(block.type),startHeight+rawDy)
@@ -49,9 +56,9 @@ export function VisualResizeHandles({block,device,children}:Props){
     if(target.closest('button,input,textarea,select,a,[contenteditable="true"]'))return
     if(event.button!==0)return
     event.preventDefault();event.stopPropagation()
-    const startX=event.clientX,startY=event.clientY,x=Number(d.x||0),y=Number(d.y||0)
+    const scale=canvasScale(),startX=event.clientX,startY=event.clientY,x=Number(d.x||0),y=Number(d.y||0)
     let last={dx:0,dy:0}
-    const move=(p:PointerEvent)=>{last={dx:p.clientX-startX,dy:p.clientY-startY};setPreview(prev=>({...prev,dx:last.dx,dy:last.dy}))}
+    const move=(p:PointerEvent)=>{last={dx:(p.clientX-startX)/scale,dy:(p.clientY-startY)/scale};setPreview(prev=>({...prev,dx:last.dx,dy:last.dy}))}
     const up=()=>{
       window.removeEventListener('pointermove',move);window.removeEventListener('pointerup',up)
       updateDeviceStyle(block.id,device,{positionMode:'free',x:snap(x+last.dx,gridSize,snapEnabled),y:snap(y+last.dy,gridSize,snapEnabled)},'Elemento movido livremente');setPreview(null)
@@ -59,8 +66,9 @@ export function VisualResizeHandles({block,device,children}:Props){
     window.addEventListener('pointermove',move);window.addEventListener('pointerup',up,{once:true})
   }
 
-  const currentWidth=preview?.width||shellRef.current?.getBoundingClientRect().width||parseFloat(String(d.width||0))||0
-  const currentHeight=preview?.height||shellRef.current?.getBoundingClientRect().height||Number(d.height||d.minHeight||0)
+  const scale=canvasScale()
+  const currentWidth=preview?.width||(shellRef.current?.getBoundingClientRect().width||0)/scale||parseFloat(String(d.width||0))||0
+  const currentHeight=preview?.height||(shellRef.current?.getBoundingClientRect().height||0)/scale||Number(d.height||d.minHeight||0)
   const shellStyle:React.CSSProperties={width:preview?.width?`${preview.width}px`:undefined,height:preview?.height?`${preview.height}px`:undefined,transform:preview&&(preview.dx||preview.dy)?`translate(${preview.dx||0}px,${preview.dy||0}px)`:undefined}
 
   return <div ref={shellRef} className={`visual-resize-shell freedom-resize ${free?'free-mode':'flow-mode'}`} style={shellStyle} onClick={e=>e.stopPropagation()} onPointerDown={startMove}>
