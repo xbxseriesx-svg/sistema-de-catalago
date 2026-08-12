@@ -7,6 +7,7 @@ import './version-inspect.css'
 import './admin/auth.css'
 import './editor/editor-fixes.css'
 import './editor/freedom-v2.css'
+import './editor/hostinger-canvas.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
