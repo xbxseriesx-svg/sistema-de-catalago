@@ -9,7 +9,7 @@ on:
 jobs:
   build-installer:
     runs-on: windows-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -47,11 +47,11 @@ jobs:
         shell: pwsh
         run: |
           @"
-          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 TESTE 1.5
-          =================================================
+          ASTERYON CATÁLOGO DIGITAL — WINDOWS 11 TESTE 1.6 / FREEDOM V2
+          =================================================================
 
           INSTALAÇÃO
-          1. Execute ASTERYON_Catalogo_Setup_Windows11_TESTE_1.5.0-test.exe.
+          1. Execute ASTERYON_Catalogo_Setup_Windows11_TESTE_1.6.0-test.exe.
           2. Escolha a pasta de instalação.
           3. O instalador cria atalhos no Menu Iniciar e Área de Trabalho.
 
@@ -59,30 +59,53 @@ jobs:
           E-mail: admin@empresa.com.br
           Senha: admin123
 
-          IA GRATUITA — CORREÇÃO COMPLETA OLLAMA
-          - Abra ASTERYON AI > Configuração.
-          - Use o botão Preparar IA automaticamente.
-          - O ASTERYON instala/ativa o Ollama quando necessário, baixa o modelo selecionado via API local oficial e executa um teste real.
+          NOVO EDITOR — FREEDOM V2
+          - Esta versão inicia com uma PRANCHETA LIMPA para você construir a página do zero.
+          - A versão 1.6 usa um novo armazenamento local de teste para não carregar os layouts rígidos da versão 1.5.
+          - Clique em um elemento na biblioteca para inseri-lo diretamente no Modo Livre.
+          - Arraste um elemento da biblioteca para um drop zone quando quiser usar estrutura organizada.
+          - O Modo Livre usa X, Y, largura, altura, camada e rotação em valores reais.
+          - Foram removidos os botões fixos Auto/25%/33%/50%/66%/75%/100% do redimensionamento visual.
+          - O elemento selecionado possui 8 alças: cima, baixo, esquerda, direita e quatro cantos.
+          - Use Mover para posicionar o elemento diretamente na prancheta.
+          - Zoom da prancheta disponível no topo do canvas.
+          - Grade e Snap podem ser ligados/desligados em Página.
+
+          PAINEL DIREITO SEPARADO
+          - Elemento: altera SOMENTE o item selecionado.
+          - Página: altera SOMENTE fundo, imagem, tamanho da prancheta e grade.
+          - Global: tokens gerais, fontes e cores globais.
+          - Identidade: nome, logo e dimensões da marca.
+          - Tema: efeitos/presets temáticos.
+          - Ao selecionar um elemento o painel muda automaticamente para Elemento.
+
+          CONTEÚDO LIVRE
+          - Frame, Card, Header, Footer, Hero, Banner e Vitrine podem receber elementos internos independentes.
+          - Em componentes com conteúdo pronto, desligue "Usar conteúdo pronto deste componente" para transformá-lo em um quadro vazio.
+          - Dentro de um quadro você pode adicionar Texto, Botão, Imagem, Pesquisa, Card, Produto ou outro Frame.
+          - Cada filho possui edição, posição, tamanho, fonte, fundo e visibilidade próprios.
+          - Existe opção Página > Limpar todos os elementos para começar novamente do zero; Ctrl+Z pode desfazer.
+
+          VITRINE
+          - A vitrine deixou de ser um bloco fechado.
+          - Configure fonte de dados, filtro, quantidade, cabeçalho, kicker e contador.
+          - Escolha individualmente os campos do card: imagem, marca, nome, breadcrumb, preço e botão.
+          - Altere texto do botão, largura mínima, colunas, gap, padding, altura da imagem, radius e fundo dos cards.
+          - Desative o conteúdo pronto da vitrine e monte elementos livres dentro dela quando desejar composição manual.
+
+          LOGO / IDENTIDADE
+          - Logo e nome agora ocupam caixas independentes e não devem se sobrepor.
+          - Ajuste largura máxima, altura máxima e espaçamento logo/nome em Identidade.
+          - O nome pode ser ocultado quando a própria arte da logo já contém o nome da empresa.
+
+          IA GRATUITA — OLLAMA COM DIAGNÓSTICO
+          - Abra ASTERYON AI > Configuração > Preparar IA automaticamente.
+          - O programa detecta o executável padrão do Ollama, tenta iniciar a API local, baixa o modelo e executa um autoteste real.
           - Modelo recomendado: Qwen3 4B.
-          - A geração só é liberada quando o modelo realmente estiver instalado e respondendo.
-          - Erros do Ollama agora aparecem na tela; o sistema não mascara falha do desktop com um fallback silencioso.
-          - Pesquisa web é opcional e somente como inspiração.
-
-          EDITOR LIVRE
-          - Cada elemento tem edição própria e contextual.
-          - Clique no fundo para editar somente o fundo/página.
-          - Clique em texto, card, banner, busca etc. para editar somente aquele elemento.
-          - Banner, Hero, Card, Texto, Imagem, Botão e Barra de Pesquisa podem usar Modo Livre.
-          - No Modo Livre, use Mover para arrastar o elemento no canvas e as alças para redimensionar.
-          - X, Y, largura, altura, camada e rotação são independentes por Desktop/Tablet/Mobile.
-          - Presets: Auto, 25%, 33%, 50%, 66%, 75% e 100%.
-          - Elementos não são mais forçados a preencher 100% da página quando selecionados.
-
-          EDIÇÃO POR ITEM
-          - Fontes ficam no painel correto, não na barra superior.
-          - Título, subtítulo, descrição e CTA de banners/cards possuem controles separados.
-          - A Barra de Pesquisa agora é um elemento independente: pode adicionar, duplicar, mover ou excluir quando quiser.
-          - A busca antiga embutida no Header pode ser desligada.
+          - A geração só é liberada após um teste real aprovado.
+          - Abra Diagnóstico da IA para verificar API local, versão, executável, modelo instalado, autoteste, último erro e server.log.
+          - O sistema não mascara erro do Ollama com fallback silencioso no aplicativo Windows.
+          - Pesquisa web é opcional e apenas como inspiração.
 
           IMPORTAÇÃO
           - Botão Importar na barra superior.
@@ -109,7 +132,7 @@ jobs:
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: ASTERYON-Catalogo-Windows11-v1.5-FreeCanvas-AI
+          name: ASTERYON-Catalogo-Windows11-v1.6-Freedom-V2
           path: |
             release/ASTERYON_Catalogo_Setup_Windows11_TESTE_*.exe
             release/LEIA-ME_ASTERYON_Windows11_TESTE.txt
