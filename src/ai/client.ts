@@ -9,12 +9,13 @@ const isProposal = (value: unknown): value is AsteryonAiProposal => {
   return Boolean(candidate.id && candidate.intent && candidate.title && candidate.structured && candidate.requiresApproval === true && candidate.productionTouched === false)
 }
 
-export async function requestAsteryonAiProposal(prompt: string, document: EditorDocument): Promise<AsteryonAiProposal> {
+export async function requestAsteryonAiProposal(prompt: string, document: EditorDocument, researchRequested = false): Promise<AsteryonAiProposal> {
   if (hasSupabase && supabase) {
     try {
       const { data, error } = await supabase.functions.invoke('asteryon-ai', {
         body: {
           prompt,
+          researchRequested,
           context: {
             pageId: document.pageId,
             pageName: document.name,
@@ -37,5 +38,16 @@ export async function requestAsteryonAiProposal(prompt: string, document: Editor
     }
   }
 
-  return generateAsteryonAiProposal(prompt, document)
+  const local = generateAsteryonAiProposal(prompt, document)
+  return {
+    ...local,
+    research: {
+      ...local.research,
+      requested: researchRequested,
+      used: false,
+      note: researchRequested
+        ? 'Pesquisa solicitada, mas o provider não estava disponível. O motor local gerou a proposta sem consultar a internet.'
+        : local.research.note,
+    },
+  }
 }
