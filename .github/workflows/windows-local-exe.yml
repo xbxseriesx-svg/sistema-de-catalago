@@ -38,12 +38,12 @@ jobs:
       - name: Build Windows executable
         shell: pwsh
         run: |
+          $web = (Resolve-Path "dist").Path
           pyinstaller --noconfirm --clean --onefile --windowed `
             --name "ASTERYON_Catalogo_Windows11_QA" `
-            --add-data "dist;web" `
+            --add-data "$web;web" `
             --distpath windows-package `
             --workpath pyinstaller-build `
-            --specpath pyinstaller-spec `
             tools/windows_local_launcher.py
 
       - name: Create local test instructions
