@@ -10,138 +10,34 @@ let mainWindow = null
 let server = null
 let baseUrl = ''
 
-const json = (res, status, body) => {
-  const data = Buffer.from(JSON.stringify(body))
-  res.writeHead(status, { 'Content-Type':'application/json; charset=utf-8','Content-Length':data.length,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff' })
-  res.end(data)
-}
-const readBody = req => new Promise((resolve,reject) => {
-  const chunks=[]; let size=0
-  req.on('data', c => { size += c.length; if(size>8*1024*1024){ reject(new Error('Requisição acima do limite local.')); req.destroy(); return } chunks.push(c) })
-  req.on('end',()=>{ try{ resolve(chunks.length ? JSON.parse(Buffer.concat(chunks).toString('utf8')) : {}) }catch{ reject(new Error('JSON inválido.')) } })
-  req.on('error',reject)
-})
-function userDir(){ const dir=path.join(app.getPath('userData'),'local-data'); fs.mkdirSync(dir,{recursive:true}); return dir }
-function settingsPath(){ return path.join(userDir(),'local-ai.json') }
-function loadSettings(){ try{return JSON.parse(fs.readFileSync(settingsPath(),'utf8'))}catch{return {model:'qwen3:4b',research:true}} }
-function saveSettings(next){ fs.writeFileSync(settingsPath(),JSON.stringify(next,null,2),'utf8') }
-function normalizeModel(value){ return String(value||'').trim().toLowerCase() }
-function modelInstalled(models, selected){
-  const target=normalizeModel(selected)
-  return models.some(name=>{
-    const current=normalizeModel(name)
-    if(current===target)return true
-    if(!target.includes(':') && current===`${target}:latest`)return true
-    return false
-  })
-}
+const json = (res, status, body) => { const data=Buffer.from(JSON.stringify(body)); res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Content-Length':data.length,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}); res.end(data) }
+const readBody = req => new Promise((resolve,reject)=>{ const chunks=[]; let size=0; req.on('data',c=>{size+=c.length;if(size>8*1024*1024){reject(new Error('Requisição acima do limite local.'));req.destroy();return}chunks.push(c)}); req.on('end',()=>{try{resolve(chunks.length?JSON.parse(Buffer.concat(chunks).toString('utf8')):{})}catch{reject(new Error('JSON inválido.'))}}); req.on('error',reject) })
+function userDir(){const dir=path.join(app.getPath('userData'),'local-data');fs.mkdirSync(dir,{recursive:true});return dir}
+function settingsPath(){return path.join(userDir(),'local-ai.json')}
+function loadSettings(){try{return JSON.parse(fs.readFileSync(settingsPath(),'utf8'))}catch{return {model:'qwen3:4b',research:true}}}
+function saveSettings(next){fs.writeFileSync(settingsPath(),JSON.stringify(next,null,2),'utf8')}
+function normalizeModel(value){return String(value||'').trim().toLowerCase()}
+function modelInstalled(models,selected){const target=normalizeModel(selected);return models.some(name=>{const current=normalizeModel(name);return current===target||(!target.includes(':')&&current===`${target}:latest`)})}
 
-async function ollamaTags(){
-  const r = await fetch(`${OLLAMA}/api/tags`,{signal:AbortSignal.timeout(2500)})
-  if(!r.ok) throw new Error('Ollama indisponível.')
-  return r.json()
-}
-async function ollamaReady(){ try{ const data=await ollamaTags(); return {ok:true,models:(data.models||[]).map(m=>m.name)} }catch{return {ok:false,models:[]} } }
-function runDetached(command,args=[]){ const child=spawn(command,args,{detached:true,stdio:'ignore',windowsHide:false}); child.on('error',()=>{}); child.unref(); return true }
-async function installOllama(){
-  const active=await ollamaReady()
-  if(active.ok) return {ok:true,message:'Ollama já está instalado e ativo neste computador.'}
-  try{
-    runDetached('winget',['install','-e','--id','Ollama.Ollama','--accept-package-agreements','--accept-source-agreements'])
-    return {ok:true,message:'Instalação do Ollama iniciada pelo Windows. Quando concluir, abra o Ollama e volte ao ASTERYON.'}
-  }catch{
-    await shell.openExternal('https://ollama.com/download/windows')
-    return {ok:true,message:'A página oficial do Ollama foi aberta. Instale, execute o Ollama e volte ao ASTERYON.'}
-  }
-}
-async function ensureOllamaRunning(){
-  const ready=await ollamaReady(); if(ready.ok)return ready
-  try{ runDetached('ollama',['serve']) }catch{}
-  for(let i=0;i<10;i++){
-    await new Promise(r=>setTimeout(r,900))
-    const retry=await ollamaReady(); if(retry.ok)return retry
-  }
-  throw new Error('Ollama está instalado, mas o serviço local não respondeu. Abra o aplicativo Ollama pelo Menu Iniciar e tente novamente.')
-}
-async function pullModel(model){
-  const safe=String(model||'qwen3:4b').replace(/[^a-zA-Z0-9:._-]/g,'')
-  if(!safe) throw new Error('Modelo inválido.')
-  await ensureOllamaRunning()
-  const current=await ollamaReady()
-  if(modelInstalled(current.models,safe)) return {ok:true,message:`O modelo ${safe} já está instalado e pronto.`}
-  const r=await fetch(`${OLLAMA}/api/pull`,{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({name:safe,stream:false}),signal:AbortSignal.timeout(30*60*1000)
-  })
-  const data=await r.json().catch(()=>({}))
-  if(!r.ok) throw new Error(data?.error||`Falha ao baixar ${safe}.`)
-  const after=await ollamaReady()
-  if(!modelInstalled(after.models,safe)) throw new Error(`O download terminou, mas o modelo ${safe} ainda não foi encontrado. Reinicie o Ollama e tente novamente.`)
-  return {ok:true,message:`Modelo ${safe} baixado e pronto para uso.`}
-}
+async function ollamaTags(){const r=await fetch(`${OLLAMA}/api/tags`,{signal:AbortSignal.timeout(3000)});if(!r.ok)throw new Error('Ollama indisponível.');return r.json()}
+async function ollamaReady(){try{const data=await ollamaTags();return {ok:true,models:(data.models||[]).map(m=>m.name)}}catch{return {ok:false,models:[]}}}
+function runDetached(command,args=[]){const child=spawn(command,args,{detached:true,stdio:'ignore',windowsHide:false});child.on('error',()=>{});child.unref();return true}
+async function installOllama(){const active=await ollamaReady();if(active.ok)return {ok:true,message:'Ollama já está instalado e ativo neste computador.'};try{runDetached('winget',['install','-e','--id','Ollama.Ollama','--accept-package-agreements','--accept-source-agreements']);return {ok:true,message:'Instalação do Ollama iniciada pelo Windows. Aguarde concluir e abra o Ollama pelo Menu Iniciar.'}}catch{await shell.openExternal('https://ollama.com/download/windows');return {ok:true,message:'A página oficial do Ollama foi aberta. Instale, execute o Ollama e volte ao ASTERYON.'}}}
+async function ensureOllamaRunning(){const ready=await ollamaReady();if(ready.ok)return ready;try{runDetached('ollama',['serve'])}catch{}for(let i=0;i<12;i++){await new Promise(r=>setTimeout(r,1000));const retry=await ollamaReady();if(retry.ok)return retry}throw new Error('Ollama não respondeu. Abra o aplicativo Ollama pelo Menu Iniciar e clique em Tentar novamente.')}
+async function pullModel(model){const safe=String(model||'qwen3:4b').replace(/[^a-zA-Z0-9:._-]/g,'');if(!safe)throw new Error('Modelo inválido.');await ensureOllamaRunning();const current=await ollamaReady();if(modelInstalled(current.models,safe))return {ok:true,message:`O modelo ${safe} já está instalado e pronto.`};const r=await fetch(`${OLLAMA}/api/pull`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:safe,stream:false}),signal:AbortSignal.timeout(45*60*1000)});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data?.error||`Falha ao baixar ${safe}.`);const after=await ollamaReady();if(!modelInstalled(after.models,safe))throw new Error(`Download finalizado, mas ${safe} não apareceu no Ollama. Feche e abra o Ollama e tente novamente.`);return {ok:true,message:`Modelo ${safe} baixado e validado.`}}
 
-function stripHtml(s=''){ return s.replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/&#x27;/g,"'").replace(/&quot;/g,'"').replace(/\s+/g,' ').trim() }
-async function webResearch(query){
-  const q=encodeURIComponent(String(query||'').slice(0,500))
-  try{
-    const r=await fetch(`https://html.duckduckgo.com/html/?q=${q}`,{headers:{'User-Agent':'Mozilla/5.0 ASTERYON/1.4'},signal:AbortSignal.timeout(9000)})
-    if(!r.ok) return []
-    const html=await r.text(); const out=[]
-    const re=/<a rel="nofollow" class="result__a"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi
-    let m; while((m=re.exec(html)) && out.length<5) out.push({title:stripHtml(m[1]),snippet:stripHtml(m[2])})
-    return out
-  }catch{return []}
-}
-function parseJson(text){ const clean=String(text||'').replace(/<think>[\s\S]*?<\/think>/gi,'').trim().replace(/^```(?:json)?/i,'').replace(/```$/,'').trim(); try{return JSON.parse(clean)}catch{} const a=clean.indexOf('{'), b=clean.lastIndexOf('}'); if(a>=0&&b>a)return JSON.parse(clean.slice(a,b+1)); throw new Error('A IA local não retornou JSON válido. Tente novamente ou use outro modelo.') }
+function stripHtml(s=''){return s.replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&').replace(/&#x27;/g,"'").replace(/&quot;/g,'"').replace(/\s+/g,' ').trim()}
+async function webResearch(query){const q=encodeURIComponent(String(query||'').slice(0,500));try{const r=await fetch(`https://html.duckduckgo.com/html/?q=${q}`,{headers:{'User-Agent':'Mozilla/5.0 ASTERYON/1.5'},signal:AbortSignal.timeout(9000)});if(!r.ok)return[];const html=await r.text();const out=[];const re=/<a rel="nofollow" class="result__a"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;let m;while((m=re.exec(html))&&out.length<5)out.push({title:stripHtml(m[1]),snippet:stripHtml(m[2])});return out}catch{return[]}}
+function parseJson(text){const clean=String(text||'').replace(/<think>[\s\S]*?<\/think>/gi,'').trim().replace(/^```(?:json)?/i,'').replace(/```$/,'').trim();try{return JSON.parse(clean)}catch{}const a=clean.indexOf('{'),b=clean.lastIndexOf('}');if(a>=0&&b>a)return JSON.parse(clean.slice(a,b+1));throw new Error('A IA local respondeu, mas não retornou JSON válido. Tente novamente ou escolha outro modelo.')}
 const intents=['theme','background','layout','landing','catalog-structure','copy','banner','campaign','image','design-audit','improve','identity','suggestions']
-function sanitize(raw,researchUsed){ return { intent:intents.includes(raw?.intent)?raw.intent:'suggestions', title:String(raw?.title||'Proposta ASTERYON AI').slice(0,200), summary:String(raw?.summary||'').slice(0,2500), structured:raw?.structured&&typeof raw.structured==='object'?raw.structured:{}, findings:Array.isArray(raw?.findings)?raw.findings.slice(0,12):[], imagePrompt:raw?.imagePrompt?String(raw.imagePrompt).slice(0,5000):'', editorPatch:raw?.editorPatch&&typeof raw.editorPatch==='object'?raw.editorPatch:{}, enhancedPrompt:String(raw?.enhancedPrompt||'').slice(0,5000), researchUsed } }
-async function chatLocal(model,messages,timeout=180000){
-  const r=await fetch(`${OLLAMA}/api/chat`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model,messages,stream:false,format:'json',options:{temperature:0.45}}),signal:AbortSignal.timeout(timeout)})
-  const data=await r.json().catch(()=>({})); if(!r.ok) throw new Error(data?.error||`Falha no Ollama (${r.status}).`)
-  return data
-}
-async function generateProposal(body){
-  const s=loadSettings(); const status=await ensureOllamaRunning(); const model=String(s.model||'qwen3:4b')
-  if(!modelInstalled(status.models,model)) throw new Error(`Ollama está ativo, mas o modelo ${model} não foi baixado. Abra Configuração da IA e clique em Baixar modelo.`)
-  const researchRequested=Boolean(body?.researchRequested); const research=researchRequested?await webResearch(body?.prompt):[]
-  const context=body?.context||{}
-  const system=`Você é ASTERYON AI, assistente local de design, UX, branding, marketing e catálogo digital. Trabalhe SOMENTE no rascunho. Nunca publique. Nunca altere preços ou produtos reais automaticamente. Gere conteúdo original e não copie textos, logos, imagens ou layouts. Pesquisa web, quando houver, é apenas inspiração. Preserve a hierarquia do catálogo; apenas Promoções podem misturar estruturas. Priorize acessibilidade, performance, SEO e mobile. Não gere código executável. Retorne SOMENTE JSON com: intent, title, summary, structured, findings, imagePrompt, enhancedPrompt, editorPatch. editorPatch pode conter apenas designSystem, theme e alterações seguras em blocos existentes; sem URLs, imagens externas, HTML ou código.`
-  const inspiration=research.length?`\nINSPIRAÇÃO WEB RESUMIDA (não copiar; apenas tendências):\n${research.map((r,i)=>`${i+1}. ${r.title}: ${r.snippet}`).join('\n')}`:''
-  const prompt=`PEDIDO:\n${String(body?.prompt||'').slice(0,10000)}\n\nCONTEXTO DO RASCUNHO:\n${JSON.stringify({pageName:context.pageName,theme:context.theme,designSystem:context.designSystem,blockTypes:context.blockTypes,selectedBlock:context.selectedBlock}).slice(0,16000)}${inspiration}`
-  const data=await chatLocal(model,[{role:'system',content:system},{role:'user',content:prompt}])
-  return sanitize(parseJson(data?.message?.content||''),research.length>0)
-}
-async function testAi(){
-  const s=loadSettings(); const st=await ensureOllamaRunning(); const model=String(s.model||'qwen3:4b')
-  if(!modelInstalled(st.models,model)) throw new Error(`Ollama está ativo, mas o modelo ${model} não foi baixado.`)
-  const data=await chatLocal(model,[{role:'user',content:'Retorne somente um JSON exatamente assim: {"status":"ASTERYON_OK"}'}],90000)
-  const parsed=parseJson(data?.message?.content||'')
-  if(parsed?.status!=='ASTERYON_OK') throw new Error('O modelo respondeu, mas o autoteste não foi concluído corretamente.')
-  return {ok:true,message:`IA local pronta: Ollama + ${model}`,textModel:model,imageModel:'briefing-local'}
-}
-function contentType(file){ const ext=path.extname(file).toLowerCase(); return ({'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.ico':'image/x-icon','.json':'application/json'})[ext]||'application/octet-stream' }
-async function handler(req,res){
-  try{
-    const url=new URL(req.url,`http://${HOST}`)
-    if(url.pathname==='/api/desktop/status'&&req.method==='GET'){
-      const s=loadSettings(), st=await ollamaReady(), model=String(s.model||'qwen3:4b'), selectedInstalled=st.ok&&modelInstalled(st.models,model)
-      const setupState=!st.ok?'ollama-offline':!selectedInstalled?'model-missing':'ready'
-      return json(res,200,{desktop:true,configured:selectedInstalled,encryptionAvailable:true,textModel:model,imageModel:'briefing-local',onlineResearch:true,imageGeneration:false,dataPath:userDir(),provider:'ollama',ollamaRunning:st.ok,models:st.models,setupState})
-    }
-    if(url.pathname==='/api/desktop/settings'&&req.method==='POST'){
-      const body=await readBody(req); const next={...loadSettings(),model:String(body.textModel||body.model||'qwen3:4b'),research:true}; saveSettings(next); const st=await ollamaReady(); const configured=st.ok&&modelInstalled(st.models,next.model); return json(res,200,{ok:true,configured,textModel:next.model,imageModel:'briefing-local'})
-    }
-    if(url.pathname==='/api/desktop/install-ollama'&&req.method==='POST') return json(res,200,await installOllama())
-    if(url.pathname==='/api/desktop/pull-model'&&req.method==='POST'){ const body=await readBody(req); return json(res,200,await pullModel(body.model)) }
-    if(url.pathname==='/api/desktop/test-ai'&&req.method==='POST') return json(res,200,await testAi())
-    if(url.pathname==='/api/ai/proposal'&&req.method==='POST') return json(res,200,await generateProposal(await readBody(req)))
-    if(url.pathname==='/api/ai/image'&&req.method==='POST') return json(res,501,{error:'Geração gráfica local ainda não está instalada. Nesta versão o ASTERYON cria somente o briefing de imagem original.'})
-    const dist=path.join(app.getAppPath(),'dist'); let relative=decodeURIComponent(url.pathname).replace(/^\/+/, ''); if(!relative||relative==='admin'||relative.startsWith('admin/'))relative='index.html'; let file=path.join(dist,relative); if(!file.startsWith(dist)||!fs.existsSync(file)||fs.statSync(file).isDirectory())file=path.join(dist,'index.html'); const data=fs.readFileSync(file)
-    res.writeHead(200,{'Content-Type':contentType(file),'Content-Length':data.length,'Cache-Control':file.endsWith('index.html')?'no-store':'public, max-age=31536000, immutable','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self' data: blob:; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; script-src 'self'; connect-src 'self' http://127.0.0.1:11434 https://html.duckduckgo.com; frame-src 'self'; object-src 'none'; base-uri 'self'"}); return res.end(data)
-  }catch(error){ console.error(error); return json(res,500,{error:error?.message||'Erro local do ASTERYON.'}) }
-}
-function startServer(){ return new Promise((resolve,reject)=>{ server=http.createServer(handler); server.on('error',reject); server.listen(0,HOST,()=>{ const a=server.address(); baseUrl=`http://${HOST}:${a.port}`; resolve(baseUrl) }) }) }
-function createWindow(){ mainWindow=new BrowserWindow({width:1540,height:960,minWidth:1120,minHeight:720,backgroundColor:'#101827',autoHideMenuBar:true,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true}}); mainWindow.loadURL(`${baseUrl}/admin`); mainWindow.on('closed',()=>mainWindow=null) }
-app.whenReady().then(async()=>{ Menu.setApplicationMenu(null); await startServer(); createWindow(); app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow()}) })
-app.on('window-all-closed',()=>{ if(process.platform!=='darwin')app.quit() })
-app.on('before-quit',()=>{ if(server)server.close() })
+function sanitize(raw,researchUsed){return {intent:intents.includes(raw?.intent)?raw.intent:'suggestions',title:String(raw?.title||'Proposta ASTERYON AI').slice(0,200),summary:String(raw?.summary||'').slice(0,2500),structured:raw?.structured&&typeof raw.structured==='object'?raw.structured:{},findings:Array.isArray(raw?.findings)?raw.findings.slice(0,12):[],imagePrompt:raw?.imagePrompt?String(raw.imagePrompt).slice(0,5000):'',editorPatch:raw?.editorPatch&&typeof raw.editorPatch==='object'?raw.editorPatch:{},enhancedPrompt:String(raw?.enhancedPrompt||'').slice(0,5000),researchUsed}}
+async function chatLocal(model,messages,timeout=180000){const r=await fetch(`${OLLAMA}/api/chat`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model,messages,stream:false,format:'json',think:false,keep_alive:'10m',options:{temperature:0.4,num_ctx:8192}}),signal:AbortSignal.timeout(timeout)});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data?.error||`Falha no Ollama (${r.status}).`);return data}
+async function generateProposal(body){const s=loadSettings();const status=await ensureOllamaRunning();const model=String(s.model||'qwen3:4b');if(!modelInstalled(status.models,model))throw new Error(`O modelo ${model} não está instalado. Abra Configuração da IA e clique em Preparar IA.`);const researchRequested=Boolean(body?.researchRequested);const research=researchRequested?await webResearch(body?.prompt):[];const context=body?.context||{};const system=`Você é ASTERYON AI, assistente local de design, UX, branding, marketing e catálogo digital. Trabalhe SOMENTE no rascunho. Nunca publique. Nunca altere preços ou produtos reais automaticamente. Gere conteúdo original e não copie textos, logos, imagens ou layouts. Pesquisa web, quando houver, é apenas inspiração. Preserve a hierarquia do catálogo; apenas Promoções podem misturar estruturas. Priorize acessibilidade, performance, SEO e mobile. Não gere código executável. Retorne SOMENTE JSON com: intent, title, summary, structured, findings, imagePrompt, enhancedPrompt, editorPatch. editorPatch pode conter apenas designSystem, theme e alterações seguras em blocos existentes; sem URLs, imagens externas, HTML ou código.`;const inspiration=research.length?`\nINSPIRAÇÃO WEB RESUMIDA (não copiar; apenas tendências):\n${research.map((r,i)=>`${i+1}. ${r.title}: ${r.snippet}`).join('\n')}`:'';const prompt=`PEDIDO:\n${String(body?.prompt||'').slice(0,10000)}\n\nCONTEXTO DO RASCUNHO:\n${JSON.stringify({pageName:context.pageName,theme:context.theme,designSystem:context.designSystem,blockTypes:context.blockTypes,selectedBlock:context.selectedBlock}).slice(0,16000)}${inspiration}`;const data=await chatLocal(model,[{role:'system',content:system},{role:'user',content:prompt}]);return sanitize(parseJson(data?.message?.content||''),research.length>0)}
+async function testAi(){const s=loadSettings();const st=await ensureOllamaRunning();const model=String(s.model||'qwen3:4b');if(!modelInstalled(st.models,model))throw new Error(`O modelo ${model} ainda não está instalado.`);const data=await chatLocal(model,[{role:'user',content:'Responda SOMENTE com este JSON: {"status":"ASTERYON_OK"}'}],120000);const parsed=parseJson(data?.message?.content||'');if(parsed?.status!=='ASTERYON_OK')throw new Error('O modelo respondeu, mas o autoteste ASTERYON não foi confirmado.');return {ok:true,message:`IA local pronta e testada: Ollama + ${model}`,textModel:model,imageModel:'briefing-local'}}
+function contentType(file){const ext=path.extname(file).toLowerCase();return ({'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.ico':'image/x-icon','.json':'application/json'})[ext]||'application/octet-stream'}
+async function handler(req,res){try{const url=new URL(req.url,`http://${HOST}`);if(url.pathname==='/api/desktop/status'&&req.method==='GET'){const s=loadSettings(),st=await ollamaReady(),model=String(s.model||'qwen3:4b'),selectedInstalled=st.ok&&modelInstalled(st.models,model),setupState=!st.ok?'ollama-offline':!selectedInstalled?'model-missing':'ready';return json(res,200,{desktop:true,configured:selectedInstalled,encryptionAvailable:true,textModel:model,imageModel:'briefing-local',onlineResearch:true,imageGeneration:false,dataPath:userDir(),provider:'ollama',ollamaRunning:st.ok,models:st.models,setupState})}if(url.pathname==='/api/desktop/settings'&&req.method==='POST'){const body=await readBody(req);const next={...loadSettings(),model:String(body.textModel||body.model||'qwen3:4b'),research:true};saveSettings(next);const st=await ollamaReady();return json(res,200,{ok:true,configured:st.ok&&modelInstalled(st.models,next.model),textModel:next.model,imageModel:'briefing-local'})}if(url.pathname==='/api/desktop/install-ollama'&&req.method==='POST')return json(res,200,await installOllama());if(url.pathname==='/api/desktop/pull-model'&&req.method==='POST'){const body=await readBody(req);return json(res,200,await pullModel(body.model))}if(url.pathname==='/api/desktop/test-ai'&&req.method==='POST')return json(res,200,await testAi());if(url.pathname==='/api/ai/proposal'&&req.method==='POST')return json(res,200,await generateProposal(await readBody(req)));if(url.pathname==='/api/ai/image'&&req.method==='POST')return json(res,501,{error:'Geração gráfica local ainda não está instalada. Nesta versão o ASTERYON cria somente o briefing de imagem original.'});const dist=path.join(app.getAppPath(),'dist');let relative=decodeURIComponent(url.pathname).replace(/^\/+/, '');if(!relative||relative==='admin'||relative.startsWith('admin/'))relative='index.html';let file=path.join(dist,relative);if(!file.startsWith(dist)||!fs.existsSync(file)||fs.statSync(file).isDirectory())file=path.join(dist,'index.html');const data=fs.readFileSync(file);res.writeHead(200,{'Content-Type':contentType(file),'Content-Length':data.length,'Cache-Control':file.endsWith('index.html')?'no-store':'public, max-age=31536000, immutable','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self' data: blob:; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' data: https:; script-src 'self'; connect-src 'self' http://127.0.0.1:11434 https://html.duckduckgo.com; frame-src 'self'; object-src 'none'; base-uri 'self'"});return res.end(data)}catch(error){console.error(error);return json(res,500,{error:error?.message||'Erro local do ASTERYON.'})}}
+function startServer(){return new Promise((resolve,reject)=>{server=http.createServer(handler);server.on('error',reject);server.listen(0,HOST,()=>{const a=server.address();baseUrl=`http://${HOST}:${a.port}`;resolve(baseUrl)})})}
+function createWindow(){mainWindow=new BrowserWindow({width:1540,height:960,minWidth:1120,minHeight:720,backgroundColor:'#101827',autoHideMenuBar:true,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true}});mainWindow.loadURL(`${baseUrl}/admin`);mainWindow.on('closed',()=>mainWindow=null)}
+app.whenReady().then(async()=>{Menu.setApplicationMenu(null);await startServer();createWindow();app.on('activate',()=>{if(BrowserWindow.getAllWindows().length===0)createWindow()})})
+app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit()})
+app.on('before-quit',()=>{if(server)server.close()})
