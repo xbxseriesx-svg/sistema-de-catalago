@@ -88,42 +88,27 @@ Set-Content $canvasPath $canvas -Encoding UTF8
 $propertiesPath = 'app/src/editor/PropertiesPanel.tsx'
 $properties = Get-Content $propertiesPath -Raw
 $properties = $properties.Replace("} from 'lucide-react';", "} from 'lucide-react';`nimport { ButtonActionEditor } from '../cloud/ButtonActionEditor';")
-$buttonSizeBlock = @'
-      <Row label="Tamanho">
-        <Slider value={(s.fontSize as number) || 14} min={8} max={32} onChange={(v) => updateStyle('fontSize', v)} suffix="px" />
-      </Row>
-'@
-if (-not $properties.Contains($buttonSizeBlock)) { throw 'Bloco de tamanho do botão não encontrado em PropertiesPanel.tsx' }
-$properties = $properties.Replace($buttonSizeBlock, $buttonSizeBlock + "      <ButtonActionEditor node={node} />`n")
+$buttonStart = $properties.IndexOf('function ButtonSection')
+if ($buttonStart -lt 0) { throw 'ButtonSection não encontrado em PropertiesPanel.tsx' }
+$buttonModeMarker = "      {mode === 'professional' && ("
+$buttonInsert = $properties.IndexOf($buttonModeMarker, $buttonStart)
+if ($buttonInsert -lt 0) { throw 'Ponto de inserção de ButtonActionEditor não encontrado' }
+$properties = $properties.Insert($buttonInsert, "      <ButtonActionEditor node={node} />`n")
 Set-Content $propertiesPath $properties -Encoding UTF8
 
 $contentPath = 'app/src/editor/nodeContent.tsx'
 $content = Get-Content $contentPath -Raw
-$oldTextBlock = @'
-  if (isTextTypeRenderer(type)) {
-    const text = (props.text as string) || '';
-    if (isEditing) {
-      return text;
-    }
-    return <span style={{ display: 'block', width: '100%', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{text}</span>;
-  }
-'@
-$newTextBlock = @'
+$genericTextMarker = "  if (isTextTypeRenderer(type)) {"
+$textInsert = $content.IndexOf($genericTextMarker)
+if ($textInsert -lt 0) { throw 'Renderização genérica de texto não encontrada em nodeContent.tsx' }
+$buttonRender = @'
   if (type === 'button' || type === 'productbutton') {
     const text = (props.text as string) || '';
     if (isEditing) return text;
     return <span style={{ display: 'flex', width: '100%', height: '100%', boxSizing: 'border-box', alignItems: (node.styles.alignItems as React.CSSProperties['alignItems']) || 'center', justifyContent: (node.styles.justifyContent as React.CSSProperties['justifyContent']) || 'center', textAlign: (node.styles.textAlign as React.CSSProperties['textAlign']) || 'center', padding: '0 10px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{text}</span>;
   }
-  if (isTextTypeRenderer(type)) {
-    const text = (props.text as string) || '';
-    if (isEditing) {
-      return text;
-    }
-    return <span style={{ display: 'block', width: '100%', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{text}</span>;
-  }
 '@
-if (-not $content.Contains($oldTextBlock)) { throw 'Bloco de texto esperado não encontrado em nodeContent.tsx' }
-$content = $content.Replace($oldTextBlock, $newTextBlock)
+$content = $content.Insert($textInsert, $buttonRender + "`n")
 Set-Content $contentPath $content -Encoding UTF8
 
 Write-Host 'ASTERYON Editor v2.1 recovered with catalog UX adjustments.'
