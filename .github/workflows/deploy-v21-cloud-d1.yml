@@ -27,22 +27,7 @@ jobs:
 
       - name: Recuperar fonte exata do Editor v2.1
         shell: pwsh
-        run: |
-          $zip = 'v21-final/ASTERYON_Unificado_v2.1_source.zip'
-          New-Item -ItemType Directory -Force app | Out-Null
-          try {
-            Expand-Archive $zip app -Force -ErrorAction Stop
-          } catch {
-            $raw = [IO.File]::ReadAllBytes((Resolve-Path $zip))
-            if ($raw.Length -eq 109859 -and $raw[109856] -eq 0x1F -and $raw[109857] -eq 0x8B -and $raw[109858] -eq 0x08) {
-              $fixed = New-Object byte[] ($raw.Length + 7)
-              [Array]::Copy($raw, 0, $fixed, 0, 109856)
-              [Array]::Copy($raw, 109856, $fixed, 109863, 3)
-              [IO.File]::WriteAllBytes("$PWD\source-recovered.zip", $fixed)
-              Expand-Archive "$PWD\source-recovered.zip" app -Force
-            } else { throw }
-          }
-          Write-Host "Editor v2.1 recuperado."
+        run: ./cloud-overlay/scripts/recover-v21.ps1
 
       - name: Aplicar camada Cloudflare D1 sobre o Editor v2.1
         shell: pwsh
