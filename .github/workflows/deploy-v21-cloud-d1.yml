@@ -29,16 +29,7 @@ jobs:
         shell: pwsh
         run: ./cloud-overlay/scripts/recover-v21.ps1
 
-      - name: Exportar fonte real da v2.1 para integração SaaS segura
-        uses: actions/upload-artifact@v4
-        with:
-          name: ASTERYON-v2.1-source-for-saas
-          path: |
-            app/src/editor/*
-            app/src/catalog/*
-          if-no-files-found: error
-
-      - name: Aplicar camada Cloudflare sem alterar o núcleo visual
+      - name: Aplicar camada SaaS + D1 no Editor v2.1
         shell: pwsh
         run: |
           Copy-Item cloud-overlay/package.json app/package.json -Force
@@ -50,9 +41,13 @@ jobs:
           Copy-Item cloud-overlay/worker/* app/worker/ -Force
           Copy-Item cloud-overlay/migrations/* app/migrations/ -Force
           Copy-Item cloud-overlay/scripts/make-wrangler.mjs app/scripts/make-wrangler.mjs -Force
-          Set-Location app
-          Remove-Item src/cloud/ActionBridge.tsx -Force -ErrorAction SilentlyContinue
-          Remove-Item package-lock.json -Force -ErrorAction SilentlyContinue
+          Remove-Item app/src/cloud/ActionBridge.tsx -Force -ErrorAction SilentlyContinue
+          Remove-Item app/package-lock.json -Force -ErrorAction SilentlyContinue
+          git apply --directory=app --recount cloud-overlay/patches/saas-store.patch
+          git apply --directory=app --recount cloud-overlay/patches/saas-toolbar.patch
+          git apply --directory=app --recount cloud-overlay/patches/saas-canvas.patch
+          git apply --directory=app --recount cloud-overlay/patches/saas-history.patch
+          git apply --directory=app --recount cloud-overlay/patches/saas-catalog.patch
 
       - name: Validar segredos Cloudflare
         shell: pwsh
@@ -64,7 +59,7 @@ jobs:
         working-directory: app
         run: npm install --no-audit --no-fund
 
-      - name: TypeScript do Editor v2.1
+      - name: TypeScript do Editor SaaS v2.1
         working-directory: app
         run: npm run typecheck
 
@@ -118,6 +113,7 @@ jobs:
           "Worker: sistema-de-catalago" | Set-Content deploy-info/DEPLOY.txt
           "D1: sistema-de-catalago ($env:D1_DATABASE_ID)" | Add-Content deploy-info/DEPLOY.txt
           "Editor: v2.1 SaaS" | Add-Content deploy-info/DEPLOY.txt
+          "Persistencia: D1 (rascunhos, snapshots, modelos, catálogo, versões)" | Add-Content deploy-info/DEPLOY.txt
           "Fluxo: Editor -> Rascunho -> Preview -> Publicar -> Site Público" | Add-Content deploy-info/DEPLOY.txt
           "Desktop/EXE: DESATIVADO" | Add-Content deploy-info/DEPLOY.txt
           "R2: DESATIVADO" | Add-Content deploy-info/DEPLOY.txt
