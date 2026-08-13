@@ -1,0 +1,45 @@
+name: Audit recovered ASTERYON editor sources
+
+on:
+  push:
+    branches: [release/v2.1-cloud-d1-final]
+
+permissions:
+  contents: read
+
+jobs:
+  audit-source:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Recover editor source
+        shell: pwsh
+        run: ./cloud-overlay/scripts/recover-v21.ps1
+      - name: Apply current overlay files used by production
+        shell: pwsh
+        run: |
+          Copy-Item cloud-overlay/src/App.tsx app/src/App.tsx -Force
+          Copy-Item cloud-overlay/src/editor/TemplatesPanel.tsx app/src/editor/TemplatesPanel.tsx -Force
+          Copy-Item cloud-overlay/src/catalog/store.tsx app/src/catalog/store.tsx -Force
+      - name: Upload editor source audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: ASTERYON-editor-source-audit
+          path: |
+            app/src/editor/Canvas.tsx
+            app/src/editor/PropertiesPanel.tsx
+            app/src/editor/ElementsPanel.tsx
+            app/src/editor/NodeRenderer.tsx
+            app/src/editor/CatalogPanel.tsx
+            app/src/editor/types.ts
+            app/src/editor/registry.ts
+            app/src/editor/templates.ts
+            app/src/editor/store.tsx
+            app/src/catalog/types.ts
+            app/src/catalog/seed.ts
+            app/src/App.tsx
+          if-no-files-found: error
