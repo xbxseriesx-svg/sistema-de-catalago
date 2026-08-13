@@ -42,8 +42,8 @@ jobs:
           Copy-Item cloud-overlay/migrations/* app/migrations/ -Force
           Copy-Item cloud-overlay/scripts/make-wrangler.mjs app/scripts/make-wrangler.mjs -Force
           Set-Location app
-          git apply ../cloud-overlay/patches/store.patch
-          git apply ../cloud-overlay/patches/catalog-store.patch
+          git apply --recount ../cloud-overlay/patches/store.patch
+          git apply --recount ../cloud-overlay/patches/catalog-store.patch
           $app = Get-Content src/App.tsx -Raw
           $app = $app.Replace("import { PublicSite } from './public/PublicSite';", "import { PublicSite } from './public/PublicSite';`nimport { CloudActionBridge } from './cloud/ActionBridge';")
           $app = $app.Replace("return <EditorProvider><EditorShell cloudUser={user}/></EditorProvider>;", "return <EditorProvider><CloudActionBridge/><EditorShell cloudUser={user}/></EditorProvider>;")
