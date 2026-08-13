@@ -1,0 +1,20 @@
+--- a/src/editor/HistoryPanel.tsx
++++ b/src/editor/HistoryPanel.tsx
+@@ -3,7 +3,7 @@
+ import type { EditorNode } from './types';
+ 
+ export function HistoryPanel() {
+-  const { state, dispatch } = useEditor();
++  const { state, dispatch, createSnapshot } = useEditor();
+   const snapshots = [...state.snapshots].reverse();
+ 
+   return (
+@@ -15,7 +15,7 @@
+             <p className="mt-1 text-[10px] leading-relaxed text-zinc-500">Salve pontos do layout e restaure com um clique.</p>
+           </div>
+           <button
+-            onClick={() => dispatch({ type: 'CREATE_SNAPSHOT', label: 'Ponto manual' })}
++            onClick={() => void createSnapshot('Ponto manual')}
+             className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-blue-600 text-white hover:bg-blue-500"
+             title="Criar ponto de restauração"
+           >

@@ -1,0 +1,159 @@
+--- a/src/editor/store.tsx
++++ b/src/editor/store.tsx
+@@ -1,7 +1,8 @@
+-import { createContext, useContext, useReducer, useCallback, useRef, useEffect, type ReactNode } from 'react';
++import { createContext, useContext, useReducer, useCallback, useRef, useEffect, useState, type ReactNode } from 'react';
+ import type { EditorNode, NodeType, DeviceType, EditorMode, BreadcrumbItem } from './types';
+ import { createElement, ELEMENT_REGISTRY, isContainerType } from './registry';
+ import { uid } from './utils';
++import { cloudApi, isCloudRuntime } from '../cloud/api';
+ 
+ export interface EditorState {
+   nodes: EditorNode[];
+@@ -70,7 +71,8 @@
+   | { type: 'CREATE_SNAPSHOT'; label?: string }
+   | { type: 'PUBLISH' }
+   | { type: 'TOGGLE_PREVIEW' }
+-  | { type: 'RESTORE_SNAPSHOT'; snapshotId: string };
++  | { type: 'RESTORE_SNAPSHOT'; snapshotId: string }
++  | { type: 'SET_SNAPSHOTS'; snapshots: EditorState['snapshots'] };
+ 
+ 
+ const STORAGE_KEY = 'asteryon.editor.unified.v4';
+@@ -80,7 +82,7 @@
+ }
+ 
+ function loadPersistedState(): Partial<EditorState> | null {
+-  if (typeof window === 'undefined') return null;
++  if (typeof window === 'undefined' || isCloudRuntime()) return null;
+   try {
+     const raw = window.localStorage.getItem(STORAGE_KEY);
+     if (!raw) return null;
+@@ -564,6 +566,8 @@
+     }
+     case 'TOGGLE_PREVIEW':
+       return { ...state, previewMode: !state.previewMode, selectedIds: [], editingId: null };
++    case 'SET_SNAPSHOTS':
++      return { ...state, snapshots: action.snapshots };
+     case 'RESTORE_SNAPSHOT': {
+       const snap = state.snapshots.find((item) => item.id === action.snapshotId);
+       if (!snap) return state;
+@@ -621,6 +625,10 @@
+   getBreadcrumb: (id: string) => BreadcrumbItem[];
+   flattenNodes: () => EditorNode[];
+   addElement: (type: NodeType, parentId?: string | null, position?: { x: number; y: number }) => string;
++  saveDraft: () => Promise<void>;
++  publish: () => Promise<void>;
++  createSnapshot: (label?: string) => Promise<void>;
++  cloud: { enabled: boolean; loading: boolean; revision: number | null; error: string | null };
+ }
+ 
+ const EditorContext = createContext<EditorContextValue | null>(null);
+@@ -629,8 +637,32 @@
+   const [state, dispatch] = useReducer(reducer, undefined, createInitialState);
+   const stateRef = useRef(state);
+   stateRef.current = state;
++  const cloudEnabled = isCloudRuntime();
++  const [cloudLoading, setCloudLoading] = useState(cloudEnabled);
++  const [cloudRevision, setCloudRevision] = useState<number | null>(null);
++  const [cloudError, setCloudError] = useState<string | null>(null);
++  const cloudRevisionRef = useRef<number | null>(null);
++  cloudRevisionRef.current = cloudRevision;
+ 
+   useEffect(() => {
++    if (!cloudEnabled) return;
++    let cancelled = false;
++    setCloudLoading(true);
++    setCloudError(null);
++    Promise.all([cloudApi.getDraft('home'), cloudApi.getSnapshots('home')])
++      .then(([draft, snaps]) => {
++        if (cancelled) return;
++        dispatch({ type: 'REPLACE_NODES', nodes: draft.page.nodes });
++        dispatch({ type: 'SET_SNAPSHOTS', snapshots: snaps.snapshots });
++        setCloudRevision(draft.page.revision);
++      })
++      .catch((err) => { if (!cancelled) setCloudError(err instanceof Error ? err.message : 'Falha ao carregar rascunho do D1'); })
++      .finally(() => { if (!cancelled) setCloudLoading(false); });
++    return () => { cancelled = true; };
++  }, [cloudEnabled]);
++
++  useEffect(() => {
++    if (cloudEnabled) return;
+     try {
+       const persistable = {
+         nodes: state.nodes,
+@@ -652,7 +684,7 @@
+     } catch {
+       // O editor continua funcional mesmo sem persistência local.
+     }
+-  }, [state.nodes, state.device, state.mode, state.zoom, state.pan, state.snapEnabled, state.gridEnabled, state.gridSize, state.smartGuidesEnabled, state.showGrid, state.publishedNodes, state.lastSavedAt, state.lastPublishedAt, state.snapshots]);
++  }, [cloudEnabled, state.nodes, state.device, state.mode, state.zoom, state.pan, state.snapEnabled, state.gridEnabled, state.gridSize, state.smartGuidesEnabled, state.showGrid, state.publishedNodes, state.lastSavedAt, state.lastPublishedAt, state.snapshots]);
+ 
+   const getNode = useCallback((id: string) => findNode(stateRef.current.nodes, id), []);
+   const getParent = useCallback((id: string) => findParent(stateRef.current.nodes, id), []);
+@@ -662,22 +694,55 @@
+   const addElement = useCallback(
+     (type: NodeType, parentId: string | null = null, position?: { x: number; y: number }) => {
+       const node = createElement(type);
+-      if (position) {
+-        node.x = position.x;
+-        node.y = position.y;
+-      } else {
+-        node.x = 200;
+-        node.y = 200;
+-      }
++      if (position) { node.x = position.x; node.y = position.y; }
++      else { node.x = 200; node.y = 200; }
+       const actualParent = parentId ?? stateRef.current.nodes.find((n) => n.type === 'page')?.id ?? null;
+       dispatch({ type: 'ADD_NODE', node, parentId: actualParent });
+       return node.id;
+-    },
+-    []
++    }, []
+   );
+ 
++  const saveDraft = useCallback(async () => {
++    setCloudError(null);
++    if (cloudEnabled) {
++      try {
++        const result = await cloudApi.saveDraft(stateRef.current.nodes, cloudRevisionRef.current ?? undefined, 'home');
++        setCloudRevision(result.revision);
++      } catch (err) {
++        const message = err instanceof Error ? err.message : 'Falha ao salvar no D1';
++        setCloudError(message);
++        throw err;
++      }
++    }
++    dispatch({ type: 'SAVE_DRAFT' });
++  }, [cloudEnabled]);
++
++  const publish = useCallback(async () => {
++    setCloudError(null);
++    if (cloudEnabled) {
++      try {
++        const saved = await cloudApi.saveDraft(stateRef.current.nodes, cloudRevisionRef.current ?? undefined, 'home');
++        setCloudRevision(saved.revision);
++        await cloudApi.publish('home');
++      } catch (err) {
++        const message = err instanceof Error ? err.message : 'Falha ao publicar';
++        setCloudError(message);
++        throw err;
++      }
++    }
++    dispatch({ type: 'PUBLISH' });
++  }, [cloudEnabled]);
++
++  const createSnapshot = useCallback(async (label = 'Ponto manual') => {
++    if (cloudEnabled) {
++      try { await cloudApi.createSnapshot(stateRef.current.nodes, label, 'home'); }
++      catch (err) { const message = err instanceof Error ? err.message : 'Falha ao criar snapshot'; setCloudError(message); throw err; }
++    }
++    dispatch({ type: 'CREATE_SNAPSHOT', label });
++  }, [cloudEnabled]);
++
+   return (
+-    <EditorContext.Provider value={{ state, dispatch, getNode, getParent, getBreadcrumb: getBreadcrumbCb, flattenNodes, addElement }}>
++    <EditorContext.Provider value={{ state, dispatch, getNode, getParent, getBreadcrumb: getBreadcrumbCb, flattenNodes, addElement, saveDraft, publish, createSnapshot, cloud: { enabled: cloudEnabled, loading: cloudLoading, revision: cloudRevision, error: cloudError } }}>
+       {children}
+     </EditorContext.Provider>
+   );

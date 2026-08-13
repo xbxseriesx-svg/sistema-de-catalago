@@ -1,0 +1,29 @@
+--- a/src/editor/Canvas.tsx
++++ b/src/editor/Canvas.tsx
+@@ -10,7 +10,7 @@
+ }
+ 
+ export function Canvas({ guides, setGuides }: CanvasProps) {
+-  const { state, dispatch, getNode } = useEditor();
++  const { state, dispatch, getNode, saveDraft } = useEditor();
+   const canvasRef = useRef<HTMLDivElement>(null);
+   const [isPanning, setIsPanning] = useState(false);
+   const [selectionBox, setSelectionBox] = useState<{ startX: number; startY: number; x: number; y: number; width: number; height: number } | null>(null);
+@@ -216,7 +216,7 @@
+         dispatch({ type: 'REDO' });
+       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+         e.preventDefault();
+-        dispatch({ type: 'SAVE_DRAFT' });
++        void saveDraft();
+       } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
+         e.preventDefault();
+         if (state.selectedIds.length === 1) {
+@@ -256,7 +256,7 @@
+ 
+     window.addEventListener('keydown', handleKeyDown);
+     return () => window.removeEventListener('keydown', handleKeyDown);
+-  }, [state.selectedIds, state.nodes, state.device, dispatch, getNode]);
++  }, [state.selectedIds, state.nodes, state.device, dispatch, getNode, saveDraft]);
+ 
+   const guideLines = guides.length > 0 ? guides : [];
+ 
