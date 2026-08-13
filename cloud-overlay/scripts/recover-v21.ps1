@@ -111,43 +111,4 @@ $buttonRender = @'
 $content = $content.Insert($textInsert, $buttonRender + "`n")
 Set-Content $contentPath $content -Encoding UTF8
 
-$rendererPath = 'app/src/editor/NodeRenderer.tsx'
-$renderer = Get-Content $rendererPath -Raw
-$renderer = $renderer.Replace("import { getResponsiveRect, responsivePatch, snapTo } from './utils';", "import { getResponsiveRect, responsivePatch, snapTo } from './utils';`nimport { executeNodeAction } from '../cloud/buttonActions';")
-$renderer = $renderer.Replace("  const isPage = node.type === 'page';", "  const isPage = node.type === 'page';`n  const isActionButton = (node.type === 'button' || node.type === 'productbutton') && String(node.props?.actionType || 'none') !== 'none';")
-$renderer = $renderer.Replace("pointerEvents: state.previewMode ? 'none' : node.locked ? 'none' : 'auto',", "pointerEvents: state.previewMode ? (isActionButton ? 'auto' : 'none') : node.locked ? 'none' : 'auto',")
-$renderer = $renderer.Replace("      data-node-type={node.type}`n", "      data-node-type={node.type}`n      data-node-name={node.name || ''}`n")
-$innerMarker = @'
-      <div
-        style={{
-          ...styleObj(node),
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'auto',
-          overflow: 'hidden',
-        }}
-      >
-'@
-$innerReplacement = @'
-      <div
-        role={state.previewMode && isActionButton ? 'button' : undefined}
-        tabIndex={state.previewMode && isActionButton ? 0 : undefined}
-        onClick={state.previewMode && isActionButton ? (event) => { event.stopPropagation(); executeNodeAction(node); } : undefined}
-        onKeyDown={state.previewMode && isActionButton ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); executeNodeAction(node); } } : undefined}
-        style={{
-          ...styleObj(node),
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'auto',
-          cursor: state.previewMode && isActionButton ? 'pointer' : undefined,
-          overflow: 'hidden',
-        }}
-      >
-'@
-if (-not $renderer.Contains($innerMarker)) { throw 'Bloco interno do NodeRenderer não encontrado' }
-$renderer = $renderer.Replace($innerMarker, $innerReplacement)
-Set-Content $rendererPath $renderer -Encoding UTF8
-
 Write-Host 'ASTERYON Editor v2.1 recovered with catalog UX adjustments.'
