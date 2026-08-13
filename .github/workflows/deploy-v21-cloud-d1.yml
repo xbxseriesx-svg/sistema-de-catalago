@@ -45,6 +45,14 @@ jobs:
           Remove-Item app/src/cloud/ActionBridge.tsx -Force -ErrorAction SilentlyContinue
           Remove-Item app/package-lock.json -Force -ErrorAction SilentlyContinue
 
+          # Cloudflare Web Crypto limita PBKDF2 a 100000 iterações neste runtime.
+          # Ajusta o Worker montado para manter criação e login do SDM compatíveis.
+          $workerUtilPath = 'app/worker/util.ts'
+          $workerUtil = Get-Content $workerUtilPath -Raw
+          $workerUtil = $workerUtil.Replace('iterations=210000', 'iterations=100000')
+          if ($workerUtil.Contains('iterations=210000')) { throw 'Falha ao aplicar limite PBKDF2 do Cloudflare' }
+          Set-Content $workerUtilPath $workerUtil -Encoding UTF8
+
           foreach ($patchPath in @('cloud-overlay/patches/saas-store.patch','cloud-overlay/patches/saas-toolbar.patch')) {
             $patchText = [IO.File]::ReadAllText($patchPath).Replace("`r`n", "`n")
             [IO.File]::WriteAllText($patchPath, $patchText, [Text.UTF8Encoding]::new($false))
