@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import type { EditorNode } from '../editor/types';
 import { renderContent, styleObj } from '../editor/nodeContent';
 import { cloudApi } from '../cloud/api';
+import { executeNodeAction } from '../cloud/buttonActions';
 
 export function PublicSite() {
   const [nodes, setNodes] = useState<EditorNode[]>([]);
@@ -47,6 +48,7 @@ export function PublicSite() {
 }
 
 function NodeView({ node }: { node: EditorNode }) {
+  const isActionButton = (node.type === 'button' || node.type === 'productbutton') && String(node.props?.actionType || 'none') !== 'none';
   const box: CSSProperties = {
     position: 'absolute',
     left: node.x,
@@ -56,11 +58,18 @@ function NodeView({ node }: { node: EditorNode }) {
     zIndex: node.zIndex,
     opacity: node.opacity,
     transform: `rotate(${node.rotation || 0}deg)`,
+    cursor: isActionButton ? 'pointer' : undefined,
   };
   const children = node.children ?? [];
 
   return (
-    <div style={box}>
+    <div
+      style={box}
+      role={isActionButton ? 'button' : undefined}
+      tabIndex={isActionButton ? 0 : undefined}
+      onClick={isActionButton ? (event) => { event.stopPropagation(); executeNodeAction(node); } : undefined}
+      onKeyDown={isActionButton ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); executeNodeAction(node); } } : undefined}
+    >
       <div style={styleObj(node)}>
         {renderContent(node, false)}
         {children.filter((child) => child.visible).map((child) => <NodeView key={child.id} node={child} />)}
