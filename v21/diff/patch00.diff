@@ -1,0 +1,126 @@
+diff --git a/EDITOR-V2.1-NOTAS.md b/EDITOR-V2.1-NOTAS.md
+new file mode 100644
+index 0000000..661d1d9
+--- /dev/null
++++ b/EDITOR-V2.1-NOTAS.md
+@@ -0,0 +1,14 @@
++# ASTERYON Editor Unificado v2.1
++
++Melhorias desta versão:
++- painéis laterais redimensionáveis e largura persistida localmente;
++- abas laterais com largura mínima e rolagem horizontal para não sobrepor textos;
++- nova aba Modelos;
++- quatro modelos originais inspirados em padrões de varejo, atacado B2B, distribuidora institucional e catálogo B2B por marcas;
++- página contínua com altura automática conforme os objetos avançam para baixo;
++- linhas de dobra para visualizar a sequência da página longa;
++- resoluções rápidas por dispositivo: Desktop 1366/1440/1920, Tablet 768/834, Mobile 360/390/430;
++- padrão Tablet atualizado para 834 px;
++- modelos continuam editáveis com objetos atômicos, camadas, grupos e liberdade de reposicionamento.
++
++Os modelos reproduzem padrões funcionais comuns observados em referências públicas, mas não copiam marcas, logotipos, textos, imagens ou identidade proprietária dos sites usados como referência.
+diff --git a/package.json b/package.json
+index fc372e8..f113922 100644
+--- a/package.json
++++ b/package.json
+@@ -1,7 +1,7 @@
+ {
+   "name": "asteryon-catalogo-unificado",
+   "private": true,
+-  "version": "2.0.0-test",
++  "version": "2.1.0-test",
+   "type": "module",
+   "scripts": {
+     "dev": "vite",
+diff --git a/src/App.tsx b/src/App.tsx
+index 724bba0..49a7a61 100644
+--- a/src/App.tsx
++++ b/src/App.tsx
+@@ -1,4 +1,4 @@
+-import { useState, useEffect } from 'react';
++import { useState, useEffect, useCallback } from 'react';
+ import { EditorProvider, useEditor } from './editor/store';
+ import { Toolbar } from './editor/Toolbar';
+ import { Canvas } from './editor/Canvas';
+@@ -7,16 +7,46 @@ import { PropertiesPanel } from './editor/PropertiesPanel';
+ import { ElementsPanel } from './editor/ElementsPanel';
+ import { CatalogPanel } from './editor/CatalogPanel';
+ import { HistoryPanel } from './editor/HistoryPanel';
++import { TemplatesPanel } from './editor/TemplatesPanel';
+ import { SelectionBreadcrumb } from './editor/SelectionBreadcrumb';
+ import type { GuideLine } from './editor/smartGuides';
+-import { PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Layers, Box, PackageSearch, History } from 'lucide-react';
++import {
++  PanelLeftClose,
++  PanelLeftOpen,
++  PanelRightClose,
++  PanelRightOpen,
++  Layers,
++  Box,
++  PackageSearch,
++  History,
++  LayoutTemplate,
++} from 'lucide-react';
++
++type LeftTab = 'elements' | 'templates' | 'layers' | 'catalog' | 'history';
++
++const LEFT_MIN = 270;
++const LEFT_MAX = 560;
++const RIGHT_MIN = 270;
++const RIGHT_MAX = 560;
++
++function readPanelWidth(key: string, fallback: number) {
++  try {
++    const raw = window.localStorage.getItem(key);
++    const parsed = raw ? Number(raw) : fallback;
++    return Number.isFinite(parsed) ? parsed : fallback;
++  } catch {
++    return fallback;
++  }
++}
+ 
+ function EditorShell() {
+   const { state } = useEditor();
+   const [guides, setGuides] = useState<GuideLine[]>([]);
+-  const [leftTab, setLeftTab] = useState<'elements' | 'layers' | 'catalog' | 'history'>('elements');
++  const [leftTab, setLeftTab] = useState<LeftTab>('elements');
+   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
+   const [rightPanelOpen, setRightPanelOpen] = useState(true);
++  const [leftWidth, setLeftWidth] = useState(() => readPanelWidth('asteryon.ui.leftWidth', 350));
++  const [rightWidth, setRightWidth] = useState(() => readPanelWidth('asteryon.ui.rightWidth', 330));
+ 
+   useEffect(() => {
+     document.body.style.overflow = 'hidden';
+@@ -27,6 +57,39 @@ function EditorShell() {
+     };
+   }, []);
+ 
++  useEffect(() => {
++    try { window.localStorage.setItem('asteryon.ui.leftWidth', String(leftWidth)); } catch {}
++  }, [leftWidth]);
++
++  useEffect(() => {
++    try { window.localStorage.setItem('asteryon.ui.rightWidth', String(rightWidth)); } catch {}
++  }, [rightWidth]);
++
++  const beginResize = useCallback((side: 'left' | 'right', e: React.PointerEvent) => {
++    e.preventDefault();
++    const startX = e.clientX;
++    const startWidth = side === 'left' ? leftWidth : rightWidth;
++    const min = side === 'left' ? LEFT_MIN : RIGHT_MIN;
++    const max = side === 'left' ? LEFT_MAX : RIGHT_MAX;
++
++    const onMove = (event: PointerEvent) => {
++      const delta = event.clientX - startX;
++      const next = side === 'left' ? startWidth + delta : startWidth - delta;
++      const width = Math.min(max, Math.max(min, next));
++      if (side === 'left') setLeftWidth(width);
++      else setRightWidth(width);
++    };
++    const onUp = () => {
++      window.removeEventListener('pointermove', onMove);
++      window.removeEventListener('pointerup', onUp);
++      document.body.style.cursor = '';
++    };
++
++    document.body.style.cursor = 'col-resize';
++    window.addEventListener('pointermove', onMove);
