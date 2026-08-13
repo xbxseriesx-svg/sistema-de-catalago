@@ -29,7 +29,16 @@ jobs:
         shell: pwsh
         run: ./cloud-overlay/scripts/recover-v21.ps1
 
-      - name: Aplicar camada Cloudflare D1 sobre o Editor v2.1
+      - name: Exportar núcleo real da v2.1 para integração segura
+        uses: actions/upload-artifact@v4
+        with:
+          name: ASTERYON-v2.1-core-source
+          path: |
+            app/src/editor/store.tsx
+            app/src/catalog/store.tsx
+          if-no-files-found: error
+
+      - name: Aplicar camada Cloudflare sem alterar o núcleo visual
         shell: pwsh
         run: |
           Copy-Item cloud-overlay/package.json app/package.json -Force
@@ -42,12 +51,7 @@ jobs:
           Copy-Item cloud-overlay/migrations/* app/migrations/ -Force
           Copy-Item cloud-overlay/scripts/make-wrangler.mjs app/scripts/make-wrangler.mjs -Force
           Set-Location app
-          git apply --recount ../cloud-overlay/patches/store.patch
-          git apply --recount ../cloud-overlay/patches/catalog-store.patch
-          $app = Get-Content src/App.tsx -Raw
-          $app = $app.Replace("import { PublicSite } from './public/PublicSite';", "import { PublicSite } from './public/PublicSite';`nimport { CloudActionBridge } from './cloud/ActionBridge';")
-          $app = $app.Replace("return <EditorProvider><EditorShell cloudUser={user}/></EditorProvider>;", "return <EditorProvider><CloudActionBridge/><EditorShell cloudUser={user}/></EditorProvider>;")
-          Set-Content src/App.tsx $app -Encoding UTF8
+          Remove-Item src/cloud/ActionBridge.tsx -Force -ErrorAction SilentlyContinue
           Remove-Item package-lock.json -Force -ErrorAction SilentlyContinue
 
       - name: Validar segredos Cloudflare
