@@ -1,21 +1,72 @@
-name: CI
+name: Windows 11 v2.1 Final
 
 on:
-  pull_request:
   push:
     branches:
-      - main
-      - feature/editor-visual-pro
-      - feature/asteryon-ai
+      - build/windows11-unified-v2.1-final
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - run: npm install
-      - run: npm run typecheck
-      - run: npm run build
+          node-version: "22"
+
+      - name: Prepare v2.1 source
+        shell: pwsh
+        run: |
+          $source = 'v21-final/ASTERYON_Unificado_v2.1_source.zip'
+          $hash = (Get-FileHash $source -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne '1da8b5af54c658153e9a5e0d98cfda2418371bef732942a2b1d902ef1f4f5558') { throw "Source checksum mismatch: $hash" }
+          New-Item -ItemType Directory -Force app | Out-Null
+          Expand-Archive $source app -Force
+          New-Item -ItemType Directory -Force app/desktop | Out-Null
+          Copy-Item v21-final/main.cjs app/desktop/main.cjs -Force
+          Set-Location app
+          npm pkg set version=2.1.0-test
+          npm pkg set main=desktop/main.cjs
+
+      - name: Install dependencies
+        working-directory: app
+        run: |
+          npm install --no-audit --no-fund
+          npm install --save-dev electron@43.2.0 electron-builder@26.0.12 --no-audit --no-fund
+
+      - name: Typecheck
+        working-directory: app
+        run: npm run typecheck
+
+      - name: Build web app
+        working-directory: app
+        run: npm run build
+
+      - name: Build Windows installer
+        working-directory: app
+        run: npx electron-builder --win nsis --x64 --config ../v21-final/electron-builder.yml
+
+      - name: Collect installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force output | Out-Null
+          $exe = Get-ChildItem app/release/*.exe | Select-Object -First 1
+          if (-not $exe) { throw 'Installer not generated' }
+          Copy-Item $exe.FullName output/ASTERYON_Catalogo_Unificado_Setup_Windows11_TESTE_2.1.0-test.exe
+          $sha = (Get-FileHash output/ASTERYON_Catalogo_Unificado_Setup_Windows11_TESTE_2.1.0-test.exe -Algorithm SHA256).Hash.ToLower()
+          "ASTERYON Catálogo Digital v2.1 TESTE`r`nWindows 11 x64`r`nSHA-256: $sha" | Set-Content output/LEIA-ME.txt -Encoding UTF8
+          Compress-Archive output/* ASTERYON_Catalogo_Unificado_Windows11_v2.1_TESTE_Completo.zip -Force
+          Write-Host "EXE SHA256: $sha"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ASTERYON-Catalogo-Windows11-v2.1-FINAL
+          path: |
+            output/*
+            ASTERYON_Catalogo_Unificado_Windows11_v2.1_TESTE_Completo.zip
+          if-no-files-found: error
