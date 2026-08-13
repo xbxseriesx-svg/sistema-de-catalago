@@ -1,0 +1,94 @@
++                  <span className="pl-3 text-[9px] tabular-nums text-zinc-700">{Math.round(rightWidth)}px</span>
++                  <button
++                    onClick={() => setRightPanelOpen(false)}
++                    className="flex flex-1 items-center justify-center gap-2 py-2 text-[11px] text-zinc-500 transition-colors hover:bg-zinc-800/50 hover:text-zinc-300"
++                  >
++                    <PanelRightClose size={14} /> Ocultar propriedades
++                  </button>
++                </div>
++              </div>
++            </>
++          ) : (
++            <div className="flex w-10 shrink-0 flex-col items-center border-l border-zinc-800 py-2">
++              <IconButton onClick={() => setRightPanelOpen(true)} title="Mostrar propriedades"><PanelRightOpen size={16} /></IconButton>
+             </div>
+-            <button
+-              onClick={() => setLeftPanelOpen(false)}
+-              className="flex items-center justify-center gap-2 border-t border-zinc-800 py-2 text-[11px] text-zinc-500 transition-colors hover:bg-zinc-800/50 hover:text-zinc-300"
+-            >
+-              <PanelLeftClose size={14} /> Ocultar painel
+-            </button>
+-          </div>
+-        )}
+-
+-        {!leftPanelOpen && (
+-          <div className="flex w-10 shrink-0 flex-col items-center gap-1 border-r border-zinc-800 py-2">
+-            <IconButton onClick={() => setLeftPanelOpen(true)} title="Mostrar painel"><PanelLeftOpen size={16} /></IconButton>
+-            <IconButton onClick={() => { setLeftPanelOpen(true); setLeftTab('elements'); }} title="Elementos"><Box size={16} /></IconButton>
+-            <IconButton onClick={() => { setLeftPanelOpen(true); setLeftTab('layers'); }} title="Camadas"><Layers size={16} /></IconButton>
+-            <IconButton onClick={() => { setLeftPanelOpen(true); setLeftTab('catalog'); }} title="Catálogo"><PackageSearch size={16} /></IconButton>
+-            <IconButton onClick={() => { setLeftPanelOpen(true); setLeftTab('history'); }} title="Histórico"><History size={16} /></IconButton>
+-          </div>
+-        )}
+-
+-        <Canvas guides={guides} setGuides={setGuides} />
+-
+-        {rightPanelOpen ? (
+-          <div className="flex w-72 shrink-0 flex-col">
+-            <PropertiesPanel />
+-            <button
+-              onClick={() => setRightPanelOpen(false)}
+-              className="flex items-center justify-center gap-2 border-l border-t border-zinc-800 py-2 text-[11px] text-zinc-500 transition-colors hover:bg-zinc-800/50 hover:text-zinc-300"
+-            >
+-              <PanelRightClose size={14} /> Ocultar propriedades
+-            </button>
+-          </div>
+-        ) : (
+-          <div className="flex w-10 shrink-0 flex-col items-center border-l border-zinc-800 py-2">
+-            <IconButton onClick={() => setRightPanelOpen(true)} title="Mostrar propriedades"><PanelRightOpen size={16} /></IconButton>
+-          </div>
+-        )}
+-      </div>
++          )}
++        </div>
+       )}
+ 
+       <div className="flex h-7 shrink-0 items-center justify-between border-t border-zinc-800 bg-zinc-950 px-3 text-[10px] text-zinc-500">
+@@ -104,15 +181,27 @@ function EditorShell() {
+   );
+ }
+ 
++function ResizeHandle({ side, onPointerDown }: { side: 'left' | 'right'; onPointerDown: (e: React.PointerEvent) => void }) {
++  return (
++    <div
++      onPointerDown={onPointerDown}
++      title="Arraste para ajustar a largura do painel"
++      className={`group relative z-40 w-1 shrink-0 cursor-col-resize bg-zinc-950 hover:bg-blue-500/40 ${side === 'right' ? 'border-l border-zinc-800' : 'border-r border-zinc-800'}`}
++    >
++      <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent group-hover:bg-blue-400" />
++    </div>
++  );
++}
++
+ function Tab({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
+   return (
+     <button
+       onClick={onClick}
+-      className={`flex flex-1 items-center justify-center gap-1 py-2 text-[10px] font-semibold uppercase tracking-wider transition-colors ${
++      className={`flex min-w-[68px] flex-1 items-center justify-center gap-1 whitespace-nowrap px-2 py-2 text-[9px] font-semibold uppercase tracking-wide transition-colors ${
+         active ? 'border-b-2 border-blue-500 bg-zinc-900/50 text-blue-400' : 'text-zinc-500 hover:text-zinc-300'
+       }`}
+     >
+-      {icon} {label}
++      {icon} <span>{label}</span>
+     </button>
+   );
+ }
+diff --git a/src/editor/Canvas.tsx b/src/editor/Canvas.tsx
+index 1244e85..3b13a1e 100644
+--- a/src/editor/Canvas.tsx
++++ b/src/editor/Canvas.tsx
+@@ -17,6 +17,26 @@ export function Canvas({ guides, setGuides }: CanvasProps) {
+   const panState = useRef<{ startX: number; startY: number; panX: number; panY: number } | null>(null);
+   const selectionState = useRef<{ startX: number; startY: number } | null>(null);
+   const page = state.nodes.find((n) => n.type === 'page');
