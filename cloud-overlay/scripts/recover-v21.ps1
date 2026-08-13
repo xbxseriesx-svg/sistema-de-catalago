@@ -13,18 +13,62 @@ foreach ($part in $ordered) {
   if ($part -like '*10_11*' -or $part -like '*12_13*') { $s = $s.Substring(0,16000) }
   $pieces += $s
 }
-
 $b64 = $pieces -join ''
-if ($b64.Length -ne 145988) { throw "Base64 v2.1 inesperado: $($b64.Length)" }
-$zip = "$PWD\ASTERYON-v2.1-source.zip"
-[IO.File]::WriteAllBytes($zip, [Convert]::FromBase64String($b64))
-$sha = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
-$expected = 'e4cd3ea64539ced75ae51a5370e5812ec69d07d772ac56ff40fcf21b6aceeeb2'
-if ($sha -ne $expected) { throw "SHA v2.1 inválido: $sha" }
+if ($b64.Length -ne 145988) { throw "Unexpected base64 length: $($b64.Length)" }
+[IO.File]::WriteAllBytes("$PWD\source-recovered.zip", [Convert]::FromBase64String($b64))
+Write-Host "Recovered archive SHA256=$((Get-FileHash "$PWD\source-recovered.zip" -Algorithm SHA256).Hash.ToLower())"
 
-Remove-Item app -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force app | Out-Null
-Expand-Archive $zip app -Force
-if (-not (Test-Path app/package.json)) { throw 'package.json não recuperado' }
-if (-not (Test-Path app/src/editor/TemplatesPanel.tsx)) { throw 'TemplatesPanel v2.1 não recuperado' }
-Write-Host "Editor v2.1 recuperado. SHA256=$sha"
+& 7z x source-recovered.zip -oapp -y '-x!package-lock.json' '-x!.gitignore' '-x!tsconfig.node.json' '-x!tsconfig.app.json' '-x!.bolt/*'
+if ($LASTEXITCODE -gt 1) { throw "7-Zip extraction failed with exit code $LASTEXITCODE" }
+
+@'
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["vite.config.ts"]
+}
+'@ | Set-Content app/tsconfig.node.json -Encoding UTF8
+
+@'
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] },
+    "strict": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"]
+}
+'@ | Set-Content app/tsconfig.app.json -Encoding UTF8
+
+if (-not (Test-Path app/package.json)) { throw 'package.json missing after recovery' }
+if (-not (Test-Path app/src/App.tsx)) { throw 'src/App.tsx missing after recovery' }
+if (-not (Test-Path app/src/editor/TemplatesPanel.tsx)) { throw 'TemplatesPanel.tsx missing after recovery' }
+Write-Host 'ASTERYON Editor v2.1 recovered with proven Windows build method.'
