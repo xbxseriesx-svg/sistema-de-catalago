@@ -1,0 +1,67 @@
++    window.addEventListener('pointerup', onUp, { once: true });
++  }, [leftWidth, rightWidth]);
++
+   return (
+     <div className="flex h-screen w-screen flex-col overflow-hidden bg-zinc-950 text-zinc-100" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+       <Toolbar />
+@@ -37,55 +100,69 @@ function EditorShell() {
+           <Canvas guides={guides} setGuides={setGuides} />
+         </div>
+       ) : (
+-      <div className="flex flex-1 overflow-hidden">
+-        {leftPanelOpen && (
+-          <div className="flex w-72 shrink-0 flex-col border-r border-zinc-800">
+-            <div className="flex border-b border-zinc-800">
+-              <Tab active={leftTab === 'elements'} onClick={() => setLeftTab('elements')} icon={<Box size={13} />} label="Elementos" />
+-              <Tab active={leftTab === 'layers'} onClick={() => setLeftTab('layers')} icon={<Layers size={13} />} label="Camadas" />
+-              <Tab active={leftTab === 'catalog'} onClick={() => setLeftTab('catalog')} icon={<PackageSearch size={13} />} label="Catálogo" />
+-              <Tab active={leftTab === 'history'} onClick={() => setLeftTab('history')} icon={<History size={13} />} label="Histórico" />
++        <div className="flex flex-1 overflow-hidden">
++          {leftPanelOpen && (
++            <>
++              <div className="flex shrink-0 flex-col border-r border-zinc-800 bg-zinc-900" style={{ width: leftWidth }}>
++                <div className="flex min-h-10 overflow-x-auto border-b border-zinc-800 [scrollbar-width:thin]">
++                  <Tab active={leftTab === 'elements'} onClick={() => setLeftTab('elements')} icon={<Box size={13} />} label="Elementos" />
++                  <Tab active={leftTab === 'templates'} onClick={() => setLeftTab('templates')} icon={<LayoutTemplate size={13} />} label="Modelos" />
++                  <Tab active={leftTab === 'layers'} onClick={() => setLeftTab('layers')} icon={<Layers size={13} />} label="Camadas" />
++                  <Tab active={leftTab === 'catalog'} onClick={() => setLeftTab('catalog')} icon={<PackageSearch size={13} />} label="Catálogo" />
++                  <Tab active={leftTab === 'history'} onClick={() => setLeftTab('history')} icon={<History size={13} />} label="Histórico" />
++                </div>
++                <div className="flex-1 overflow-hidden">
++                  {leftTab === 'elements' ? <ElementsPanel /> : leftTab === 'templates' ? <TemplatesPanel /> : leftTab === 'layers' ? <LayersPanel /> : leftTab === 'catalog' ? <CatalogPanel /> : <HistoryPanel />}
++                </div>
++                <div className="flex items-center border-t border-zinc-800">
++                  <button
++                    onClick={() => setLeftPanelOpen(false)}
++                    className="flex flex-1 items-center justify-center gap-2 py-2 text-[11px] text-zinc-500 transition-colors hover:bg-zinc-800/50 hover:text-zinc-300"
++                  >
++                    <PanelLeftClose size={14} /> Ocultar painel
++                  </button>
++                  <span className="pr-3 text-[9px] tabular-nums text-zinc-700">{Math.round(leftWidth)}px</span>
++                </div>
++              </div>
++              <ResizeHandle side="left" onPointerDown={(e) => beginResize('left', e)} />
++            </>
++          )}
++
++          {!leftPanelOpen && (
++            <div className="flex w-10 shrink-0 flex-col items-center gap-1 border-r border-zinc-800 py-2">
++              <IconButton onClick={() => setLeftPanelOpen(true)} title="Mostrar painel"><PanelLeftOpen size={16} /></IconButton>
++              <IconButton onClick={() => { setLeftPanelOpen(true); setLeftTab('elements'); }} title="Elementos"><Box size={16} /></IconButton>
++              <IconButton onClick={() => { setLeftPanelOpen(true); setLeftTab('templates'); }} title="Modelos"><LayoutTemplate size={16} /></IconButton>
++              <IconButton onClick={() => { setLeftPanelOpen(true); setLeftTab('layers'); }} title="Camadas"><Layers size={16} /></IconButton>
++              <IconButton onClick={() => { setLeftPanelOpen(true); setLeftTab('catalog'); }} title="Catálogo"><PackageSearch size={16} /></IconButton>
++              <IconButton onClick={() => { setLeftPanelOpen(true); setLeftTab('history'); }} title="Histórico"><History size={16} /></IconButton>
+             </div>
+-            <div className="flex-1 overflow-hidden">
+-              {leftTab === 'elements' ? <ElementsPanel /> : leftTab === 'layers' ? <LayersPanel /> : leftTab === 'catalog' ? <CatalogPanel /> : <HistoryPanel />}
++          )}
++
++          <Canvas guides={guides} setGuides={setGuides} />
++
++          {rightPanelOpen ? (
++            <>
++              <ResizeHandle side="right" onPointerDown={(e) => beginResize('right', e)} />
++              <div className="flex shrink-0 flex-col" style={{ width: rightWidth }}>
++                <PropertiesPanel />
++                <div className="flex items-center border-l border-t border-zinc-800">
