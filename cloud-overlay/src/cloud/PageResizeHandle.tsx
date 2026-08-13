@@ -3,18 +3,18 @@ import type { EditorNode, ResponsiveRect } from '../editor/types';
 import { useEditor } from '../editor/store';
 import { responsivePatch } from '../editor/utils';
 
-export function PageResizeHandle({page,pageRect,contentBottom,effectivePageHeight}:{page:EditorNode;pageRect:ResponsiveRect;contentBottom:number;effectivePageHeight:number}){
+export function PageResizeHandle({page,pageRect,effectivePageHeight}:{page:EditorNode;pageRect:ResponsiveRect;effectivePageHeight:number}){
   const {state,dispatch}=useEditor();
   const [resizing,setResizing]=useState(false);
   if(state.previewMode)return null;
   const begin=(event:ReactPointerEvent<HTMLDivElement>)=>{
     event.preventDefault();event.stopPropagation();
-    const startY=event.clientY,startHeight=pageRect.height,minHeight=Math.max(480,contentBottom+120);
+    const startY=event.clientY,startHeight=pageRect.height,minHeight=480;
     setResizing(true);dispatch({type:'CHECKPOINT'});
     const onMove=(pointer:PointerEvent)=>{
       const delta=(pointer.clientY-startY)/Math.max(state.zoom,0.1);
       const height=Math.min(50000,Math.max(minHeight,Math.round((startHeight+delta)/10)*10));
-      dispatch({type:'UPDATE_NODE',id:page.id,changes:responsivePatch(page,state.device,{height}),skipHistory:true});
+      dispatch({type:'UPDATE_NODE',id:page.id,changes:{...responsivePatch(page,state.device,{height}),props:{...(page.props||{}),autoExtend:false}},skipHistory:true});
     };
     const onUp=()=>{setResizing(false);window.removeEventListener('pointermove',onMove);window.removeEventListener('pointerup',onUp)};
     window.addEventListener('pointermove',onMove);window.addEventListener('pointerup',onUp,{once:true});
