@@ -1,0 +1,2 @@
+import type { EditorNode } from '../editor/types';
+export function makeTemplateEditable(nodes:EditorNode[]):EditorNode[]{return nodes.map(node=>({...node,locked:false,props:{...(node.props||{}),atomicTemplate:false,atomic:false},styles:{...node.styles,...((node.type==='button'||node.type==='productbutton')?{display:'flex',alignItems:'center',justifyContent:'center',textAlign:'center'}:{})},children:node.children?makeTemplateEditable(node.children):node.children}))}

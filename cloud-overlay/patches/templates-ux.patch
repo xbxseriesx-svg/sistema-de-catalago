@@ -1,0 +1,11 @@
+--- a/cloud-overlay/src/editor/TemplatesPanel.tsx
++++ b/cloud-overlay/src/editor/TemplatesPanel.tsx
+@@ -4,6 +4,7 @@
+ import { VISUAL_TEMPLATES, type VisualTemplate } from './templates';
+ import { cloudApi, isCloudRuntime, type CloudTemplate } from '../cloud/api';
++import { makeTemplateEditable } from '../cloud/templateTools';
+ 
+ export function TemplatesPanel() {
+@@ -19,7 +20,7 @@
+-  const applyNodes = (id:string,name:string,nodes:typeof state.nodes) => { const hasContent=state.nodes.some(node=>node.type==='page'&&(node.children?.length??0)>0); if(hasContent&&!window.confirm(`Aplicar o modelo “${name}” vai substituir o conteúdo atual da página. Deseja continuar?`))return; dispatch({type:'CREATE_SNAPSHOT',label:`Antes do modelo ${name}`});dispatch({type:'REPLACE_NODES',nodes:JSON.parse(JSON.stringify(nodes))});dispatch({type:'SET_ZOOM',zoom:.55});dispatch({type:'SET_PAN',pan:{x:120,y:60}});setApplied(id); };
++  const applyNodes = (id:string,name:string,nodes:typeof state.nodes) => { const hasContent=state.nodes.some(node=>node.type==='page'&&(node.children?.length??0)>0); if(hasContent&&!window.confirm(`Aplicar o modelo “${name}” vai substituir o conteúdo atual da página. Deseja continuar?`))return; dispatch({type:'CREATE_SNAPSHOT',label:`Antes do modelo ${name}`});dispatch({type:'REPLACE_NODES',nodes:makeTemplateEditable(nodes)});dispatch({type:'SET_ZOOM',zoom:.55});dispatch({type:'SET_PAN',pan:{x:120,y:60}});setApplied(id); };

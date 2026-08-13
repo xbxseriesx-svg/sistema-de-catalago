@@ -1,74 +1,16 @@
 $ErrorActionPreference = 'Stop'
-
-$ordered = @(
-  'v21-final/chunks/00.b64','v21-final/chunks/00_tail.b64','v21-final/chunks/01.b64','v21-final/chunks/02.b64',
-  'v21-final/chunks/03.b64','v21-final/chunks/04.b64','v21-final/chunks/05.b64','v21-final/chunks/06_07.b64',
-  'v21-final/chunks/08_09.b64','v21-final/chunks/10_11.b64','v21-final/chunks/12_13.b64','v21-final/chunks/14.b64',
-  'v21-final/chunks/15.b64','v21-final/chunks/16.b64','v21-final/chunks/17.b64','v21-final/chunks/18.b64'
-)
-
-$pieces = @()
-foreach ($part in $ordered) {
-  $s = (Get-Content $part -Raw) -replace '\s',''
-  if ($part -like '*10_11*' -or $part -like '*12_13*') { $s = $s.Substring(0,16000) }
-  $pieces += $s
-}
-$b64 = $pieces -join ''
-if ($b64.Length -ne 145988) { throw "Unexpected base64 length: $($b64.Length)" }
-[IO.File]::WriteAllBytes("$PWD\source-recovered.zip", [Convert]::FromBase64String($b64))
-Write-Host "Recovered archive SHA256=$((Get-FileHash "$PWD\source-recovered.zip" -Algorithm SHA256).Hash.ToLower())"
-
-New-Item -ItemType Directory -Force app | Out-Null
-& 7z x source-recovered.zip -oapp -y '-x!package-lock.json' '-x!.gitignore' '-x!tsconfig.node.json' '-x!tsconfig.app.json' '-x!.bolt/*'
-if ($LASTEXITCODE -gt 1) { throw "7-Zip extraction failed with exit code $LASTEXITCODE" }
-
+$ordered=@('v21-final/chunks/00.b64','v21-final/chunks/00_tail.b64','v21-final/chunks/01.b64','v21-final/chunks/02.b64','v21-final/chunks/03.b64','v21-final/chunks/04.b64','v21-final/chunks/05.b64','v21-final/chunks/06_07.b64','v21-final/chunks/08_09.b64','v21-final/chunks/10_11.b64','v21-final/chunks/12_13.b64','v21-final/chunks/14.b64','v21-final/chunks/15.b64','v21-final/chunks/16.b64','v21-final/chunks/17.b64','v21-final/chunks/18.b64')
+$pieces=@();foreach($part in $ordered){$s=(Get-Content $part -Raw)-replace '\s','';if($part -like '*10_11*' -or $part -like '*12_13*'){$s=$s.Substring(0,16000)};$pieces+=$s}
+$b64=$pieces-join '';if($b64.Length -ne 145988){throw "Unexpected base64 length: $($b64.Length)"}
+[IO.File]::WriteAllBytes("$PWD\source-recovered.zip",[Convert]::FromBase64String($b64));Write-Host "Recovered archive SHA256=$((Get-FileHash "$PWD\source-recovered.zip" -Algorithm SHA256).Hash.ToLower())"
+New-Item -ItemType Directory -Force app|Out-Null;& 7z x source-recovered.zip -oapp -y '-x!package-lock.json' '-x!.gitignore' '-x!tsconfig.node.json' '-x!tsconfig.app.json' '-x!.bolt/*';if($LASTEXITCODE -gt 1){throw "7-Zip extraction failed with exit code $LASTEXITCODE"}
 @'
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2023"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "isolatedModules": true,
-    "moduleDetection": "force",
-    "noEmit": true,
-    "strict": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "noFallthroughCasesInSwitch": true
-  },
-  "include": ["vite.config.ts"]
-}
-'@ | Set-Content app/tsconfig.node.json -Encoding UTF8
-
+{"compilerOptions":{"target":"ES2022","lib":["ES2023"],"module":"ESNext","skipLibCheck":true,"moduleResolution":"bundler","allowImportingTsExtensions":true,"isolatedModules":true,"moduleDetection":"force","noEmit":true,"strict":true,"noUnusedLocals":false,"noUnusedParameters":false,"noFallthroughCasesInSwitch":true},"include":["vite.config.ts"]}
+'@|Set-Content app/tsconfig.node.json -Encoding UTF8
 @'
-{
-  "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "isolatedModules": true,
-    "moduleDetection": "force",
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "baseUrl": ".",
-    "paths": { "@/*": ["src/*"] },
-    "strict": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "noFallthroughCasesInSwitch": true
-  },
-  "include": ["src"]
-}
-'@ | Set-Content app/tsconfig.app.json -Encoding UTF8
-
-if (-not (Test-Path app/package.json)) { throw 'package.json missing after recovery' }
-if (-not (Test-Path app/src/App.tsx)) { throw 'src/App.tsx missing after recovery' }
-if (-not (Test-Path app/src/editor/TemplatesPanel.tsx)) { throw 'TemplatesPanel.tsx missing after recovery' }
+{"compilerOptions":{"target":"ES2020","useDefineForClassFields":true,"lib":["ES2020","DOM","DOM.Iterable"],"module":"ESNext","skipLibCheck":true,"moduleResolution":"bundler","allowImportingTsExtensions":true,"isolatedModules":true,"moduleDetection":"force","noEmit":true,"jsx":"react-jsx","baseUrl":".","paths":{"@/*":["src/*"]},"strict":true,"noUnusedLocals":false,"noUnusedParameters":false,"noFallthroughCasesInSwitch":true},"include":["src"]}
+'@|Set-Content app/tsconfig.app.json -Encoding UTF8
+if(-not(Test-Path app/package.json)){throw 'package.json missing after recovery'};if(-not(Test-Path app/src/App.tsx)){throw 'src/App.tsx missing after recovery'};if(-not(Test-Path app/src/editor/TemplatesPanel.tsx)){throw 'TemplatesPanel.tsx missing after recovery'}
+$editorPatch='cloud-overlay/patches/editor-ux.patch';if(Test-Path $editorPatch){$t=[IO.File]::ReadAllText($editorPatch).Replace("`r`n","`n");[IO.File]::WriteAllText($editorPatch,$t,[Text.UTF8Encoding]::new($false));git apply --directory=app --recount --whitespace=nowarn $editorPatch;if($LASTEXITCODE -ne 0){throw 'Editor UX patch failed'};Write-Host 'Applied editor UX patch.'}
+$templatePatch='cloud-overlay/patches/templates-ux.patch';if(Test-Path $templatePatch){$t=[IO.File]::ReadAllText($templatePatch).Replace("`r`n","`n");[IO.File]::WriteAllText($templatePatch,$t,[Text.UTF8Encoding]::new($false));git apply --recount --whitespace=nowarn $templatePatch;if($LASTEXITCODE -ne 0){throw 'Template UX patch failed'};Write-Host 'Applied template UX patch.'}
 Write-Host 'ASTERYON Editor v2.1 recovered with proven Windows build method.'
