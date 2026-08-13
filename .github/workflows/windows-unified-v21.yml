@@ -1,0 +1,187 @@
+name: Windows 11 Unified v2.1 Installer
+
+on:
+  push:
+    branches:
+      - build/windows11-unified-v2.1
+  workflow_dispatch:
+
+jobs:
+  build-installer:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Reconstruct ASTERYON v2.1 source
+        shell: pwsh
+        run: |
+          $ordered = @(
+            'v21/full/source.part00.b64',
+            'v21/full/source.part00_tail.b64',
+            'v21/full/source.part01.b64',
+            'v21/full/source.part02.b64',
+            'v21/full/source.part03a.b64',
+            'v21/full/source.part04.b64',
+            'v21/full/source.part05.b64',
+            'v21/full/source.part06_07.b64',
+            'v21/full/source.part08_09.b64',
+            'v21/full/source.part10_11.b64',
+            'v21/full/source.part12_13.b64',
+            'v21/full/source.part14.b64',
+            'v21/full/source.part15.b64',
+            'v21/full/source.part16.b64',
+            'v21/full/source.part17.b64'
+          )
+          foreach ($part in $ordered) {
+            if (-not (Test-Path $part)) { throw "Missing source chunk: $part" }
+          }
+          $b64 = ($ordered | ForEach-Object { Get-Content $_ -Raw }) -join ''
+          $tail = 'eXBlcy50c1VUBQADsRF9anV4CwABBAAAAAAE6QMAAFBLAQIeAxQAAAAIALUEDV2PCsvAmAQAAAQOAAAaABgAAAAAAAEAAACkgQ7jAABzcmMvY2F0YWxvZy9lZGl0b3JOb2Rlcy50c1VUBQAD1RF9anV4CwABBAAAAAAE6QMAAFBLAQIeAxQAAAAIAKMEDV06l1kl6wMAANAKAAAVABgAAAAAAAEAAACkgfrnAABzcmMvY2F0YWxvZy9zdG9yZS50c3hVVAUAA7ERfWp1eAsAAQQAAAAABOkDAABQSwECHgMUAAAACAC7BA1dCzJ8rbQAAABMAQAADAAYAAAAAAABAAAApIE07AAAc3JjL21haW4udHN4VVQFAAPhEX1qdXgLAAEEAAAAAATpAwAAUEsBAh4DFAAAAAgA9FsNXZvtveTUCgAAZCkAAAsAGAAAAAAAAQAAAKSBLu0AAHNyYy9BcHAudHN4VVQFAAMcq31qdXgLAAEEAAAAAATpAwAAUEsBAh4DCgAAAAAAjQQNXfmpVk4mAAAAJgAAABEAGAAAAAAAAQAAAKSBR/gAAHNyYy92aXRlLWVudi5kLnRzVVQFAAOKEX1qdXgLAAEEAAAAAATpAwAAUEsBAh4DFAAAAAgAjQQNXT9ocDLwAQAAbwUAAA0AGAAAAAAAAQAAAKSBuPgAAHNyYy9pbmRleC5jc3NVVAUAA4oRfWp1eAsAAQQAAAAABOkDAABQSwECHgMUAAAACABoCA1dT4SE+BiOAABzRAIAEQAYAAAAAAABAAAApIHv+gAAcGFja2FnZS1sb2NrLmpzb25VVAUAA9MXfWp1eAsAAQQAAAAABOkDAABQSwECHgMUAAAACACNBA1dIvPHqogAAADcAAAACgAYAAAAAAABAAAApIFSiQEALmdpdGlnbm9yZVVUBQADihF9anV4CwABBAAAAAAE6QMAAFBLAQIeAxQAAAAIAI0EDV2TT91OCgEAAOEBAAASABgAAAAAAAEAAACkgR6KAQB0c2NvbmZpZy5ub2RlLmpzb25VVAUAA4oRfWp1eAsAAQQAAAAABOkDAABQSwECHgMUAAAACACNBA1d4P4CeoEBAADHAgAAEQAYAAAAAAABAAAApIF0iwEAdHNjb25maWcuYXBwLmpzb25VVAUAA4oRfWp1eAsAAQQAAAAABOkDAABQSwECHgMKAAAAAACNBA1dAAAAAAAAAAAAAAAABgAYAAAAAAAAABAA7UVAjQEALmJvbHQvVVQFAAOKEX1qdXgLAAEEAAAAAATpAwAAUEsBAh4DCgAAAAAAjQQNXe1R6p4nAAAAJwAAABEAGAAAAAAAAQAAAKSBgI0BAC5ib2x0L2NvbmZpZy5qc29uVVQFAAOKEX1qdXgLAAEEAAAAAATpAwAAUEsBAh4DFAAAAAgAjQQNXR7z81NoAQAARwIAAAwAGAAAAAAAAQAAAKSB8o0BAC5ib2x0L3Byb21wdFVUBQADihF9anV4CwABBAAAAAAE6QMAAFBLAQIeAxQAAAAIAI0EDV3Jlhy+nwEAAGUDAAAKABgAAAAAAAEAAACkgaCPAQBpbmRleC5odG1sVVQFAAOKEX1qdXgLAAEEAAAAAATpAwAAUEsBAh4DFAAAAAgAVQgNXW2CycJMAwAAVQYAABMAGAAAAAAAAQAAAKSBg5EBAE1FUkdFLTMtUFJPSkVUT1MubWRVVAUAA7IXfWp1eAsAAQQAAAAABOkDAABQSwECHgMUAAAACADHXA1dJqRy2e0BAAAOBAAADAAYAAAAAAABAAAApIEclQEAcGFja2FnZS5qc29uVVQFAAOmrH1qdXgLAAEEAAAAAATpAwAAUEsBAh4DFAAAAAgAVQgNXQ/Hq5J4BAAAWAgAAAkAGAAAAAAAAQAAAKSBT5cBAFJFQURNRS5tZFVUBQADshd9anV4CwABBAAAAAAE6QMAAFBLBQYAAAAALQAtAJIPAAAKnAEAAAA='
+          $b64 = ($b64 + $tail) -replace '\s',''
+          $bytes = [Convert]::FromBase64String($b64)
+          [IO.File]::WriteAllBytes("$PWD\ASTERYON-v2.1-source.zip", $bytes)
+          $hash = (Get-FileHash "$PWD\ASTERYON-v2.1-source.zip" -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne '1da8b5af54c658153e9a5e0d98cfda2418371bef732942a2b1d902ef1f4f5558') {
+            throw "ASTERYON v2.1 source checksum mismatch: $hash"
+          }
+          New-Item -ItemType Directory -Force app | Out-Null
+          Expand-Archive -Path "$PWD\ASTERYON-v2.1-source.zip" -DestinationPath "$PWD\app" -Force
+          Write-Host "ASTERYON v2.1 source verified: $hash"
+
+      - name: Prepare Electron Windows wrapper
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force app\desktop | Out-Null
+          @'
+          const { app, BrowserWindow, shell } = require('electron');
+          const http = require('http');
+          const fs = require('fs');
+          const path = require('path');
+          let server;
+          function contentType(file) {
+            const ext = path.extname(file).toLowerCase();
+            return ({
+              '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8',
+              '.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8',
+              '.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg',
+              '.webp':'image/webp','.ico':'image/x-icon','.woff':'font/woff','.woff2':'font/woff2'
+            })[ext] || 'application/octet-stream';
+          }
+          function startServer() {
+            const root = path.resolve(__dirname, '..', 'dist');
+            return new Promise((resolve, reject) => {
+              server = http.createServer((req, res) => {
+                try {
+                  const raw = decodeURIComponent((req.url || '/').split('?')[0]);
+                  const safe = raw.replace(/^\/+/, '');
+                  let file = path.resolve(root, safe || 'index.html');
+                  if (!file.startsWith(root)) { res.writeHead(403); res.end('Forbidden'); return; }
+                  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(root, 'index.html');
+                  res.writeHead(200, {'Content-Type':contentType(file),'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'});
+                  fs.createReadStream(file).pipe(res);
+                } catch { res.writeHead(500); res.end('Internal error'); }
+              });
+              server.on('error', reject);
+              server.listen(0, '127.0.0.1', () => resolve(`http://127.0.0.1:${server.address().port}/`));
+            });
+          }
+          async function createWindow() {
+            const localUrl = await startServer();
+            const win = new BrowserWindow({
+              width:1600,height:980,minWidth:1100,minHeight:700,backgroundColor:'#0b1220',autoHideMenuBar:true,show:false,
+              webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true}
+            });
+            win.once('ready-to-show', () => win.show());
+            win.webContents.setWindowOpenHandler(({url}) => { if (/^https?:/i.test(url)) shell.openExternal(url); return {action:'deny'}; });
+            win.webContents.on('will-navigate', (event,target) => { if (!target.startsWith(localUrl)) { event.preventDefault(); if (/^https?:/i.test(target)) shell.openExternal(target); } });
+            await win.loadURL(localUrl);
+          }
+          app.whenReady().then(createWindow);
+          app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+          app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+          app.on('before-quit', () => { try { server?.close(); } catch {} });
+          '@ | Set-Content app\desktop\main.cjs -Encoding UTF8
+
+          @'
+          const fs = require('fs');
+          const file = 'app/package.json';
+          const p = JSON.parse(fs.readFileSync(file, 'utf8'));
+          p.version = '2.1.0-test';
+          p.main = 'desktop/main.cjs';
+          p.scripts = { ...(p.scripts || {}), 'dist:win':'npm run build && electron-builder --win nsis --x64' };
+          p.devDependencies = { ...(p.devDependencies || {}), electron:'43.2.0', 'electron-builder':'^26.0.0' };
+          p.build = {
+            appId:'br.com.asteryon.catalogo.unificado.v21.test',
+            productName:'ASTERYON Catálogo Digital 2.1 TESTE',
+            copyright:'ASTERYON', asar:true,
+            files:['dist/**/*','desktop/**/*','package.json'],
+            directories:{output:'release'},
+            win:{target:[{target:'nsis',arch:['x64']}]},
+            nsis:{oneClick:false,allowToChangeInstallationDirectory:true,createDesktopShortcut:true,createStartMenuShortcut:true,shortcutName:'ASTERYON Catálogo Digital 2.1 TESTE',uninstallDisplayName:'ASTERYON Catálogo Digital 2.1 TESTE',deleteAppDataOnUninstall:false,runAfterFinish:true}
+          };
+          fs.writeFileSync(file, JSON.stringify(p, null, 2));
+          '@ | Set-Content prepare-package.cjs -Encoding UTF8
+          node prepare-package.cjs
+
+      - name: Install dependencies
+        working-directory: app
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        working-directory: app
+        run: npm run typecheck
+
+      - name: Build web application
+        working-directory: app
+        run: npm run build
+
+      - name: Build Windows 11 installer
+        working-directory: app
+        run: npx electron-builder --win nsis --x64
+
+      - name: Package Windows 11 v2.1 build
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force package | Out-Null
+          $exe = Get-ChildItem app\release\*.exe | Select-Object -First 1
+          if (-not $exe) { throw 'Windows installer was not generated.' }
+          $target = 'package\ASTERYON_Catalogo_Unificado_Setup_Windows11_TESTE_2.1.0-test.exe'
+          Copy-Item $exe.FullName $target
+          @'
+          ASTERYON CATÁLOGO DIGITAL UNIFICADO v2.1 TESTE
+          Windows 11 x64
+
+          Principais recursos desta compilação:
+          - editor visual livre;
+          - painéis laterais redimensionáveis;
+          - abas Elementos, Modelos, Camadas, Catálogo e Histórico;
+          - página contínua que cresce verticalmente;
+          - guias de dobra/tela para páginas longas;
+          - resoluções rápidas Desktop, Tablet e Mobile;
+          - quatro modelos originais: Varejo Contínuo, Atacado B2B, Distribuidora Institucional e Catálogo de Marcas B2B;
+          - modelos permanecem editáveis, desmontáveis e reposicionáveis.
+
+          Esta é uma versão de homologação local e não possui assinatura digital comercial.
+          O Windows SmartScreen pode exibir aviso de aplicativo não reconhecido.
+          '@ | Set-Content package\LEIA-ME_ASTERYON_Unificado_v2.1_Windows11_TESTE.txt -Encoding UTF8
+          Compress-Archive -Path package\* -DestinationPath ASTERYON_Catalogo_Unificado_Windows11_v2.1_TESTE_Completo.zip -Force
+          Get-FileHash $target -Algorithm SHA256
+
+      - name: Upload Windows 11 v2.1 installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ASTERYON-Catalogo-Windows11-v2.1-Continuous-Templates
+          path: |
+            package/*.exe
+            package/*.txt
+            ASTERYON_Catalogo_Unificado_Windows11_v2.1_TESTE_Completo.zip
+          if-no-files-found: error
