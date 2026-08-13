@@ -34,6 +34,7 @@ jobs:
             app/src/editor/PropertiesPanel.tsx
             app/src/editor/ElementsPanel.tsx
             app/src/editor/NodeRenderer.tsx
+            app/src/editor/nodeContent.tsx
             app/src/editor/CatalogPanel.tsx
             app/src/editor/types.ts
             app/src/editor/registry.ts
@@ -41,5 +42,6 @@ jobs:
             app/src/editor/store.tsx
             app/src/catalog/types.ts
             app/src/catalog/seed.ts
+            app/src/catalog/editorNodes.ts
             app/src/App.tsx
           if-no-files-found: error
