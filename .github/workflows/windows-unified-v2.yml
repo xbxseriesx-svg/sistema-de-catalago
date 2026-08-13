@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Reconstruct unified source
+      - name: Reconstruct and patch unified source
         shell: pwsh
         run: |
           $parts = Get-ChildItem unified/source.part*.b64 | Sort-Object Name
@@ -30,14 +30,31 @@ jobs:
           $bytes = [Convert]::FromBase64String($b64)
           [IO.File]::WriteAllBytes("$PWD\unified-source.zip", $bytes)
           $hash = (Get-FileHash "$PWD\unified-source.zip" -Algorithm SHA256).Hash.ToLower()
-          if ($hash -ne "957266788fbfb5d8ec52052eee29c74282f7c4a28ae66268f93ffd2a8f223e0b") {
-            throw "Unified source checksum mismatch: $hash"
-          }
+          if ($hash -ne "957266788fbfb5d8ec52052eee29c74282f7c4a28ae66268f93ffd2a8f223e0b") { throw "Unified source checksum mismatch: $hash" }
           New-Item -ItemType Directory -Force app | Out-Null
           Expand-Archive -Path "$PWD\unified-source.zip" -DestinationPath "$PWD\app" -Force
-          Write-Host "Unified source reconstructed and verified: $hash"
 
-      - name: Prepare Electron desktop wrapper
+          @'
+          const fs = require('fs');
+          const ep = 'app/src/editor/ElementsPanel.tsx';
+          let e = fs.readFileSync(ep, 'utf8');
+          e = e.replace(
+            '(LucideIcons as Record<string, React.ComponentType<{ size?: number; className?: string }>>)',
+            '(LucideIcons as unknown as Record<string, React.ComponentType<{ size?: number; className?: string }>>)'
+          );
+          fs.writeFileSync(ep, e);
+
+          const lp = 'app/src/editor/LayersPanel.tsx';
+          let l = fs.readFileSync(lp, 'utf8');
+          l = l.replace(/\s+Agrupar,\r?\n\s+Desagrupar,\r?\n/, '\n');
+          l = l.replace('<Agrupar size={14} />', '<span className="text-[10px] font-bold">G</span>');
+          l = l.replace('<Desagrupar size={14} />', '<span className="text-[9px] font-bold">DG</span>');
+          fs.writeFileSync(lp, l);
+          '@ | Set-Content patch-unified.cjs -Encoding UTF8
+          node patch-unified.cjs
+          Write-Host "Unified source reconstructed, checksum verified and compatibility patch applied."
+
+      - name: Prepare Electron wrapper and package
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force app\desktop | Out-Null
@@ -46,103 +63,37 @@ jobs:
           const http = require('http');
           const fs = require('fs');
           const path = require('path');
-
           let server;
-
-          function contentType(file) {
-            const ext = path.extname(file).toLowerCase();
-            return ({
-              '.html': 'text/html; charset=utf-8',
-              '.js': 'text/javascript; charset=utf-8',
-              '.css': 'text/css; charset=utf-8',
-              '.json': 'application/json; charset=utf-8',
-              '.svg': 'image/svg+xml',
-              '.png': 'image/png',
-              '.jpg': 'image/jpeg',
-              '.jpeg': 'image/jpeg',
-              '.webp': 'image/webp',
-              '.ico': 'image/x-icon',
-              '.woff': 'font/woff',
-              '.woff2': 'font/woff2'
-            })[ext] || 'application/octet-stream';
-          }
-
+          const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.json':'application/json; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp','.ico':'image/x-icon','.woff':'font/woff','.woff2':'font/woff2'};
           function startServer() {
             const root = path.resolve(__dirname, '..', 'dist');
             return new Promise((resolve, reject) => {
               server = http.createServer((req, res) => {
                 try {
-                  const rawPath = decodeURIComponent((req.url || '/').split('?')[0]);
-                  const safePath = rawPath.replace(/^\/+/, '');
-                  let file = path.resolve(root, safePath || 'index.html');
-                  if (!file.startsWith(root)) {
-                    res.writeHead(403);
-                    res.end('Forbidden');
-                    return;
-                  }
-                  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) {
-                    file = path.join(root, 'index.html');
-                  }
-                  res.writeHead(200, {
-                    'Content-Type': contentType(file),
-                    'Cache-Control': 'no-cache',
-                    'X-Content-Type-Options': 'nosniff'
-                  });
+                  const raw = decodeURIComponent((req.url || '/').split('?')[0]).replace(/^\/+/, '');
+                  let file = path.resolve(root, raw || 'index.html');
+                  if (!file.startsWith(root)) { res.writeHead(403); return res.end('Forbidden'); }
+                  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) file = path.join(root, 'index.html');
+                  res.writeHead(200, {'Content-Type': types[path.extname(file).toLowerCase()] || 'application/octet-stream','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff'});
                   fs.createReadStream(file).pipe(res);
-                } catch (error) {
-                  res.writeHead(500);
-                  res.end('Internal error');
-                }
+                } catch { res.writeHead(500); res.end('Internal error'); }
               });
               server.on('error', reject);
-              server.listen(0, '127.0.0.1', () => {
-                const address = server.address();
-                resolve(`http://127.0.0.1:${address.port}/`);
-              });
+              server.listen(0, '127.0.0.1', () => resolve(`http://127.0.0.1:${server.address().port}/`));
             });
           }
-
           async function createWindow() {
             const localUrl = await startServer();
-            const win = new BrowserWindow({
-              width: 1600,
-              height: 980,
-              minWidth: 1100,
-              minHeight: 700,
-              backgroundColor: '#0b1220',
-              autoHideMenuBar: true,
-              show: false,
-              webPreferences: {
-                contextIsolation: true,
-                nodeIntegration: false,
-                sandbox: true
-              }
-            });
-
+            const win = new BrowserWindow({width:1600,height:980,minWidth:1100,minHeight:700,backgroundColor:'#0b1220',autoHideMenuBar:true,show:false,webPreferences:{contextIsolation:true,nodeIntegration:false,sandbox:true}});
             win.once('ready-to-show', () => win.show());
-            win.webContents.setWindowOpenHandler(({ url }) => {
-              if (/^https?:/i.test(url)) shell.openExternal(url);
-              return { action: 'deny' };
-            });
-            win.webContents.on('will-navigate', (event, target) => {
-              if (!target.startsWith(localUrl)) {
-                event.preventDefault();
-                if (/^https?:/i.test(target)) shell.openExternal(target);
-              }
-            });
+            win.webContents.setWindowOpenHandler(({url}) => { if (/^https?:/i.test(url)) shell.openExternal(url); return {action:'deny'}; });
+            win.webContents.on('will-navigate', (event,target) => { if (!target.startsWith(localUrl)) { event.preventDefault(); if (/^https?:/i.test(target)) shell.openExternal(target); } });
             await win.loadURL(localUrl);
           }
-
           app.whenReady().then(createWindow);
-          app.on('activate', () => {
-            if (BrowserWindow.getAllWindows().length === 0) createWindow();
-          });
-          app.on('window-all-closed', () => {
-            if (process.platform !== 'darwin') app.quit();
-          });
-          app.on('before-quit', () => {
-            try { server?.close(); } catch {}
-          });
+          app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+          app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+          app.on('before-quit', () => { try { server?.close(); } catch {} });
           '@ | Set-Content app\desktop\main.cjs -Encoding UTF8
 
           @'
@@ -151,26 +102,16 @@ jobs:
           const p = JSON.parse(fs.readFileSync(file, 'utf8'));
           p.version = '2.0.0-test';
           p.main = 'desktop/main.cjs';
-          p.scripts = { ...(p.scripts || {}), 'dist:win': 'npm run build && electron-builder --win nsis --x64' };
-          p.devDependencies = { ...(p.devDependencies || {}), electron: '43.2.0', 'electron-builder': '^26.0.0' };
+          p.devDependencies = {...(p.devDependencies || {}), electron:'43.2.0', 'electron-builder':'^26.0.0'};
           p.build = {
-            appId: 'br.com.asteryon.catalogo.unificado.test',
-            productName: 'ASTERYON Catálogo Digital Unificado TESTE',
-            copyright: 'ASTERYON',
-            asar: true,
-            files: ['dist/**/*', 'desktop/**/*', 'package.json'],
-            directories: { output: 'release' },
-            win: { target: [{ target: 'nsis', arch: ['x64'] }] },
-            nsis: {
-              oneClick: false,
-              allowToChangeInstallationDirectory: true,
-              createDesktopShortcut: true,
-              createStartMenuShortcut: true,
-              shortcutName: 'ASTERYON Catálogo Digital Unificado TESTE',
-              uninstallDisplayName: 'ASTERYON Catálogo Digital Unificado TESTE',
-              deleteAppDataOnUninstall: false,
-              runAfterFinish: true
-            }
+            appId:'br.com.asteryon.catalogo.unificado.test',
+            productName:'ASTERYON Catálogo Digital Unificado TESTE',
+            copyright:'ASTERYON',
+            asar:true,
+            files:['dist/**/*','desktop/**/*','package.json'],
+            directories:{output:'release'},
+            win:{target:[{target:'nsis',arch:['x64']}]},
+            nsis:{oneClick:false,allowToChangeInstallationDirectory:true,createDesktopShortcut:true,createStartMenuShortcut:true,shortcutName:'ASTERYON Catálogo Digital Unificado TESTE',uninstallDisplayName:'ASTERYON Catálogo Digital Unificado TESTE',deleteAppDataOnUninstall:false,runAfterFinish:true}
           };
           fs.writeFileSync(file, JSON.stringify(p, null, 2));
           '@ | Set-Content prepare-package.cjs -Encoding UTF8
@@ -192,7 +133,7 @@ jobs:
         working-directory: app
         run: npx electron-builder --win nsis --x64
 
-      - name: Create Windows 11 test package
+      - name: Package Windows 11 test build
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force package | Out-Null
@@ -203,23 +144,11 @@ jobs:
           ASTERYON CATÁLOGO DIGITAL UNIFICADO v2.0 TESTE
           Windows 11 x64
 
-          Base unificada:
-          - Bolt: interface visual e experiência principal do editor
-          - Canvas Studio: motor de edição, camadas e ferramentas criativas
-          - Lovable: catálogo, produtos e regras empresariais
+          Base unificada: Bolt + Canvas Studio + Lovable.
+          Versão de homologação local, sem assinatura digital comercial.
+          O Windows SmartScreen pode exibir aviso por o instalador não estar assinado.
 
-          Esta é uma versão de homologação local.
-          O instalador foi compilado em runner Windows x64 e não possui assinatura digital comercial.
-          O Windows SmartScreen pode mostrar aviso por o executável não ser assinado.
-
-          Testes principais sugeridos:
-          1. Abrir página em branco.
-          2. Inserir Texto, Imagem, Botão e Produto.
-          3. Mover e redimensionar livremente os objetos.
-          4. Testar sobreposição e painel Camadas.
-          5. Testar agrupar/desagrupar e seleção múltipla.
-          6. Testar Desktop, Tablet e Mobile.
-          7. Validar Produto/Vitrine como elementos editáveis.
+          Testar principalmente: canvas livre, Texto/Imagem/Botão/Produto, resize, sobreposição, Camadas, agrupar/desagrupar, seleção múltipla e Desktop/Tablet/Mobile.
           '@ | Set-Content package\LEIA-ME_ASTERYON_Unificado_Windows11_TESTE.txt -Encoding UTF8
           Compress-Archive -Path package\* -DestinationPath ASTERYON_Catalogo_Unificado_Windows11_TESTE_Completo.zip -Force
           Get-FileHash package\ASTERYON_Catalogo_Unificado_Setup_Windows11_TESTE_2.0.0-test.exe -Algorithm SHA256
