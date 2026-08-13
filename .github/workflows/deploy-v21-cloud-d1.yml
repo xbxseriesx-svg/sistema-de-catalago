@@ -29,13 +29,13 @@ jobs:
         shell: pwsh
         run: ./cloud-overlay/scripts/recover-v21.ps1
 
-      - name: Exportar núcleo real da v2.1 para integração segura
+      - name: Exportar fonte real da v2.1 para integração SaaS segura
         uses: actions/upload-artifact@v4
         with:
-          name: ASTERYON-v2.1-core-source
+          name: ASTERYON-v2.1-source-for-saas
           path: |
-            app/src/editor/store.tsx
-            app/src/catalog/store.tsx
+            app/src/editor/*
+            app/src/catalog/*
           if-no-files-found: error
 
       - name: Aplicar camada Cloudflare sem alterar o núcleo visual
