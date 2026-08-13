@@ -12,6 +12,7 @@ import { SelectionBreadcrumb } from './editor/SelectionBreadcrumb';
 import type { GuideLine } from './editor/smartGuides';
 import { CloudAuthGate } from './cloud/AuthGate';
 import { cloudApi, isCloudRuntime, type CloudUser } from './cloud/api';
+import { executeNodeAction, resolveNodeAction } from './cloud/buttonActions';
 import { PublicSite } from './public/PublicSite';
 import { LogOut, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Layers, Box, PackageSearch, History, LayoutTemplate, Cloud } from 'lucide-react';
 
@@ -22,7 +23,7 @@ function readPanelWidth(key: string, fallback: number) { try { const raw=window.
 function shouldOpenEditor() { if (!isCloudRuntime()) return true; return window.location.pathname === '/admin' || window.location.pathname.startsWith('/admin/'); }
 
 function EditorShell({ cloudUser }: { cloudUser?: CloudUser | null }) {
-  const { state } = useEditor();
+  const { state, getNode } = useEditor();
   const [guides, setGuides] = useState<GuideLine[]>([]);
   const [leftTab, setLeftTab] = useState<LeftTab>('elements');
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
@@ -33,6 +34,13 @@ function EditorShell({ cloudUser }: { cloudUser?: CloudUser | null }) {
   useEffect(() => { document.body.style.overflow='hidden'; document.body.style.userSelect='none'; return()=>{document.body.style.overflow='';document.body.style.userSelect='';}; }, []);
   useEffect(()=>{ try{localStorage.setItem('asteryon.ui.leftWidth',String(leftWidth));}catch{} },[leftWidth]);
   useEffect(()=>{ try{localStorage.setItem('asteryon.ui.rightWidth',String(rightWidth));}catch{} },[rightWidth]);
+  useEffect(()=>{
+    if(!state.previewMode)return;
+    const style=document.createElement('style');style.dataset.asteryonPreviewActions='true';style.textContent='[data-node-type="button"],[data-node-type="button"] *,[data-node-type="productbutton"],[data-node-type="productbutton"] *{pointer-events:auto!important;cursor:pointer!important;}';document.head.appendChild(style);
+    const onClick=(event:MouseEvent)=>{const target=event.target as HTMLElement|null;const holder=target?.closest?.('[data-node-type="button"],[data-node-type="productbutton"]') as HTMLElement|null;if(!holder)return;const id=holder.dataset.nodeId;if(!id)return;const node=getNode(id);if(!node)return;const action=resolveNodeAction(node);if(action.type==='none')return;event.preventDefault();event.stopPropagation();executeNodeAction(node)};
+    document.addEventListener('click',onClick,true);
+    return()=>{document.removeEventListener('click',onClick,true);style.remove()};
+  },[state.previewMode,getNode]);
 
   const beginResize = useCallback((side:'left'|'right', e:React.PointerEvent)=>{ e.preventDefault(); const startX=e.clientX; const startWidth=side==='left'?leftWidth:rightWidth; const min=side==='left'?LEFT_MIN:RIGHT_MIN; const max=side==='left'?LEFT_MAX:RIGHT_MAX; const onMove=(event:PointerEvent)=>{ const delta=event.clientX-startX; const next=side==='left'?startWidth+delta:startWidth-delta; const width=Math.min(max,Math.max(min,next)); side==='left'?setLeftWidth(width):setRightWidth(width); }; const onUp=()=>{window.removeEventListener('pointermove',onMove);window.removeEventListener('pointerup',onUp);document.body.style.cursor='';}; document.body.style.cursor='col-resize';window.addEventListener('pointermove',onMove);window.addEventListener('pointerup',onUp,{once:true}); },[leftWidth,rightWidth]);
   const logout = async () => { try { await cloudApi.logout(); } finally { window.location.reload(); } };
