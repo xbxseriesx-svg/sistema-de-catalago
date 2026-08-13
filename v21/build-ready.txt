@@ -1,0 +1,2 @@
+ASTERYON v2.1 Windows 11 build source complete.
+Expected source ZIP SHA-256: 1da8b5af54c658153e9a5e0d98cfda2418371bef732942a2b1d902ef1f4f5558
