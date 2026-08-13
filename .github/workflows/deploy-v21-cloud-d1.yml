@@ -46,7 +46,6 @@ jobs:
           Remove-Item app/package-lock.json -Force -ErrorAction SilentlyContinue
 
           # Cloudflare Web Crypto limita PBKDF2 a 100000 iterações neste runtime.
-          # Ajusta o Worker montado para manter criação e login do SDM compatíveis.
           $workerUtilPath = 'app/worker/util.ts'
           $workerUtil = Get-Content $workerUtilPath -Raw
           $workerUtil = $workerUtil.Replace('iterations=210000', 'iterations=100000')
@@ -122,18 +121,22 @@ jobs:
         working-directory: app
         run: npx --yes wrangler@4.68.0 deploy --config wrangler.deploy.jsonc
 
-      - name: Configurar token de ativação do primeiro SDM
+      - name: Preservar token de ativação do primeiro SDM
         shell: pwsh
         env:
           SAVED_BOOTSTRAP_TOKEN: ${{ secrets.SDM_BOOTSTRAP_TOKEN }}
         run: |
           New-Item -ItemType Directory -Force deploy-info | Out-Null
-          $token = $env:SAVED_BOOTSTRAP_TOKEN
-          $generated = $false
-          if (-not $token) { $token = -join ((1..48) | ForEach-Object { '{0:x}' -f (Get-Random -Maximum 16) }); $generated = $true }
-          Set-Location app
-          $token | npx --yes wrangler@4.68.0 secret put SDM_BOOTSTRAP_TOKEN --config wrangler.deploy.jsonc
-          Set-Location ..
+          if ($env:SAVED_BOOTSTRAP_TOKEN) {
+            Set-Location app
+            $env:SAVED_BOOTSTRAP_TOKEN | npx --yes wrangler@4.68.0 secret put SDM_BOOTSTRAP_TOKEN --config wrangler.deploy.jsonc
+            Set-Location ..
+            $bootstrapStatus = 'atualizado pelo GitHub Secret SDM_BOOTSTRAP_TOKEN'
+          } else {
+            $bootstrapStatus = 'preservado no Worker sem rotação neste deploy'
+            Write-Host 'SDM_BOOTSTRAP_TOKEN existente será preservado; nenhum token novo foi gerado.'
+          }
+
           "Worker: sistema-de-catalago" | Set-Content deploy-info/DEPLOY.txt
           "D1: sistema-de-catalago ($env:D1_DATABASE_ID)" | Add-Content deploy-info/DEPLOY.txt
           "Editor: v2.1 SaaS" | Add-Content deploy-info/DEPLOY.txt
@@ -141,7 +144,7 @@ jobs:
           "Fluxo: Editor -> Rascunho -> Preview -> Publicar -> Site Público" | Add-Content deploy-info/DEPLOY.txt
           "Desktop/EXE: DESATIVADO" | Add-Content deploy-info/DEPLOY.txt
           "R2: DESATIVADO" | Add-Content deploy-info/DEPLOY.txt
-          if ($generated) { $token | Set-Content deploy-info/SDM_BOOTSTRAP_TOKEN.txt }
+          "Bootstrap token: $bootstrapStatus" | Add-Content deploy-info/DEPLOY.txt
 
       - name: Informações do deploy
         uses: actions/upload-artifact@v4
