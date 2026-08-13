@@ -19,14 +19,31 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Prepare v2.1 source
+      - name: Reconstruct v2.1 source
         shell: pwsh
         run: |
-          $source = 'v21-final/ASTERYON_Unificado_v2.1_source.zip'
-          $hash = (Get-FileHash $source -Algorithm SHA256).Hash.ToLower()
-          if ($hash -ne '4c755208b46e1ee7486e55fd33bf56b059b768946e96e7f1c5120e8d0e746e8c') { throw "Source checksum mismatch: $hash" }
+          $ordered = @(
+            'v21-final/chunks/00.b64','v21-final/chunks/00_tail.b64','v21-final/chunks/01.b64','v21-final/chunks/02.b64',
+            'v21-final/chunks/03.b64','v21-final/chunks/04.b64','v21-final/chunks/05.b64','v21-final/chunks/06_07.b64',
+            'v21-final/chunks/08_09.b64','v21-final/chunks/10_11.b64','v21-final/chunks/12_13.b64','v21-final/chunks/14.b64',
+            'v21-final/chunks/15.b64','v21-final/chunks/16.b64','v21-final/chunks/17.b64','v21-final/chunks/18.b64'
+          )
+          $pieces = @()
+          foreach ($part in $ordered) {
+            $s = (Get-Content $part -Raw) -replace '\s',''
+            $invalid = [regex]::Matches($s,'[^A-Za-z0-9+/=]').Count
+            Write-Host "$part length=$($s.Length) invalid=$invalid"
+            $pieces += $s
+          }
+          $b64 = $pieces -join ''
+          Write-Host "Combined base64 length=$($b64.Length)"
+          $bytes = [Convert]::FromBase64String($b64)
+          [IO.File]::WriteAllBytes("$PWD\ASTERYON-v2.1-source.zip", $bytes)
+          $hash = (Get-FileHash "$PWD\ASTERYON-v2.1-source.zip" -Algorithm SHA256).Hash.ToLower()
+          Write-Host "Reconstructed SHA256=$hash"
+          if ($hash -ne '1da8b5af54c658153e9a5e0d98cfda2418371bef732942a2b1d902ef1f4f5558') { throw "Source checksum mismatch: $hash" }
           New-Item -ItemType Directory -Force app | Out-Null
-          Expand-Archive $source app -Force
+          Expand-Archive "$PWD\ASTERYON-v2.1-source.zip" app -Force
           New-Item -ItemType Directory -Force app/desktop | Out-Null
           Copy-Item v21-final/main.cjs app/desktop/main.cjs -Force
           Set-Location app
