@@ -72,14 +72,12 @@ if (-not (Test-Path app/package.json)) { throw 'package.json missing after recov
 if (-not (Test-Path app/src/App.tsx)) { throw 'src/App.tsx missing after recovery' }
 if (-not (Test-Path app/src/editor/TemplatesPanel.tsx)) { throw 'TemplatesPanel.tsx missing after recovery' }
 
-# Restaura importação do catálogo no painel.
 $catalogPath = 'app/src/editor/CatalogPanel.tsx'
 $catalog = Get-Content $catalogPath -Raw
 $catalog = $catalog.Replace("import { useEditor } from './store';", "import { useEditor } from './store';`nimport { CatalogImportPanel } from '../cloud/CatalogImportPanel';")
 $catalog = $catalog.Replace("        <div className=\"relative\">`n          <Search size={13}", "        <CatalogImportPanel />`n        <div className=\"relative\">`n          <Search size={13}")
 Set-Content $catalogPath $catalog -Encoding UTF8
 
-# Torna a altura da página ajustável pela borda inferior.
 $canvasPath = 'app/src/editor/Canvas.tsx'
 $canvas = Get-Content $canvasPath -Raw
 $canvas = $canvas.Replace("import { getResponsiveRect, responsivePatch } from './utils';", "import { getResponsiveRect, responsivePatch } from './utils';`nimport { PageResizeHandle } from '../cloud/PageResizeHandle';")
@@ -87,14 +85,18 @@ $canvas = $canvas.Replace("const effectivePageHeight = Math.max(pageRect.height,
 $canvas = $canvas.Replace("        {!state.previewMode && displayPage && Array.from", "        {page && !state.previewMode && <PageResizeHandle page={page} pageRect={pageRect} effectivePageHeight={effectivePageHeight} />}`n`n        {!state.previewMode && displayPage && Array.from")
 Set-Content $canvasPath $canvas -Encoding UTF8
 
-# Adiciona configuração de função aos botões.
 $propertiesPath = 'app/src/editor/PropertiesPanel.tsx'
 $properties = Get-Content $propertiesPath -Raw
 $properties = $properties.Replace("} from 'lucide-react';", "} from 'lucide-react';`nimport { ButtonActionEditor } from '../cloud/ButtonActionEditor';")
-$properties = $properties.Replace("      {mode === 'professional' && (`n        <>", "      <ButtonActionEditor node={node} />`n      {mode === 'professional' && (`n        <>")
+$buttonSizeBlock = @'
+      <Row label="Tamanho">
+        <Slider value={(s.fontSize as number) || 14} min={8} max={32} onChange={(v) => updateStyle('fontSize', v)} suffix="px" />
+      </Row>
+'@
+if (-not $properties.Contains($buttonSizeBlock)) { throw 'Bloco de tamanho do botão não encontrado em PropertiesPanel.tsx' }
+$properties = $properties.Replace($buttonSizeBlock, $buttonSizeBlock + "      <ButtonActionEditor node={node} />`n")
 Set-Content $propertiesPath $properties -Encoding UTF8
 
-# Centraliza corretamente o texto dos botões nos templates.
 $contentPath = 'app/src/editor/nodeContent.tsx'
 $content = Get-Content $contentPath -Raw
 $oldTextBlock = @'
