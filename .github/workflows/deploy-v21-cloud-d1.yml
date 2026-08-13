@@ -45,8 +45,12 @@ jobs:
           Remove-Item app/src/cloud/ActionBridge.tsx -Force -ErrorAction SilentlyContinue
           Remove-Item app/package-lock.json -Force -ErrorAction SilentlyContinue
 
-          git apply --directory=app --recount cloud-overlay/patches/saas-store.patch
-          git apply --directory=app --recount cloud-overlay/patches/saas-toolbar.patch
+          foreach ($patchPath in @('cloud-overlay/patches/saas-store.patch','cloud-overlay/patches/saas-toolbar.patch')) {
+            $patchText = [IO.File]::ReadAllText($patchPath).Replace("`r`n", "`n")
+            [IO.File]::WriteAllText($patchPath, $patchText, [Text.UTF8Encoding]::new($false))
+          }
+          git apply --directory=app --recount --whitespace=nowarn cloud-overlay/patches/saas-store.patch
+          git apply --directory=app --recount --whitespace=nowarn cloud-overlay/patches/saas-toolbar.patch
 
           $canvasPath = 'app/src/editor/Canvas.tsx'
           $canvas = Get-Content $canvasPath -Raw
