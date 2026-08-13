@@ -1,0 +1,115 @@
++  const viewportHeight = state.device === 'desktop' ? 900 : state.device === 'tablet' ? 1112 : 844;
++  const pageRect = page ? getResponsiveRect(page, state.device) : { x: 0, y: 0, width: 1440, height: 5200 };
++
++  const contentBottom = (() => {
++    if (!page?.children?.length) return 0;
++    let bottom = 0;
++    const walk = (nodes: typeof state.nodes, ox = 0, oy = 0) => {
++      for (const node of nodes) {
++        const r = getResponsiveRect(node, state.device);
++        const ax = ox + r.x;
++        const ay = oy + r.y;
++        bottom = Math.max(bottom, ay + r.height);
++        if (node.children?.length) walk(node.children, ax, ay);
++      }
++    };
++    walk(page.children);
++    return bottom;
++  })();
++
++  const effectivePageHeight = Math.max(pageRect.height, contentBottom + 480, viewportHeight * 2);
+ 
+   const screenToCanvas = useCallback(
+     (screenX: number, screenY: number) => {
+@@ -29,6 +49,30 @@ export function Canvas({ guides, setGuides }: CanvasProps) {
+     [state.pan, state.zoom]
+   );
+ 
++  useEffect(() => {
++    if (!page || state.previewMode) return;
++    if (page.props?.autoExtend === false) return;
++    if (effectivePageHeight <= pageRect.height + 4) return;
++    dispatch({
++      type: 'UPDATE_NODE',
++      id: page.id,
++      changes: responsivePatch(page, state.device, { height: Math.ceil(effectivePageHeight / 100) * 100 }),
++      skipHistory: true,
++    });
++  }, [page, pageRect.height, effectivePageHeight, state.device, state.previewMode, dispatch]);
++
++  const displayPage = page
++    ? state.device === 'desktop'
++      ? { ...page, height: effectivePageHeight }
++      : {
++          ...page,
++          responsive: {
++            ...(page.responsive || {}),
++            [state.device]: { ...pageRect, height: effectivePageHeight },
++          },
++        }
++    : null;
++
+   const onPointerDown = useCallback(
+     (e: React.PointerEvent) => {
+       if (state.previewMode) return;
+@@ -239,10 +283,19 @@ export function Canvas({ guides, setGuides }: CanvasProps) {
+           transformOrigin: '0 0',
+         }}
+       >
+-        {page && (
+-          <NodeRenderer node={page} parentId={null} isAncestorSelected={false} guides={guides} setGuides={setGuides} />
++        {displayPage && (
++          <NodeRenderer node={displayPage} parentId={null} isAncestorSelected={false} guides={guides} setGuides={setGuides} />
+         )}
+ 
++        {!state.previewMode && displayPage && Array.from({ length: Math.max(0, Math.ceil(effectivePageHeight / viewportHeight) - 1) }).map((_, index) => {
++          const y = (index + 1) * viewportHeight;
++          return (
++            <div key={`fold-${index}`} style={{ position: 'absolute', left: 0, top: y, width: pageRect.width, height: 0, borderTop: '1px dashed rgba(14,165,233,0.28)', pointerEvents: 'none', zIndex: 900 }}>
++              <span style={{ position: 'absolute', right: 10, top: -18, fontSize: 10, color: 'rgba(14,165,233,0.65)', background: 'rgba(24,24,27,0.84)', padding: '2px 6px', borderRadius: 4 }}>Dobra {index + 2} · {y}px</span>
++            </div>
++          );
++        })}
++
+         {guideLines.map((g, i) => (
+           <div
+             key={`guide-${i}`}
+@@ -323,6 +376,8 @@ export function Canvas({ guides, setGuides }: CanvasProps) {
+           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M12 5v14"/></svg>
+         </button>
+         <div className="w-px h-4 bg-zinc-700" />
++        <span className="text-zinc-500">{Math.round(pageRect.width)}px × página contínua · dobra {viewportHeight}px</span>
++        <div className="w-px h-4 bg-zinc-700" />
+         <span className="text-zinc-500">Alt+arrastar para mover · Ctrl+rolagem para zoom</span>
+       </div>
+     </div>
+diff --git a/src/editor/ElementsPanel.tsx b/src/editor/ElementsPanel.tsx
+index 9bbd0cd..9010b7b 100644
+--- a/src/editor/ElementsPanel.tsx
++++ b/src/editor/ElementsPanel.tsx
+@@ -96,7 +96,7 @@ export function ElementsPanel() {
+ 
+ function ElementButton({ type, onClick, large = false }: { type: NodeType; onClick: () => void; large?: boolean }) {
+   const def = ELEMENT_REGISTRY[type];
+-  const Icon = (LucideIcons as Record<string, React.ComponentType<{ size?: number; className?: string }>>)[def.icon] || LucideIcons.Square;
++  const Icon = (LucideIcons as unknown as Record<string, React.ComponentType<{ size?: number; className?: string }>>)[def.icon] || LucideIcons.Square;
+   return (
+     <button
+       onClick={onClick}
+diff --git a/src/editor/LayersPanel.tsx b/src/editor/LayersPanel.tsx
+index 64ed718..ebe149f 100644
+--- a/src/editor/LayersPanel.tsx
++++ b/src/editor/LayersPanel.tsx
+@@ -16,8 +16,8 @@ import {
+   ArrowDown,
+   ChevronsUp,
+   ChevronsDown,
+-  Agrupar,
+-  Desagrupar,
++  Group as Agrupar,
++  Ungroup as Desagrupar,
+ } from 'lucide-react';
+ 
+ function getIcon(type: string) {
+diff --git a/src/editor/TemplatesPanel.tsx b/src/editor/TemplatesPanel.tsx
+new file mode 100644
