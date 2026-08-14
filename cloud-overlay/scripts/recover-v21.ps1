@@ -74,8 +74,8 @@ if (-not (Test-Path app/src/editor/TemplatesPanel.tsx)) { throw 'TemplatesPanel.
 
 $catalogPath = 'app/src/editor/CatalogPanel.tsx'
 $catalog = Get-Content $catalogPath -Raw
-$catalog = $catalog.Replace("import { useEditor } from './store';", "import { useEditor } from './store';`nimport { CatalogImportPanel } from '../cloud/CatalogImportPanel';")
-$catalog = $catalog.Replace('        <div className="relative">', '        <CatalogImportPanel />' + "`n" + '        <div className="relative">')
+$catalog = $catalog.Replace("import { useEditor } from './store';", "import { useEditor } from './store';`nimport { CatalogImportPanel } from '../cloud/CatalogImportPanel';`nimport { ProductsPanel } from '../cloud/ProductsPanel';")
+$catalog = $catalog.Replace('        <div className="relative">', '        <ProductsPanel />' + "`n" + '        <CatalogImportPanel />' + "`n" + '        <div className="relative">')
 Set-Content $catalogPath $catalog -Encoding UTF8
 
 $canvasPath = 'app/src/editor/Canvas.tsx'
