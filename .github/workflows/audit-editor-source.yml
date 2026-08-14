@@ -1,8 +1,9 @@
-name: Audit recovered ASTERYON editor sources
+name: Audit recovered ASTERYON production sources
 
 on:
   push:
     branches: [release/v2.1-cloud-d1-final]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -10,7 +11,7 @@ permissions:
 jobs:
   audit-source:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,29 +20,63 @@ jobs:
       - name: Recover editor source
         shell: pwsh
         run: ./cloud-overlay/scripts/recover-v21.ps1
-      - name: Apply current overlay files used by production
+      - name: Apply exact production overlay
         shell: pwsh
         run: |
+          Copy-Item cloud-overlay/package.json app/package.json -Force
           Copy-Item cloud-overlay/src/App.tsx app/src/App.tsx -Force
+          New-Item -ItemType Directory -Force app/src/cloud, app/src/public, app/worker, app/migrations, app/scripts | Out-Null
+          Copy-Item cloud-overlay/src/cloud/* app/src/cloud/ -Force
+          Copy-Item cloud-overlay/src/public/* app/src/public/ -Force
           Copy-Item cloud-overlay/src/editor/TemplatesPanel.tsx app/src/editor/TemplatesPanel.tsx -Force
           Copy-Item cloud-overlay/src/catalog/store.tsx app/src/catalog/store.tsx -Force
-      - name: Upload editor source audit
+          Copy-Item cloud-overlay/worker/* app/worker/ -Force
+          Copy-Item cloud-overlay/migrations/* app/migrations/ -Force
+          Copy-Item cloud-overlay/scripts/make-wrangler.mjs app/scripts/make-wrangler.mjs -Force
+          Remove-Item app/src/cloud/ActionBridge.tsx -Force -ErrorAction SilentlyContinue
+          Remove-Item app/package-lock.json -Force -ErrorAction SilentlyContinue
+
+          $workerUtilPath = 'app/worker/util.ts'
+          $workerUtil = Get-Content $workerUtilPath -Raw
+          $workerUtil = $workerUtil.Replace('iterations=210000', 'iterations=100000')
+          Set-Content $workerUtilPath $workerUtil -Encoding UTF8
+
+          foreach ($patchPath in @('cloud-overlay/patches/saas-store.patch','cloud-overlay/patches/saas-toolbar.patch')) {
+            $patchText = [IO.File]::ReadAllText($patchPath).Replace("`r`n", "`n")
+            [IO.File]::WriteAllText($patchPath, $patchText, [Text.UTF8Encoding]::new($false))
+          }
+          git apply --directory=app --recount --whitespace=nowarn cloud-overlay/patches/saas-store.patch
+          git apply --directory=app --recount --whitespace=nowarn cloud-overlay/patches/saas-toolbar.patch
+
+          $canvasPath = 'app/src/editor/Canvas.tsx'
+          $canvas = Get-Content $canvasPath -Raw
+          $canvas = $canvas.Replace("const { state, dispatch, getNode } = useEditor();", "const { state, dispatch, getNode, saveDraft } = useEditor();")
+          $canvas = $canvas.Replace("dispatch({ type: 'SAVE_DRAFT' });", "void saveDraft();")
+          $canvas = $canvas.Replace("state.device, dispatch, getNode]);", "state.device, dispatch, getNode, saveDraft]);")
+          Set-Content $canvasPath $canvas -Encoding UTF8
+
+          $historyPath = 'app/src/editor/HistoryPanel.tsx'
+          $history = Get-Content $historyPath -Raw
+          $history = $history.Replace("const { state, dispatch } = useEditor();", "const { state, dispatch, createSnapshot } = useEditor();")
+          $history = $history.Replace("onClick={() => dispatch({ type: 'CREATE_SNAPSHOT', label: 'Ponto manual' })}", "onClick={() => void createSnapshot('Ponto manual')}")
+          Set-Content $historyPath $history -Encoding UTF8
+      - name: Install and validate reconstructed production app
+        working-directory: app
+        shell: pwsh
+        run: |
+          npm install --no-audit --no-fund
+          npm run typecheck
+          npm run build
+      - name: Upload complete production source audit
         uses: actions/upload-artifact@v4
         with:
-          name: ASTERYON-editor-source-audit
+          name: ASTERYON-production-source-audit
           path: |
-            app/src/editor/Canvas.tsx
-            app/src/editor/PropertiesPanel.tsx
-            app/src/editor/ElementsPanel.tsx
-            app/src/editor/NodeRenderer.tsx
-            app/src/editor/nodeContent.tsx
-            app/src/editor/CatalogPanel.tsx
-            app/src/editor/types.ts
-            app/src/editor/registry.ts
-            app/src/editor/templates.ts
-            app/src/editor/store.tsx
-            app/src/catalog/types.ts
-            app/src/catalog/seed.ts
-            app/src/catalog/editorNodes.ts
-            app/src/App.tsx
+            app/src/**
+            app/worker/**
+            app/migrations/**
+            app/scripts/**
+            app/package.json
+            app/tsconfig*.json
+            app/vite.config.*
           if-no-files-found: error
