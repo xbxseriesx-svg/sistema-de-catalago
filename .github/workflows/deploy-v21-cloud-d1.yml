@@ -72,6 +72,10 @@ jobs:
           $history = $history.Replace("onClick={() => dispatch({ type: 'CREATE_SNAPSHOT', label: 'Ponto manual' })}", "onClick={() => void createSnapshot('Ponto manual')}")
           Set-Content $historyPath $history -Encoding UTF8
 
+      - name: Aplicar correções funcionais V5
+        shell: pwsh
+        run: ./cloud-overlay/scripts/apply-functional-v5.ps1
+
       - name: Validar segredos Cloudflare
         shell: pwsh
         run: |
@@ -89,6 +93,21 @@ jobs:
       - name: Build do Editor e Portal Público
         working-directory: app
         run: npm run build
+
+      - name: Auditoria funcional obrigatória antes do deploy
+        shell: pwsh
+        run: |
+          function HasText([string]$path,[string]$text) { return [IO.File]::ReadAllText($path).Contains($text) }
+          if (-not (HasText 'app/src/editor/Toolbar.tsx' '1080p / Full HD')) { throw '1080p ausente no build final' }
+          if (-not (HasText 'app/src/editor/Toolbar.tsx' '2K / QHD')) { throw '2K ausente no build final' }
+          if (-not (HasText 'app/src/editor/Toolbar.tsx' '4K / UHD')) { throw '4K ausente no build final' }
+          if (-not (HasText 'app/src/editor/PropertiesPanel.tsx' 'Salvar ajuste atual em todos os modos')) { throw 'Ajuste todos os modos ausente' }
+          if (-not (HasText 'app/src/editor/store.tsx' 'persistCloudDraft')) { throw 'Autosave D1 ausente' }
+          if (-not (HasText 'app/src/App.tsx' 'Marketing visível no modo de edição')) { throw 'Marketing ausente no modo de edição' }
+          if (-not (HasText 'app/src/public/PublicMarketingV3.tsx' 'object-contain')) { throw 'Carrossel sem object-contain' }
+          if (HasText 'app/src/public/PublicMarketingV3.tsx' 'object-cover') { throw 'Zoom/corte do Marketing ainda presente' }
+          if (-not (HasText 'app/src/public/PublicSiteV3.tsx' 'getResponsiveRect(live,device)')) { throw 'Responsividade pública ausente' }
+          Write-Host 'Guardas funcionais obrigatórias aprovadas.'
 
       - name: Localizar ou criar D1 sistema-de-catalago
         shell: pwsh
@@ -139,12 +158,37 @@ jobs:
 
           "Worker: sistema-de-catalago" | Set-Content deploy-info/DEPLOY.txt
           "D1: sistema-de-catalago ($env:D1_DATABASE_ID)" | Add-Content deploy-info/DEPLOY.txt
-          "Editor: v2.1 SaaS" | Add-Content deploy-info/DEPLOY.txt
-          "Persistencia: D1 para rascunhos, snapshots, modelos, catálogo e versões" | Add-Content deploy-info/DEPLOY.txt
-          "Fluxo: Editor -> Rascunho -> Preview -> Publicar -> Site Público" | Add-Content deploy-info/DEPLOY.txt
+          "Editor: v2.1 SaaS + correções funcionais V5" | Add-Content deploy-info/DEPLOY.txt
+          "Persistencia: D1 com autosave serializado para rascunhos, snapshots, modelos, catálogo e versões" | Add-Content deploy-info/DEPLOY.txt
+          "Responsividade: Desktop, Tablet, Mobile, 1080p, 2K e 4K" | Add-Content deploy-info/DEPLOY.txt
+          "Marketing: visível na edição e preview, carrossel sem crop/zoom" | Add-Content deploy-info/DEPLOY.txt
           "Desktop/EXE: DESATIVADO" | Add-Content deploy-info/DEPLOY.txt
           "R2: DESATIVADO" | Add-Content deploy-info/DEPLOY.txt
           "Bootstrap token: $bootstrapStatus" | Add-Content deploy-info/DEPLOY.txt
+
+      - name: Smoke test do Worker e D1 após deploy
+        shell: pwsh
+        run: |
+          $base = 'https://sistema-de-catalago.paulohenriquepmelo.workers.dev'
+          $checks = @(
+            @{ Path='/api/health'; Required='"database":"D1"' },
+            @{ Path='/api/auth/status'; Required='"ok":true' },
+            @{ Path='/api/public/catalog'; Required='"ok":true' },
+            @{ Path='/api/public/brands'; Required='"ok":true' },
+            @{ Path='/api/public/marketing'; Required='"ok":true' }
+          )
+          foreach ($check in $checks) {
+            $url = "$base$($check.Path)?qa=$(Get-Date -Format yyyyMMddHHmmssfff)"
+            $response = Invoke-WebRequest -Uri $url -Method Get -UseBasicParsing -TimeoutSec 30
+            if ($response.StatusCode -ne 200) { throw "Smoke falhou em $($check.Path): HTTP $($response.StatusCode)" }
+            if (-not $response.Content.Contains($check.Required)) { throw "Smoke falhou em $($check.Path): conteúdo inesperado" }
+            Write-Host "OK $($check.Path)"
+          }
+          $home = Invoke-WebRequest -Uri "$base/?qa=$(Get-Date -Format yyyyMMddHHmmssfff)" -Method Get -UseBasicParsing -TimeoutSec 30
+          if ($home.StatusCode -ne 200 -or -not $home.Content.Contains('<div id="root">')) { throw 'Portal público não carregou o HTML do app' }
+          $admin = Invoke-WebRequest -Uri "$base/admin?qa=$(Get-Date -Format yyyyMMddHHmmssfff)" -Method Get -UseBasicParsing -TimeoutSec 30
+          if ($admin.StatusCode -ne 200 -or -not $admin.Content.Contains('<div id="root">')) { throw 'Editor /admin não carregou o HTML do app' }
+          Write-Host 'Smoke pós-deploy concluído.'
 
       - name: Informações do deploy
         uses: actions/upload-artifact@v4
