@@ -14,7 +14,6 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -89,54 +88,45 @@ jobs:
         shell: pwsh
         run: |
           $required = @(
-            'app/src/App.tsx',
-            'app/src/editor/Toolbar.tsx',
-            'app/src/editor/Canvas.tsx',
-            'app/src/editor/PropertiesPanel.tsx',
-            'app/src/editor/store.tsx',
-            'app/src/cloud/ProductsPanel.tsx',
-            'app/src/cloud/BrandsPanel.tsx',
-            'app/src/cloud/MarketingPanel.tsx',
-            'app/src/cloud/OffersPanel.tsx',
-            'app/src/cloud/HierarchyPanel.tsx',
-            'app/src/cloud/ButtonActionEditor.tsx',
-            'app/src/public/PublicSiteV3.tsx',
-            'app/src/public/PublicCatalogV3.tsx',
-            'app/src/public/PublicMarketingV3.tsx',
-            'app/worker/media.ts',
-            'app/worker/management.ts'
+            'app/src/App.tsx','app/src/editor/Toolbar.tsx','app/src/editor/Canvas.tsx',
+            'app/src/editor/PropertiesPanel.tsx','app/src/editor/store.tsx',
+            'app/src/cloud/ProductsPanel.tsx','app/src/cloud/BrandsPanel.tsx','app/src/cloud/MarketingPanel.tsx',
+            'app/src/cloud/OffersPanel.tsx','app/src/cloud/HierarchyPanel.tsx','app/src/cloud/ButtonActionEditor.tsx',
+            'app/src/public/PublicSiteV3.tsx','app/src/public/PublicCatalogV3.tsx','app/src/public/PublicMarketingV3.tsx',
+            'app/worker/media.ts','app/worker/management.ts'
           )
           foreach ($file in $required) { if (-not (Test-Path $file)) { throw "Arquivo obrigatório ausente: $file" } }
 
-          if (-not (Select-String app/src/editor/Toolbar.tsx -SimpleMatch '1080p / Full HD' -Quiet)) { throw 'Resolução 1080p ausente' }
-          if (-not (Select-String app/src/editor/Toolbar.tsx -SimpleMatch '2K / QHD' -Quiet)) { throw 'Resolução 2K ausente' }
-          if (-not (Select-String app/src/editor/Toolbar.tsx -SimpleMatch '4K / UHD' -Quiet)) { throw 'Resolução 4K ausente' }
-          if (-not (Select-String app/src/editor/Canvas.tsx -SimpleMatch "pageRect.width >= 3840 ? 2160" -Quiet)) { throw 'Dobra 4K incorreta' }
-          if (-not (Select-String app/src/editor/Canvas.tsx -SimpleMatch "pageRect.width >= 2560 ? 1440" -Quiet)) { throw 'Dobra 2K incorreta' }
-          if (-not (Select-String app/src/editor/PropertiesPanel.tsx -SimpleMatch 'Salvar ajuste atual em todos os modos' -Quiet)) { throw 'Salvar em todos os modos ausente' }
-          if (-not (Select-String app/src/editor/PropertiesPanel.tsx -SimpleMatch "if (key === 'desktop')" -Quiet)) { throw 'Correção do ajuste Desktop ausente' }
-          if (-not (Select-String app/src/editor/store.tsx -SimpleMatch 'persistCloudDraft' -Quiet)) { throw 'Persistência serializada D1 ausente' }
-          if (-not (Select-String app/src/editor/store.tsx -SimpleMatch 'lastPersistedNodesRef' -Quiet)) { throw 'Controle de autosave D1 ausente' }
-          if (-not (Select-String app/src/editor/store.tsx -SimpleMatch '850' -Quiet)) { throw 'Autosave do editor ausente' }
-          if (-not (Select-String app/src/App.tsx -SimpleMatch 'Marketing visível no modo de edição' -Quiet)) { throw 'Marketing não aparece no editor' }
-          if (-not (Select-String app/src/public/PublicMarketingV3.tsx -SimpleMatch 'object-contain' -Quiet)) { throw 'Mídia sem ajuste contain' }
-          if (Select-String app/src/public/PublicMarketingV3.tsx -SimpleMatch 'object-cover' -Quiet) { throw 'Ainda existe zoom/corte object-cover no Marketing' }
-          if (-not (Select-String app/src/public/PublicSiteV3.tsx -SimpleMatch 'getResponsiveRect(live,device)' -Quiet)) { throw 'Site público não aplica responsividade dos elementos' }
-          if (-not (Select-String app/src/public/PublicSiteV3.tsx -SimpleMatch "viewport<=767?'mobile':viewport<=1100?'tablet':'desktop'" -Quiet)) { throw 'Detecção responsiva pública ausente' }
-          if (-not (Select-String app/src/cloud/MarketingPanel.tsx -SimpleMatch 'D1 OK' -Quiet)) { throw 'Confirmação real de Marketing no D1 ausente' }
-          if (-not (Select-String app/src/cloud/MarketingPanel.tsx -SimpleMatch 'PublicMarketingV3' -Quiet)) { throw 'Prévia real de Marketing ausente' }
-          if (-not (Select-String app/worker/media.ts -SimpleMatch 'sha256' -Quiet)) { throw 'Deduplicação de mídia ausente' }
-          if (-not (Select-String app/src/cloud/ProductsPanel.tsx -SimpleMatch 'Departamento → Seção → Categoria → Produto' -Quiet)) { throw 'Gestão de produtos/hierarquia ausente' }
-          if (-not (Select-String app/src/cloud/ButtonActionEditor.tsx -SimpleMatch 'Informações do produto' -Quiet)) { throw 'Ações de botão/produto ausentes' }
-
+          function HasText([string]$path,[string]$text) { return [IO.File]::ReadAllText($path).Contains($text) }
+          if (-not (HasText 'app/src/editor/Toolbar.tsx' '1080p / Full HD')) { throw 'Resolução 1080p ausente' }
+          if (-not (HasText 'app/src/editor/Toolbar.tsx' '2K / QHD')) { throw 'Resolução 2K ausente' }
+          if (-not (HasText 'app/src/editor/Toolbar.tsx' '4K / UHD')) { throw 'Resolução 4K ausente' }
+          if (-not (HasText 'app/src/editor/Canvas.tsx' 'pageRect.width >= 3840 ? 2160')) { throw 'Dobra 4K incorreta' }
+          if (-not (HasText 'app/src/editor/Canvas.tsx' 'pageRect.width >= 2560 ? 1440')) { throw 'Dobra 2K incorreta' }
+          if (-not (HasText 'app/src/editor/PropertiesPanel.tsx' 'Salvar ajuste atual em todos os modos')) { throw 'Salvar em todos os modos ausente' }
+          if (-not (HasText 'app/src/editor/PropertiesPanel.tsx' "if (key === 'desktop')")) { throw 'Correção do ajuste Desktop ausente' }
+          if (-not (HasText 'app/src/editor/store.tsx' 'persistCloudDraft')) { throw 'Persistência serializada D1 ausente' }
+          if (-not (HasText 'app/src/editor/store.tsx' 'lastPersistedNodesRef')) { throw 'Controle de autosave D1 ausente' }
+          if (-not (HasText 'app/src/editor/store.tsx' '850')) { throw 'Autosave do editor ausente' }
+          if (-not (HasText 'app/src/App.tsx' 'Marketing visível no modo de edição')) { throw 'Marketing não aparece no editor' }
+          if (-not (HasText 'app/src/public/PublicMarketingV3.tsx' 'object-contain')) { throw 'Mídia sem ajuste contain' }
+          if (HasText 'app/src/public/PublicMarketingV3.tsx' 'object-cover') { throw 'Ainda existe zoom/corte object-cover no Marketing' }
+          if (-not (HasText 'app/src/public/PublicSiteV3.tsx' 'getResponsiveRect(live,device)')) { throw 'Site público não aplica responsividade dos elementos' }
+          if (-not (HasText 'app/src/public/PublicSiteV3.tsx' "viewport<=767?'mobile':viewport<=1100?'tablet':'desktop'")) { throw 'Detecção responsiva pública ausente' }
+          if (-not (HasText 'app/src/cloud/MarketingPanel.tsx' 'D1 OK')) { throw 'Confirmação real de Marketing no D1 ausente' }
+          if (-not (HasText 'app/src/cloud/MarketingPanel.tsx' 'PublicMarketingV3')) { throw 'Prévia real de Marketing ausente' }
+          if (-not (HasText 'app/worker/media.ts' 'sha256')) { throw 'Deduplicação de mídia ausente' }
+          if (-not (HasText 'app/src/cloud/ProductsPanel.tsx' 'Departamento → Seção → Categoria → Produto')) { throw 'Gestão de produtos/hierarquia ausente' }
+          if (-not (HasText 'app/src/cloud/ButtonActionEditor.tsx' 'Informações do produto')) { throw 'Ações de botão/produto ausentes' }
           Write-Host 'Auditoria funcional V5 concluída sem falhas.'
 
       - name: Procurar regressões e placeholders perigosos
         shell: pwsh
         run: |
-          $patterns = @('TODO: implementar','FIXME:','throw new Error("Not implemented','alert("TODO')
+          $patterns = @('TODO: implementar','FIXME:','Not implemented','alert("TODO')
+          $files = Get-ChildItem app/src,app/worker -Recurse -File -Include *.ts,*.tsx
           foreach ($pattern in $patterns) {
-            $hits = Get-ChildItem app/src,app/worker -Recurse -File -Include *.ts,*.tsx | Select-String -SimpleMatch $pattern
+            $hits = $files | Select-String -SimpleMatch -Pattern $pattern
             if ($hits) {
               $hits | ForEach-Object { Write-Host $_.Path ':' $_.LineNumber $_.Line }
               throw "Placeholder funcional encontrado: $pattern"
