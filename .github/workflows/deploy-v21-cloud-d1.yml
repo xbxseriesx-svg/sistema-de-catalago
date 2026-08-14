@@ -184,10 +184,10 @@ jobs:
             if (-not $response.Content.Contains($check.Required)) { throw "Smoke falhou em $($check.Path): conteúdo inesperado" }
             Write-Host "OK $($check.Path)"
           }
-          $home = Invoke-WebRequest -Uri "$base/?qa=$(Get-Date -Format yyyyMMddHHmmssfff)" -Method Get -UseBasicParsing -TimeoutSec 30
-          if ($home.StatusCode -ne 200 -or -not $home.Content.Contains('<div id="root">')) { throw 'Portal público não carregou o HTML do app' }
-          $admin = Invoke-WebRequest -Uri "$base/admin?qa=$(Get-Date -Format yyyyMMddHHmmssfff)" -Method Get -UseBasicParsing -TimeoutSec 30
-          if ($admin.StatusCode -ne 200 -or -not $admin.Content.Contains('<div id="root">')) { throw 'Editor /admin não carregou o HTML do app' }
+          $homeResponse = Invoke-WebRequest -Uri "$base/?qa=$(Get-Date -Format yyyyMMddHHmmssfff)" -Method Get -UseBasicParsing -TimeoutSec 30
+          if ($homeResponse.StatusCode -ne 200 -or -not $homeResponse.Content.Contains('<div id="root">')) { throw 'Portal público não carregou o HTML do app' }
+          $adminResponse = Invoke-WebRequest -Uri "$base/admin?qa=$(Get-Date -Format yyyyMMddHHmmssfff)" -Method Get -UseBasicParsing -TimeoutSec 30
+          if ($adminResponse.StatusCode -ne 200 -or -not $adminResponse.Content.Contains('<div id="root">')) { throw 'Editor /admin não carregou o HTML do app' }
           Write-Host 'Smoke pós-deploy concluído.'
 
       - name: Informações do deploy
