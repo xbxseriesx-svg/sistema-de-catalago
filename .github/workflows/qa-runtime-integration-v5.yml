@@ -86,36 +86,37 @@ jobs:
           npx --yes wrangler@4.68.0 d1 migrations apply sistema-de-catalago --local --config wrangler.deploy.jsonc
           "SDM_BOOTSTRAP_TOKEN=$env:QA_BOOTSTRAP_TOKEN" | Set-Content .dev.vars -Encoding utf8
 
-      - name: Iniciar Worker local
+      - name: Executar integração completa em Worker + D1 local
         working-directory: app
         shell: pwsh
         run: |
           $out = Join-Path $PWD 'wrangler-local.out.log'
           $err = Join-Path $PWD 'wrangler-local.err.log'
           $proc = Start-Process -FilePath 'npx.cmd' -ArgumentList @('--yes','wrangler@4.68.0','dev','--local','--ip','127.0.0.1','--port','8787','--config','wrangler.deploy.jsonc') -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
-          "WRANGLER_PID=$($proc.Id)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          $ready = $false
-          for ($i=0; $i -lt 60; $i++) {
-            Start-Sleep -Seconds 1
-            try {
-              $r = Invoke-WebRequest -Uri "$env:QA_BASE_URL/api/health" -UseBasicParsing -TimeoutSec 3
-              if ($r.StatusCode -eq 200) { $ready = $true; break }
-            } catch {}
-            if ($proc.HasExited) { break }
+          try {
+            $ready = $false
+            for ($i=0; $i -lt 60; $i++) {
+              Start-Sleep -Seconds 1
+              try {
+                $r = Invoke-WebRequest -Uri "$env:QA_BASE_URL/api/health" -UseBasicParsing -TimeoutSec 3
+                if ($r.StatusCode -eq 200) { $ready = $true; break }
+              } catch {}
+              if ($proc.HasExited) { break }
+            }
+            if (-not $ready) {
+              Write-Host '--- stdout ---'; if (Test-Path $out) { Get-Content $out -Tail 200 }
+              Write-Host '--- stderr ---'; if (Test-Path $err) { Get-Content $err -Tail 200 }
+              throw 'Worker local não iniciou a tempo.'
+            }
+            Write-Host "Worker local pronto em $env:QA_BASE_URL"
+            node scripts/qa-runtime-integration.mjs
+            if ($LASTEXITCODE -ne 0) {
+              Write-Host '--- stdout ---'; if (Test-Path $out) { Get-Content $out -Tail 200 }
+              Write-Host '--- stderr ---'; if (Test-Path $err) { Get-Content $err -Tail 200 }
+              throw "QA de integração retornou exit code $LASTEXITCODE"
+            }
           }
-          if (-not $ready) {
-            Write-Host '--- stdout ---'; if (Test-Path $out) { Get-Content $out -Tail 200 }
-            Write-Host '--- stderr ---'; if (Test-Path $err) { Get-Content $err -Tail 200 }
-            throw 'Worker local não iniciou a tempo.'
+          finally {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+            Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.ParentProcessId -eq $proc.Id } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
           }
-          Write-Host "Worker local pronto em $env:QA_BASE_URL"
-
-      - name: Executar integração completa das APIs e D1
-        working-directory: app
-        run: node scripts/qa-runtime-integration.mjs
-
-      - name: Encerrar Worker local
-        if: always()
-        shell: pwsh
-        run: |
-          if ($env:WRANGLER_PID) { Stop-Process -Id ([int]$env:WRANGLER_PID) -Force -ErrorAction SilentlyContinue }
