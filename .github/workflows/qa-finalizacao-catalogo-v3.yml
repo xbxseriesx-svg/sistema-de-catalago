@@ -2,7 +2,7 @@ name: QA Finalização Catálogo V3
 
 on:
   push:
-    branches: [feature/finalizacao-catalogo-v3]
+    branches: [feature/finalizacao-catalogo-v3, fix/marketing-functional-v4]
   workflow_dispatch:
 
 permissions:
@@ -61,7 +61,7 @@ jobs:
           $historyPath = 'app/src/editor/HistoryPanel.tsx'
           $history = Get-Content $historyPath -Raw
           $history = $history.Replace("const { state, dispatch } = useEditor();", "const { state, dispatch, createSnapshot } = useEditor();")
-          $history = $history.Replace("onClick={() => dispatch({ type: 'CREATE_SNAPSHOT', label: 'Ponto manual' })}", "onClick={() => void createSnapshot('Ponto manual')}")
+          $history = $history.Replace("onClick={() => dispatch({ type: 'CREATE_SNAPSHOT', label: 'Ponto manual' })}", "onClick={() => void createSnapshot('Ponto manual')")
           Set-Content $historyPath $history -Encoding UTF8
 
       - name: Instalar dependências
@@ -90,6 +90,7 @@ jobs:
             'app/src/cloud/ButtonActionEditor.tsx',
             'app/src/public/PublicSiteV3.tsx',
             'app/src/public/PublicCatalogV3.tsx',
+            'app/src/public/PublicMarketingV3.tsx',
             'app/worker/media.ts',
             'app/worker/management.ts',
             'app/migrations/0005_catalog_finalization.sql'
@@ -99,6 +100,9 @@ jobs:
           if (-not (Select-String app/src/cloud/ButtonActionEditor.tsx -Pattern 'Informações do produto' -Quiet)) { throw 'Ações contextuais de produto ausentes' }
           if (-not (Select-String app/src/cloud/BrandsPanel.tsx -Pattern 'Logotipo' -Quiet)) { throw 'Gerenciamento de logotipo de marca ausente' }
           if (-not (Select-String app/src/cloud/MarketingPanel.tsx -Pattern '1,5x' -Quiet)) { throw 'Velocidade 1,5x do carrossel ausente' }
+          if (-not (Select-String app/src/cloud/MarketingPanel.tsx -Pattern 'D1 OK' -Quiet)) { throw 'Confirmação de persistência de Marketing ausente' }
+          if (-not (Select-String app/src/cloud/MarketingPanel.tsx -Pattern 'PublicMarketingV3' -Quiet)) { throw 'Prévia real de Marketing ausente' }
+          if (-not (Select-String app/src/App.tsx -Pattern 'Prévia do Marketing salvo' -Quiet)) { throw 'Marketing ausente no Preview principal' }
           if (-not (Select-String app/worker/media.ts -Pattern 'sha256' -Quiet)) { throw 'Deduplicação de mídia ausente' }
           if (-not (Select-String app/src/public/PublicCatalogV3.tsx -Pattern 'Produtos de categorias diferentes nunca são misturados' -Quiet)) { throw 'Organização pública por categoria ausente' }
           Write-Host 'Guardas funcionais concluídos.'
