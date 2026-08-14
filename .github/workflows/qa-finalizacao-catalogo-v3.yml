@@ -1,0 +1,104 @@
+name: QA Finalização Catálogo V3
+
+on:
+  push:
+    branches: [feature/finalizacao-catalogo-v3]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Recuperar fonte exata do Editor v2.1
+        shell: pwsh
+        run: ./cloud-overlay/scripts/recover-v21.ps1
+
+      - name: Aplicar mesma camada usada no deploy
+        shell: pwsh
+        run: |
+          Copy-Item cloud-overlay/package.json app/package.json -Force
+          Copy-Item cloud-overlay/src/App.tsx app/src/App.tsx -Force
+          New-Item -ItemType Directory -Force app/src/cloud, app/src/public, app/worker, app/migrations, app/scripts | Out-Null
+          Copy-Item cloud-overlay/src/cloud/* app/src/cloud/ -Force
+          Copy-Item cloud-overlay/src/public/* app/src/public/ -Force
+          Copy-Item cloud-overlay/src/editor/TemplatesPanel.tsx app/src/editor/TemplatesPanel.tsx -Force
+          Copy-Item cloud-overlay/src/catalog/store.tsx app/src/catalog/store.tsx -Force
+          Copy-Item cloud-overlay/worker/* app/worker/ -Force
+          Copy-Item cloud-overlay/migrations/* app/migrations/ -Force
+          Copy-Item cloud-overlay/scripts/make-wrangler.mjs app/scripts/make-wrangler.mjs -Force
+          Remove-Item app/src/cloud/ActionBridge.tsx -Force -ErrorAction SilentlyContinue
+          Remove-Item app/package-lock.json -Force -ErrorAction SilentlyContinue
+
+          $workerUtilPath = 'app/worker/util.ts'
+          $workerUtil = Get-Content $workerUtilPath -Raw
+          $workerUtil = $workerUtil.Replace('iterations=210000', 'iterations=100000')
+          Set-Content $workerUtilPath $workerUtil -Encoding UTF8
+
+          foreach ($patchPath in @('cloud-overlay/patches/saas-store.patch','cloud-overlay/patches/saas-toolbar.patch')) {
+            $patchText = [IO.File]::ReadAllText($patchPath).Replace("`r`n", "`n")
+            [IO.File]::WriteAllText($patchPath, $patchText, [Text.UTF8Encoding]::new($false))
+          }
+          git apply --directory=app --recount --whitespace=nowarn cloud-overlay/patches/saas-store.patch
+          git apply --directory=app --recount --whitespace=nowarn cloud-overlay/patches/saas-toolbar.patch
+
+          $canvasPath = 'app/src/editor/Canvas.tsx'
+          $canvas = Get-Content $canvasPath -Raw
+          $canvas = $canvas.Replace("const { state, dispatch, getNode } = useEditor();", "const { state, dispatch, getNode, saveDraft } = useEditor();")
+          $canvas = $canvas.Replace("dispatch({ type: 'SAVE_DRAFT' });", "void saveDraft();")
+          $canvas = $canvas.Replace("state.device, dispatch, getNode]);", "state.device, dispatch, getNode, saveDraft]);")
+          Set-Content $canvasPath $canvas -Encoding UTF8
+
+          $historyPath = 'app/src/editor/HistoryPanel.tsx'
+          $history = Get-Content $historyPath -Raw
+          $history = $history.Replace("const { state, dispatch } = useEditor();", "const { state, dispatch, createSnapshot } = useEditor();")
+          $history = $history.Replace("onClick={() => dispatch({ type: 'CREATE_SNAPSHOT', label: 'Ponto manual' })}", "onClick={() => void createSnapshot('Ponto manual')}")
+          Set-Content $historyPath $history -Encoding UTF8
+
+      - name: Instalar dependências
+        working-directory: app
+        run: npm install --no-audit --no-fund
+
+      - name: TypeScript
+        working-directory: app
+        run: npm run typecheck
+
+      - name: Build do editor e site público
+        working-directory: app
+        run: npm run build
+
+      - name: Bundle do Worker
+        working-directory: app
+        run: npx --yes esbuild worker/index.ts --bundle --format=esm --platform=browser --target=es2022 --outfile=worker-qa.mjs
+
+      - name: Guardas funcionais da finalização
+        shell: pwsh
+        run: |
+          $required = @(
+            'app/src/cloud/ProductsPanel.tsx',
+            'app/src/cloud/BrandsPanel.tsx',
+            'app/src/cloud/MarketingPanel.tsx',
+            'app/src/cloud/ButtonActionEditor.tsx',
+            'app/src/public/PublicSiteV3.tsx',
+            'app/src/public/PublicCatalogV3.tsx',
+            'app/worker/media.ts',
+            'app/worker/management.ts',
+            'app/migrations/0005_catalog_finalization.sql'
+          )
+          foreach ($file in $required) { if (-not (Test-Path $file)) { throw "Arquivo obrigatório ausente: $file" } }
+          if (-not (Select-String app/src/cloud/ProductsPanel.tsx -Pattern 'Departamento → Seção → Categoria → Produto' -Quiet)) { throw 'Hierarquia obrigatória ausente em Produtos' }
+          if (-not (Select-String app/src/cloud/ButtonActionEditor.tsx -Pattern 'Informações do produto' -Quiet)) { throw 'Ações contextuais de produto ausentes' }
+          if (-not (Select-String app/src/cloud/BrandsPanel.tsx -Pattern 'Logotipo' -Quiet)) { throw 'Gerenciamento de logotipo de marca ausente' }
+          if (-not (Select-String app/src/cloud/MarketingPanel.tsx -Pattern '1,5x' -Quiet)) { throw 'Velocidade 1,5x do carrossel ausente' }
+          if (-not (Select-String app/worker/media.ts -Pattern 'sha256' -Quiet)) { throw 'Deduplicação de mídia ausente' }
+          if (-not (Select-String app/src/public/PublicCatalogV3.tsx -Pattern 'Produtos de categorias diferentes nunca são misturados' -Quiet)) { throw 'Organização pública por categoria ausente' }
+          Write-Host 'Guardas funcionais concluídos.'
