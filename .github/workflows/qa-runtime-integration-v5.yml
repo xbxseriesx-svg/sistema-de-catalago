@@ -1,0 +1,121 @@
+name: QA Runtime D1 Integracao V5
+
+on:
+  push:
+    branches: [fix/full-functional-audit-v5]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runtime-integration:
+    runs-on: windows-latest
+    timeout-minutes: 35
+    env:
+      QA_BOOTSTRAP_TOKEN: qa-bootstrap-token-v5
+      QA_BASE_URL: http://127.0.0.1:8787
+      D1_DATABASE_ID: 00000000-0000-0000-0000-000000000001
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Recuperar fonte exata do Editor v2.1
+        shell: pwsh
+        run: ./cloud-overlay/scripts/recover-v21.ps1
+
+      - name: Aplicar camada de produção e correções V5
+        shell: pwsh
+        run: |
+          Copy-Item cloud-overlay/package.json app/package.json -Force
+          Copy-Item cloud-overlay/src/App.tsx app/src/App.tsx -Force
+          New-Item -ItemType Directory -Force app/src/cloud, app/src/public, app/worker, app/migrations, app/scripts | Out-Null
+          Copy-Item cloud-overlay/src/cloud/* app/src/cloud/ -Force
+          Copy-Item cloud-overlay/src/public/* app/src/public/ -Force
+          Copy-Item cloud-overlay/src/editor/TemplatesPanel.tsx app/src/editor/TemplatesPanel.tsx -Force
+          Copy-Item cloud-overlay/src/catalog/store.tsx app/src/catalog/store.tsx -Force
+          Copy-Item cloud-overlay/worker/* app/worker/ -Force
+          Copy-Item cloud-overlay/migrations/* app/migrations/ -Force
+          Copy-Item cloud-overlay/scripts/make-wrangler.mjs app/scripts/make-wrangler.mjs -Force
+          Copy-Item cloud-overlay/scripts/qa-runtime-integration.mjs app/scripts/qa-runtime-integration.mjs -Force
+          Remove-Item app/src/cloud/ActionBridge.tsx -Force -ErrorAction SilentlyContinue
+          Remove-Item app/package-lock.json -Force -ErrorAction SilentlyContinue
+
+          $workerUtilPath = 'app/worker/util.ts'
+          $workerUtil = Get-Content $workerUtilPath -Raw
+          $workerUtil = $workerUtil.Replace('iterations=210000', 'iterations=100000')
+          Set-Content $workerUtilPath $workerUtil -Encoding UTF8
+
+          foreach ($patchPath in @('cloud-overlay/patches/saas-store.patch','cloud-overlay/patches/saas-toolbar.patch')) {
+            $patchText = [IO.File]::ReadAllText($patchPath).Replace("`r`n", "`n")
+            [IO.File]::WriteAllText($patchPath, $patchText, [Text.UTF8Encoding]::new($false))
+          }
+          git apply --directory=app --recount --whitespace=nowarn cloud-overlay/patches/saas-store.patch
+          git apply --directory=app --recount --whitespace=nowarn cloud-overlay/patches/saas-toolbar.patch
+
+          $canvasPath = 'app/src/editor/Canvas.tsx'
+          $canvas = Get-Content $canvasPath -Raw
+          $canvas = $canvas.Replace("const { state, dispatch, getNode } = useEditor();", "const { state, dispatch, getNode, saveDraft } = useEditor();")
+          $canvas = $canvas.Replace("dispatch({ type: 'SAVE_DRAFT' });", "void saveDraft();")
+          $canvas = $canvas.Replace("state.device, dispatch, getNode]);", "state.device, dispatch, getNode, saveDraft]);")
+          Set-Content $canvasPath $canvas -Encoding UTF8
+
+          $historyPath = 'app/src/editor/HistoryPanel.tsx'
+          $history = Get-Content $historyPath -Raw
+          $history = $history.Replace("const { state, dispatch } = useEditor();", "const { state, dispatch, createSnapshot } = useEditor();")
+          $history = $history.Replace("onClick={() => dispatch({ type: 'CREATE_SNAPSHOT', label: 'Ponto manual' })}", "onClick={() => void createSnapshot('Ponto manual')}")
+          Set-Content $historyPath $history -Encoding UTF8
+
+          ./cloud-overlay/scripts/apply-functional-v5.ps1
+
+      - name: Instalar dependências e compilar
+        working-directory: app
+        shell: pwsh
+        run: |
+          npm install --no-audit --no-fund
+          npm run typecheck
+          npm run build
+          node scripts/make-wrangler.mjs
+
+      - name: Criar D1 local isolado e aplicar migrations
+        working-directory: app
+        shell: pwsh
+        run: |
+          npx --yes wrangler@4.68.0 d1 migrations apply sistema-de-catalago --local --config wrangler.deploy.jsonc
+          "SDM_BOOTSTRAP_TOKEN=$env:QA_BOOTSTRAP_TOKEN" | Set-Content .dev.vars -Encoding utf8
+
+      - name: Iniciar Worker local
+        working-directory: app
+        shell: pwsh
+        run: |
+          $out = Join-Path $PWD 'wrangler-local.out.log'
+          $err = Join-Path $PWD 'wrangler-local.err.log'
+          $proc = Start-Process -FilePath 'npx.cmd' -ArgumentList @('--yes','wrangler@4.68.0','dev','--local','--ip','127.0.0.1','--port','8787','--config','wrangler.deploy.jsonc') -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
+          "WRANGLER_PID=$($proc.Id)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $ready = $false
+          for ($i=0; $i -lt 60; $i++) {
+            Start-Sleep -Seconds 1
+            try {
+              $r = Invoke-WebRequest -Uri "$env:QA_BASE_URL/api/health" -UseBasicParsing -TimeoutSec 3
+              if ($r.StatusCode -eq 200) { $ready = $true; break }
+            } catch {}
+            if ($proc.HasExited) { break }
+          }
+          if (-not $ready) {
+            Write-Host '--- stdout ---'; if (Test-Path $out) { Get-Content $out -Tail 200 }
+            Write-Host '--- stderr ---'; if (Test-Path $err) { Get-Content $err -Tail 200 }
+            throw 'Worker local não iniciou a tempo.'
+          }
+          Write-Host "Worker local pronto em $env:QA_BASE_URL"
+
+      - name: Executar integração completa das APIs e D1
+        working-directory: app
+        run: node scripts/qa-runtime-integration.mjs
+
+      - name: Encerrar Worker local
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:WRANGLER_PID) { Stop-Process -Id ([int]$env:WRANGLER_PID) -Force -ErrorAction SilentlyContinue }
