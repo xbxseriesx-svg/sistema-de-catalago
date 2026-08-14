@@ -11,15 +11,17 @@ permissions:
 jobs:
   audit-source:
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
       - name: Recover editor source
         shell: pwsh
         run: ./cloud-overlay/scripts/recover-v21.ps1
+
       - name: Apply exact production overlay
         shell: pwsh
         run: |
@@ -60,6 +62,11 @@ jobs:
           $history = $history.Replace("const { state, dispatch } = useEditor();", "const { state, dispatch, createSnapshot } = useEditor();")
           $history = $history.Replace("onClick={() => dispatch({ type: 'CREATE_SNAPSHOT', label: 'Ponto manual' })}", "onClick={() => void createSnapshot('Ponto manual')}")
           Set-Content $historyPath $history -Encoding UTF8
+
+      - name: Apply functional V5 overlay
+        shell: pwsh
+        run: ./cloud-overlay/scripts/apply-functional-v5.ps1
+
       - name: Install and validate reconstructed production app
         working-directory: app
         shell: pwsh
@@ -67,6 +74,19 @@ jobs:
           npm install --no-audit --no-fund
           npm run typecheck
           npm run build
+          npx --yes esbuild worker/index.ts --bundle --format=esm --platform=browser --target=es2022 --outfile=worker-audit.mjs
+
+      - name: Validate final functional source markers
+        shell: pwsh
+        run: |
+          function HasText([string]$path,[string]$text) { return [IO.File]::ReadAllText($path).Contains($text) }
+          if (-not (HasText 'app/src/editor/Toolbar.tsx' '4K / UHD')) { throw 'Fonte auditada sem 4K' }
+          if (-not (HasText 'app/src/editor/PropertiesPanel.tsx' 'Salvar ajuste atual em todos os modos')) { throw 'Fonte auditada sem ajuste todos os modos' }
+          if (-not (HasText 'app/src/editor/store.tsx' 'persistCloudDraft')) { throw 'Fonte auditada sem autosave D1' }
+          if (-not (HasText 'app/src/App.tsx' 'Marketing visível no modo de edição')) { throw 'Fonte auditada sem Marketing na edição' }
+          if (HasText 'app/src/public/PublicMarketingV3.tsx' 'object-cover') { throw 'Fonte auditada ainda contém crop do Marketing' }
+          Write-Host 'Fonte final auditada e coerente com o deploy V5.'
+
       - name: Upload complete production source audit
         uses: actions/upload-artifact@v4
         with:
