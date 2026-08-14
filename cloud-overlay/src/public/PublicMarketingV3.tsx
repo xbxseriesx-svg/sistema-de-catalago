@@ -8,10 +8,12 @@ export function PublicMarketingV3({ config }: { config: MarketingConfig }) {
   const carousel = config.carousel;
   const theme = config.theme;
   return <div style={{ background: theme.background, color: theme.text }}>
-    {banner.active && banner.mediaUrl && <section className="relative overflow-hidden">
-      {banner.mediaType === 'video'
-        ? <video src={banner.mediaUrl} autoPlay={banner.autoplay} loop={banner.loop} muted={banner.muted} playsInline className="max-h-[620px] w-full object-cover"/>
-        : <img src={banner.mediaUrl} alt={banner.title || 'Banner principal'} className="max-h-[620px] w-full object-cover"/>}
+    {banner.active && banner.mediaUrl && <section className="relative overflow-hidden" style={{ background: theme.surface }}>
+      <div className="flex w-full items-center justify-center overflow-hidden" style={{ height: 'clamp(220px, 34vw, 620px)' }}>
+        {banner.mediaType === 'video'
+          ? <video src={banner.mediaUrl} autoPlay={banner.autoplay} loop={banner.loop} muted={banner.muted} playsInline className="h-full w-full object-contain"/>
+          : <img src={banner.mediaUrl} alt={banner.title || 'Banner principal'} className="h-full w-full object-contain"/>}
+      </div>
       {(banner.title || banner.subtitle || banner.link) && <div className="absolute inset-0 flex items-center justify-center bg-black/25 p-6 text-center text-white"><div>
         {banner.title && <h1 className="text-3xl font-black drop-shadow sm:text-5xl">{banner.title}</h1>}
         {banner.subtitle && <p className="mx-auto mt-3 max-w-3xl text-base font-medium drop-shadow sm:text-xl">{banner.subtitle}</p>}
@@ -20,7 +22,9 @@ export function PublicMarketingV3({ config }: { config: MarketingConfig }) {
     </section>}
 
     {video.active && video.mediaUrl && <section className="relative overflow-hidden bg-black">
-      <video src={video.mediaUrl} autoPlay={video.autoplay} loop={video.loop} muted={video.muted} controls={video.controls} playsInline className="max-h-[680px] w-full object-cover"/>
+      <div className="flex w-full items-center justify-center overflow-hidden" style={{ height: 'clamp(240px, 38vw, 680px)' }}>
+        <video src={video.mediaUrl} autoPlay={video.autoplay} loop={video.loop} muted={video.muted} controls={video.controls} playsInline className="h-full w-full object-contain"/>
+      </div>
       {(video.title || video.subtitle) && <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-6 text-white"><h2 className="text-2xl font-black">{video.title}</h2><p className="mt-1 text-sm text-zinc-200">{video.subtitle}</p></div>}
     </section>}
 
@@ -40,9 +44,11 @@ function Carousel({ config, theme }: { config: MarketingConfig['carousel']; them
   if (!item) return null;
   const previous = () => setIndex(current => current <= 0 ? (config.loop ? config.items.length - 1 : 0) : current - 1);
   const next = () => setIndex(current => current >= config.items.length - 1 ? (config.loop ? 0 : current) : current + 1);
-  const media = <img src={item.url} alt={item.alt || `Slide ${index + 1}`} className="max-h-[560px] w-full object-cover"/>;
-  return <section className="relative overflow-hidden">
-    {item.link ? <a href={safeLink(item.link)}>{media}</a> : media}
+  const media = <div className="flex w-full items-center justify-center overflow-hidden" style={{ height: 'clamp(220px, 34vw, 560px)', background: theme.surface }}>
+    <img src={item.url} alt={item.alt || `Slide ${index + 1}`} className="h-full w-full object-contain"/>
+  </div>;
+  return <section className="relative overflow-hidden" style={{ background: theme.surface }}>
+    {item.link ? <a href={safeLink(item.link)} className="block">{media}</a> : media}
     {config.manual && config.items.length > 1 && <>
       <button aria-label="Anterior" onClick={previous} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full p-2 text-white shadow" style={{ background: `${theme.primary}dd` }}><ChevronLeft size={24}/></button>
       <button aria-label="Próximo" onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-2 text-white shadow" style={{ background: `${theme.primary}dd` }}><ChevronRight size={24}/></button>
