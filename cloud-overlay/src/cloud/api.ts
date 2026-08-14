@@ -17,6 +17,8 @@ export interface CloudTemplate {
   version: number;
   updatedAt: string;
 }
+export interface CatalogSettings { displayFields:string[] }
+export interface CloudOffer { id:string;title:string;description:string;status:'draft'|'published'|'archived';productIds:string[];featured?:boolean;startsAt?:string|null;endsAt?:string|null;displayFields?:string[] }
 
 export const isCloudRuntime = () => {
   if (typeof window === 'undefined') return false;
@@ -64,6 +66,10 @@ export const cloudApi = {
   updateTemplate: (id: string, input: Partial<CloudTemplate> & { nodes?: EditorNode[] }) => request<{ ok: true; id: string; version: number }>(`/api/admin/templates/${id}`, { method: 'PUT', body: JSON.stringify(input) }),
   deleteTemplate: (id: string) => request<{ ok: true }>(`/api/admin/templates/${id}`, { method: 'DELETE' }),
 
-  getCatalog: (publicOnly = false) => request<{ ok: true; catalog: { products: Product[]; brands: Brand[]; distributions: Distribution[]; hierarchy: HierarchyNode[]; promotions: Promotion[] } }>(publicOnly ? '/api/public/catalog' : '/api/admin/catalog'),
-  bulkProducts: (products: unknown[], filename = 'importacao.json', kind = 'json') => request<{ ok: true; importId: string; total: number; inserted: number; updated: number; ignored: number }>('/api/admin/catalog/products/bulk', { method: 'POST', body: JSON.stringify({ products, filename, kind }) }),
+  getCatalog: (publicOnly = false) => request<{ ok: true; catalog: { products: Product[]; brands: Brand[]; distributions: Distribution[]; hierarchy: HierarchyNode[]; promotions: Array<Promotion&CloudOffer>; settings:CatalogSettings } }>(publicOnly ? '/api/public/catalog' : '/api/admin/catalog'),
+  bulkProducts: (products: unknown[], filename = 'importacao.json', kind = 'json') => request<{ ok: true; importId: string; total: number; inserted: number; updated: number; ignored: number; errors?:string[] }>('/api/admin/catalog/products/bulk', { method: 'POST', body: JSON.stringify({ products, filename, kind }) }),
+  listOffers:()=>request<{ok:true;offers:CloudOffer[]}>('/api/admin/catalog/offers'),
+  saveOffer:(input:Omit<CloudOffer,'id'>,id?:string)=>request<{ok:true;offer:CloudOffer}>(id?`/api/admin/catalog/offers/${id}`:'/api/admin/catalog/offers',{method:id?'PUT':'POST',body:JSON.stringify(input)}),
+  deleteOffer:(id:string)=>request<{ok:true;id:string}>(`/api/admin/catalog/offers/${id}`,{method:'DELETE'}),
+  saveCatalogSettings:(displayFields:string[])=>request<{ok:true;settings:CatalogSettings}>('/api/admin/catalog/settings',{method:'PUT',body:JSON.stringify({displayFields})}),
 };
