@@ -25,7 +25,9 @@ export async function verifyPassword(password:string,hash:string,salt:string,ite
 export async function ensureBase(env:Env){await env.DB.batch([
   env.DB.prepare("INSERT OR IGNORE INTO companies (id,name,slug,status) VALUES (?,?,?,'active')").bind(COMPANY_ID,'ASTERYON','asteryon'),
   env.DB.prepare("INSERT OR IGNORE INTO pages (id,company_id,slug,title,status) VALUES (?,?,?,?, 'draft')").bind(PAGE_ID,COMPANY_ID,'home','Página Inicial'),
-  env.DB.prepare("INSERT OR IGNORE INTO page_drafts (page_id,payload_json,revision) VALUES (?,?,1)").bind(PAGE_ID,JSON.stringify([{id:'page-canvas-home',type:'page',name:'Página Inicial',x:0,y:0,width:1440,height:5200,rotation:0,zIndex:0,visible:true,locked:false,opacity:1,styles:{backgroundColor:'#ffffff'},props:{},children:[]}]))
+  env.DB.prepare("INSERT OR IGNORE INTO page_drafts (page_id,payload_json,revision) VALUES (?,?,1)").bind(PAGE_ID,JSON.stringify([{id:'page-canvas-home',type:'page',name:'Página Inicial',x:0,y:0,width:1440,height:5200,rotation:0,zIndex:0,visible:true,locked:false,opacity:1,styles:{backgroundColor:'#ffffff'},props:{},children:[]}])),
+  env.DB.prepare("INSERT OR IGNORE INTO hierarchy_nodes (id,company_id,name,slug,level,parent_id,sort_order,status) VALUES ('dep_atacado',?,'Atacado','atacado','departamento',NULL,10,'active')").bind(COMPANY_ID),
+  env.DB.prepare("INSERT OR IGNORE INTO hierarchy_nodes (id,company_id,name,slug,level,parent_id,sort_order,status) VALUES ('dep_distribuicao',?,'Distribuição','distribuicao','departamento',NULL,20,'active')").bind(COMPANY_ID)
 ]);}
 
 export async function currentUser(req:Request,env:Env):Promise<User|null>{const token=cookie(req,SESSION_COOKIE);if(!token)return null;const tokenHash=await hashToken(token);const row=await env.DB.prepare("SELECT u.id,u.company_id,u.email,u.name,u.role,u.status FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>datetime('now') AND u.status='active'").bind(tokenHash).first();return row as User|null}
