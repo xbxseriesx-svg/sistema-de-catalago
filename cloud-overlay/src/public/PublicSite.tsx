@@ -1,1 +1,1 @@
-export { PublicSiteV2 as PublicSite } from './PublicSiteV2';
+export { PublicSiteV3 as PublicSite } from './PublicSiteV3';
