@@ -61,7 +61,7 @@ jobs:
           $historyPath = 'app/src/editor/HistoryPanel.tsx'
           $history = Get-Content $historyPath -Raw
           $history = $history.Replace("const { state, dispatch } = useEditor();", "const { state, dispatch, createSnapshot } = useEditor();")
-          $history = $history.Replace("onClick={() => dispatch({ type: 'CREATE_SNAPSHOT', label: 'Ponto manual' })}", "onClick={() => void createSnapshot('Ponto manual')")
+          $history = $history.Replace("onClick={() => dispatch({ type: 'CREATE_SNAPSHOT', label: 'Ponto manual' })}", "onClick={() => void createSnapshot('Ponto manual')}")
           Set-Content $historyPath $history -Encoding UTF8
 
       - name: Instalar dependências
