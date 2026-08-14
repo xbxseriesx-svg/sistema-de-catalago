@@ -76,6 +76,10 @@ $catalogPath = 'app/src/editor/CatalogPanel.tsx'
 $catalog = Get-Content $catalogPath -Raw
 $catalog = $catalog.Replace("import { useEditor } from './store';", "import { useEditor } from './store';`nimport { CatalogImportPanel } from '../cloud/CatalogImportPanel';`nimport { ProductsPanel } from '../cloud/ProductsPanel';")
 $catalog = $catalog.Replace('        <div className="relative">', '        <ProductsPanel />' + "`n" + '        <CatalogImportPanel />' + "`n" + '        <div className="relative">')
+$catalog = $catalog.Replace('const sameDepartment = filtered.length > 0', 'const sameCategory = filtered.length > 0')
+$catalog = $catalog.Replace('? filtered.filter((p) => p.departamentoId === filtered[0]?.departamentoId)', '? filtered.filter((p) => p.categoriaId === filtered[0]?.categoriaId)')
+$catalog = $catalog.Replace(": catalog.products.filter((p) => p.status === 'ativo' && p.departamentoId === catalog.products[0]?.departamentoId);", ": catalog.products.filter((p) => p.status === 'ativo' && p.categoriaId === catalog.products.find((item) => item.status === 'ativo')?.categoriaId);")
+$catalog = $catalog.Replace('createShowcaseGroup(sameDepartment, catalog.brandName', 'createShowcaseGroup(sameCategory, catalog.brandName')
 Set-Content $catalogPath $catalog -Encoding UTF8
 
 $canvasPath = 'app/src/editor/Canvas.tsx'
