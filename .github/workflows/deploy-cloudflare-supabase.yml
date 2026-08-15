@@ -2,11 +2,6 @@ name: Deploy catálogo V58 — Cloudflare + Supabase
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'cloudflare-supabase/**'
-      - '.github/workflows/deploy-cloudflare-supabase.yml'
 
 permissions:
   contents: read
