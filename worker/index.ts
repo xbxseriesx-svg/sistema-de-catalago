@@ -3,7 +3,8 @@ type Env = {
   ASSETS: Fetcher;
   SUPABASE_URL: string;
   SUPABASE_PUBLISHABLE_KEY: string;
-  SUPABASE_SERVICE_ROLE_KEY: string;
+  SUPABASE_SECRET_KEY?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
   SDM_BOOTSTRAP_TOKEN?: string;
 };
 
@@ -46,8 +47,16 @@ function clearHeaders() {
 
 async function supabase(env: Env, path: string, init: RequestInit = {}, userToken?: string) {
   const headers = new Headers(init.headers);
-  headers.set('apikey', env.SUPABASE_SERVICE_ROLE_KEY);
-  headers.set('authorization', `Bearer ${userToken || env.SUPABASE_SERVICE_ROLE_KEY}`);
+  const adminKey = clean(env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY);
+  if (!adminKey) throw new Error('SUPABASE_SECRET_KEY não configurada');
+  headers.set('apikey', userToken ? env.SUPABASE_PUBLISHABLE_KEY : adminKey);
+  if (userToken) {
+    headers.set('authorization', `Bearer ${userToken}`);
+  } else if (!adminKey.startsWith('sb_secret_')) {
+    // Chaves service_role legadas são JWTs. As chaves modernas sb_secret_
+    // devem ser enviadas somente em apikey; como Bearer geram "Invalid JWT".
+    headers.set('authorization', `Bearer ${adminKey}`);
+  }
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
   const response = await fetch(`${env.SUPABASE_URL}${path}`, { ...init, headers });
   if (!response.ok) {
