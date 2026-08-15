@@ -17,6 +17,7 @@ jobs:
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       SDM_BOOTSTRAP_TOKEN: ${{ secrets.SDM_BOOTSTRAP_TOKEN }}
     steps:
@@ -32,27 +33,26 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Falta CLOUDFLARE_ACCOUNT_ID" && exit 1)
           test -n "$CLOUDFLARE_API_TOKEN" || (echo "Falta CLOUDFLARE_API_TOKEN" && exit 1)
-          test -n "$SUPABASE_SERVICE_ROLE_KEY" || (echo "Falta SUPABASE_SERVICE_ROLE_KEY" && exit 1)
+          test -n "$SUPABASE_SECRET_KEY$SUPABASE_SERVICE_ROLE_KEY" || (echo "Falta SUPABASE_SECRET_KEY ou SUPABASE_SERVICE_ROLE_KEY" && exit 1)
           test -n "$SDM_BOOTSTRAP_TOKEN" || (echo "Falta SDM_BOOTSTRAP_TOKEN" && exit 1)
 
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
 
-      - name: Validar TypeScript
-        run: npm run check
-
-      - name: Validar Worker
-        run: npm run deploy:dry
+      - name: Validar V58, Worker e importação
+        run: npm test
 
       - name: Preparar segredos do primeiro deploy
         shell: bash
         run: |
           node --input-type=module <<'NODE'
           import { writeFileSync } from 'node:fs';
-          writeFileSync('.secrets.json', JSON.stringify({
-            SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+          const secrets = {
             SDM_BOOTSTRAP_TOKEN: process.env.SDM_BOOTSTRAP_TOKEN
-          }));
+          };
+          if (process.env.SUPABASE_SECRET_KEY) secrets.SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
+          if (process.env.SUPABASE_SERVICE_ROLE_KEY) secrets.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+          writeFileSync('.secrets.json', JSON.stringify(secrets));
           NODE
 
       - name: Publicar V58

@@ -1,0 +1,51 @@
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/*
+ * The editor shell is a nested flex layout. Without min-height: 0 the two
+ * sidebars grow with their content, so their overflow containers never get a
+ * smaller height and the scrollbars cannot activate.
+ */
+#root > div.h-screen.w-screen.overflow-hidden > div.flex.flex-1.overflow-hidden {
+  min-height: 0;
+}
+
+#root > div.h-screen.w-screen.overflow-hidden
+  > div.flex.flex-1.overflow-hidden
+  > div.flex.shrink-0.flex-col {
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
+}
+
+#root > div.h-screen.w-screen.overflow-hidden
+  > div.flex.flex-1.overflow-hidden
+  > div.flex.shrink-0.flex-col
+  > div.flex-1.overflow-hidden {
+  min-height: 0;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+#root > div.h-screen.w-screen.overflow-hidden
+  > div.flex.flex-1.overflow-hidden
+  > div.flex.shrink-0.flex-col
+  > div.h-full.flex-col {
+  flex: 1 1 0%;
+  height: auto;
+  min-height: 0;
+}
+
+#root > div.h-screen.w-screen.overflow-hidden
+  > div.flex.flex-1.overflow-hidden
+  > div.flex.shrink-0.flex-col
+  > div.h-full.flex-col
+  > div.flex-1.overflow-y-auto {
+  min-height: 0;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
