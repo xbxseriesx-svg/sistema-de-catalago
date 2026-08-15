@@ -50,6 +50,19 @@ function keepOr<T>(incoming: T | null | undefined, previous: T | null | undefine
   return hasValue(incoming) ? incoming as T : previous ?? null;
 }
 
+function marketingLayout(value: any) {
+  const source = value && typeof value === 'object' ? value : {};
+  const finite = (input: unknown, fallback: number) => Number.isFinite(Number(input)) ? Number(input) : fallback;
+  return {
+    x: Math.max(0, finite(source.x, 0)),
+    y: Math.max(0, finite(source.y, 0)),
+    width: Math.max(240, finite(source.width, 1440)),
+    height: Math.max(140, finite(source.height, 560)),
+    zIndex: Math.max(1, Math.round(finite(source.zIndex, 700))),
+    visible: source.visible !== false,
+  };
+}
+
 function cookie(req: Request, name: string) {
   for (const item of (req.headers.get('cookie') || '').split(';')) {
     const [key, ...value] = item.trim().split('=');
@@ -229,9 +242,9 @@ async function publicRoute(req: Request, env: Env, path: string) {
   if (path === '/api/public/catalog' && req.method === 'GET') return ok({ catalog: await catalogPayload(env, true) });
   if (path === '/api/public/brands' && req.method === 'GET') return ok({ brands: await brandsPayload(env) });
   if (path === '/api/public/marketing' && req.method === 'GET') {
-    const rows = await table(env, 'marketing_settings', `company_id=eq.${COMPANY_ID}&select=theme,banner,video_banner,carousel&limit=1`);
+    const rows = await table(env, 'marketing_settings', `company_id=eq.${COMPANY_ID}&select=theme,banner,video_banner,carousel,settings&limit=1`);
     const m = rows?.[0] || {};
-    return ok({ marketing: { theme: m.theme || {}, banner: m.banner || {}, videoBanner: m.video_banner || {}, carousel: m.carousel || {} } });
+    return ok({ marketing: { theme: m.theme || {}, banner: m.banner || {}, videoBanner: m.video_banner || {}, carousel: m.carousel || {}, layout: marketingLayout(m.settings?.layout) } });
   }
   const mediaMatch = path.match(/^\/api\/public\/media\/([^/]+)$/);
   if (mediaMatch && req.method === 'GET') {
@@ -325,9 +338,11 @@ async function adminRoute(req: Request, env: Env, path: string) {
   if (path === '/api/admin/marketing' && req.method === 'PUT') {
     const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
     const input = await body(req), m = input.marketing || input;
-    await table(env, 'marketing_settings', `company_id=eq.${COMPANY_ID}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ theme: m.theme || {}, banner: m.banner || {}, video_banner: m.videoBanner || {}, carousel: m.carousel || {} }) });
-    await audit(env, auth.user, 'marketing.update', 'marketing', COMPANY_ID);
-    return ok({ marketing: m });
+    const current = (await table(env, 'marketing_settings', `company_id=eq.${COMPANY_ID}&select=settings&limit=1`))?.[0];
+    const layout = marketingLayout(m.layout);
+    await table(env, 'marketing_settings', `company_id=eq.${COMPANY_ID}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ theme: m.theme || {}, banner: m.banner || {}, video_banner: m.videoBanner || {}, carousel: m.carousel || {}, settings: { ...(current?.settings || {}), layout } }) });
+    await audit(env, auth.user, 'marketing.update', 'marketing', COMPANY_ID, { layout, slides: Array.isArray(m.carousel?.items) ? m.carousel.items.length : 0 });
+    return ok({ marketing: { ...m, layout } });
   }
   if (path === '/api/admin/catalog/offers' && req.method === 'GET') {
     const auth = await requireUser(req, env); if (auth.error) return auth.error;
