@@ -1,0 +1,58 @@
+name: Deploy catálogo V58 — Cloudflare + Supabase
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalogo-cloudflare-production
+  cancel-in-progress: false
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: cloudflare-supabase
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SDM_BOOTSTRAP_TOKEN: ${{ secrets.SDM_BOOTSTRAP_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: cloudflare-supabase/package-lock.json
+
+      - name: Validar segredos
+        shell: bash
+        run: |
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Falta CLOUDFLARE_ACCOUNT_ID" && exit 1)
+          test -n "$CLOUDFLARE_API_TOKEN" || (echo "Falta CLOUDFLARE_API_TOKEN" && exit 1)
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || (echo "Falta SUPABASE_SERVICE_ROLE_KEY" && exit 1)
+          test -n "$SDM_BOOTSTRAP_TOKEN" || (echo "Falta SDM_BOOTSTRAP_TOKEN" && exit 1)
+
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+
+      - name: TypeScript
+        run: npm run check
+
+      - name: Dry run do Worker
+        run: npm run deploy:dry
+
+      - name: Publicar segredos do Worker
+        shell: bash
+        run: |
+          printf '%s' "$SUPABASE_SERVICE_ROLE_KEY" | npx wrangler secret put SUPABASE_SERVICE_ROLE_KEY
+          printf '%s' "$SDM_BOOTSTRAP_TOKEN" | npx wrangler secret put SDM_BOOTSTRAP_TOKEN
+
+      - name: Deploy em produção
+        run: npm run deploy

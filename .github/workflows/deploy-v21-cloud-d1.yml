@@ -1,0 +1,198 @@
+name: Deploy ASTERYON v2.1 SaaS Cloudflare D1
+
+on:
+  push:
+    branches: [release/v2.1-cloud-d1-final]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  WORKER_NAME: sistema-de-catalago
+  D1_DATABASE_NAME: sistema-de-catalago
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+jobs:
+  deploy:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Recuperar fonte exata do Editor v2.1
+        shell: pwsh
+        run: ./cloud-overlay/scripts/recover-v21.ps1
+
+      - name: Aplicar camada SaaS nativa + D1 no Editor v2.1
+        shell: pwsh
+        run: |
+          Copy-Item cloud-overlay/package.json app/package.json -Force
+          Copy-Item cloud-overlay/src/App.tsx app/src/App.tsx -Force
+          New-Item -ItemType Directory -Force app/src/cloud, app/src/public, app/worker, app/migrations, app/scripts | Out-Null
+          Copy-Item cloud-overlay/src/cloud/* app/src/cloud/ -Force
+          Copy-Item cloud-overlay/src/public/* app/src/public/ -Force
+          Copy-Item cloud-overlay/src/editor/TemplatesPanel.tsx app/src/editor/TemplatesPanel.tsx -Force
+          Copy-Item cloud-overlay/src/catalog/store.tsx app/src/catalog/store.tsx -Force
+          Copy-Item cloud-overlay/worker/* app/worker/ -Force
+          Copy-Item cloud-overlay/migrations/* app/migrations/ -Force
+          Copy-Item cloud-overlay/scripts/make-wrangler.mjs app/scripts/make-wrangler.mjs -Force
+          Remove-Item app/src/cloud/ActionBridge.tsx -Force -ErrorAction SilentlyContinue
+          Remove-Item app/package-lock.json -Force -ErrorAction SilentlyContinue
+
+          # Cloudflare Web Crypto limita PBKDF2 a 100000 iterações neste runtime.
+          $workerUtilPath = 'app/worker/util.ts'
+          $workerUtil = Get-Content $workerUtilPath -Raw
+          $workerUtil = $workerUtil.Replace('iterations=210000', 'iterations=100000')
+          if ($workerUtil.Contains('iterations=210000')) { throw 'Falha ao aplicar limite PBKDF2 do Cloudflare' }
+          Set-Content $workerUtilPath $workerUtil -Encoding UTF8
+
+          foreach ($patchPath in @('cloud-overlay/patches/saas-store.patch','cloud-overlay/patches/saas-toolbar.patch')) {
+            $patchText = [IO.File]::ReadAllText($patchPath).Replace("`r`n", "`n")
+            [IO.File]::WriteAllText($patchPath, $patchText, [Text.UTF8Encoding]::new($false))
+          }
+          git apply --directory=app --recount --whitespace=nowarn cloud-overlay/patches/saas-store.patch
+          git apply --directory=app --recount --whitespace=nowarn cloud-overlay/patches/saas-toolbar.patch
+
+          $canvasPath = 'app/src/editor/Canvas.tsx'
+          $canvas = Get-Content $canvasPath -Raw
+          $canvas = $canvas.Replace("const { state, dispatch, getNode } = useEditor();", "const { state, dispatch, getNode, saveDraft } = useEditor();")
+          $canvas = $canvas.Replace("dispatch({ type: 'SAVE_DRAFT' });", "void saveDraft();")
+          $canvas = $canvas.Replace("state.device, dispatch, getNode]);", "state.device, dispatch, getNode, saveDraft]);")
+          Set-Content $canvasPath $canvas -Encoding UTF8
+
+          $historyPath = 'app/src/editor/HistoryPanel.tsx'
+          $history = Get-Content $historyPath -Raw
+          $history = $history.Replace("const { state, dispatch } = useEditor();", "const { state, dispatch, createSnapshot } = useEditor();")
+          $history = $history.Replace("onClick={() => dispatch({ type: 'CREATE_SNAPSHOT', label: 'Ponto manual' })}", "onClick={() => void createSnapshot('Ponto manual')}")
+          Set-Content $historyPath $history -Encoding UTF8
+
+      - name: Aplicar correções funcionais V5
+        shell: pwsh
+        run: ./cloud-overlay/scripts/apply-functional-v5.ps1
+
+      - name: Validar segredos Cloudflare
+        shell: pwsh
+        run: |
+          if (-not $env:CLOUDFLARE_ACCOUNT_ID) { throw 'Falta CLOUDFLARE_ACCOUNT_ID no GitHub Secrets ou Variables' }
+          if (-not $env:CLOUDFLARE_API_TOKEN) { throw 'Falta CLOUDFLARE_API_TOKEN no GitHub Secrets' }
+
+      - name: Instalar dependências
+        working-directory: app
+        run: npm install --no-audit --no-fund
+
+      - name: TypeScript do Editor SaaS v2.1
+        working-directory: app
+        run: npm run typecheck
+
+      - name: Build do Editor e Portal Público
+        working-directory: app
+        run: npm run build
+
+      - name: Auditoria funcional obrigatória antes do deploy
+        shell: pwsh
+        run: |
+          function HasText([string]$path,[string]$text) { return [IO.File]::ReadAllText($path).Contains($text) }
+          if (-not (HasText 'app/src/editor/Toolbar.tsx' '1080p / Full HD')) { throw '1080p ausente no build final' }
+          if (-not (HasText 'app/src/editor/Toolbar.tsx' '2K / QHD')) { throw '2K ausente no build final' }
+          if (-not (HasText 'app/src/editor/Toolbar.tsx' '4K / UHD')) { throw '4K ausente no build final' }
+          if (-not (HasText 'app/src/editor/PropertiesPanel.tsx' 'Salvar ajuste atual em todos os modos')) { throw 'Ajuste todos os modos ausente' }
+          if (-not (HasText 'app/src/editor/store.tsx' 'persistCloudDraft')) { throw 'Autosave D1 ausente' }
+          if (-not (HasText 'app/src/App.tsx' 'Marketing visível no modo de edição')) { throw 'Marketing ausente no modo de edição' }
+          if (-not (HasText 'app/src/public/PublicMarketingV3.tsx' 'object-contain')) { throw 'Carrossel sem object-contain' }
+          if (HasText 'app/src/public/PublicMarketingV3.tsx' 'object-cover') { throw 'Zoom/corte do Marketing ainda presente' }
+          if (-not (HasText 'app/src/public/PublicSiteV3.tsx' 'getResponsiveRect(live,device)')) { throw 'Responsividade pública ausente' }
+          Write-Host 'Guardas funcionais obrigatórias aprovadas.'
+
+      - name: Localizar ou criar D1 sistema-de-catalago
+        shell: pwsh
+        run: |
+          $headers = @{ Authorization = "Bearer $env:CLOUDFLARE_API_TOKEN"; 'Content-Type' = 'application/json' }
+          $api = "https://api.cloudflare.com/client/v4/accounts/$env:CLOUDFLARE_ACCOUNT_ID/d1/database"
+          $uri = "${api}?name=$env:D1_DATABASE_NAME&per_page=100"
+          $list = Invoke-RestMethod -Method Get -Uri $uri -Headers $headers
+          $db = @($list.result) | Where-Object { $_.name -eq $env:D1_DATABASE_NAME } | Select-Object -First 1
+          if (-not $db) {
+            Write-Host "Criando banco D1 $env:D1_DATABASE_NAME..."
+            $created = Invoke-RestMethod -Method Post -Uri $api -Headers $headers -Body (@{name=$env:D1_DATABASE_NAME} | ConvertTo-Json)
+            if (-not $created.success) { throw ($created.errors | ConvertTo-Json -Compress) }
+            $db = $created.result
+          }
+          $id = if ($db.uuid) { $db.uuid } else { $db.id }
+          if (-not $id) { throw 'Cloudflare não retornou o database_id do D1' }
+          "D1_DATABASE_ID=$id" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "D1 pronto: $env:D1_DATABASE_NAME ($id)"
+
+      - name: Gerar wrangler.deploy.jsonc
+        working-directory: app
+        run: node scripts/make-wrangler.mjs
+
+      - name: Aplicar migrations no D1 remoto
+        working-directory: app
+        run: npx --yes wrangler@4.68.0 d1 migrations apply sistema-de-catalago --remote --config wrangler.deploy.jsonc
+
+      - name: Deploy Worker + assets
+        working-directory: app
+        run: npx --yes wrangler@4.68.0 deploy --config wrangler.deploy.jsonc
+
+      - name: Preservar token de ativação do primeiro SDM
+        shell: pwsh
+        env:
+          SAVED_BOOTSTRAP_TOKEN: ${{ secrets.SDM_BOOTSTRAP_TOKEN }}
+        run: |
+          New-Item -ItemType Directory -Force deploy-info | Out-Null
+          if ($env:SAVED_BOOTSTRAP_TOKEN) {
+            Set-Location app
+            $env:SAVED_BOOTSTRAP_TOKEN | npx --yes wrangler@4.68.0 secret put SDM_BOOTSTRAP_TOKEN --config wrangler.deploy.jsonc
+            Set-Location ..
+            $bootstrapStatus = 'atualizado pelo GitHub Secret SDM_BOOTSTRAP_TOKEN'
+          } else {
+            $bootstrapStatus = 'preservado no Worker sem rotação neste deploy'
+            Write-Host 'SDM_BOOTSTRAP_TOKEN existente será preservado; nenhum token novo foi gerado.'
+          }
+
+          "Worker: sistema-de-catalago" | Set-Content deploy-info/DEPLOY.txt
+          "D1: sistema-de-catalago ($env:D1_DATABASE_ID)" | Add-Content deploy-info/DEPLOY.txt
+          "Editor: v2.1 SaaS + correções funcionais V5" | Add-Content deploy-info/DEPLOY.txt
+          "Persistencia: D1 com autosave serializado para rascunhos, snapshots, modelos, catálogo e versões" | Add-Content deploy-info/DEPLOY.txt
+          "Responsividade: Desktop, Tablet, Mobile, 1080p, 2K e 4K" | Add-Content deploy-info/DEPLOY.txt
+          "Marketing: visível na edição e preview, carrossel sem crop/zoom" | Add-Content deploy-info/DEPLOY.txt
+          "Desktop/EXE: DESATIVADO" | Add-Content deploy-info/DEPLOY.txt
+          "R2: DESATIVADO" | Add-Content deploy-info/DEPLOY.txt
+          "Bootstrap token: $bootstrapStatus" | Add-Content deploy-info/DEPLOY.txt
+
+      - name: Smoke test do Worker e D1 após deploy
+        shell: pwsh
+        run: |
+          $base = 'https://sistema-de-catalago.paulohenriquepmelo.workers.dev'
+          $checks = @(
+            @{ Path='/api/health'; Required='"database":"D1"' },
+            @{ Path='/api/auth/status'; Required='"ok":true' },
+            @{ Path='/api/public/catalog'; Required='"ok":true' },
+            @{ Path='/api/public/brands'; Required='"ok":true' },
+            @{ Path='/api/public/marketing'; Required='"ok":true' }
+          )
+          foreach ($check in $checks) {
+            $url = "$base$($check.Path)?qa=$(Get-Date -Format yyyyMMddHHmmssfff)"
+            $response = Invoke-WebRequest -Uri $url -Method Get -UseBasicParsing -TimeoutSec 30
+            if ($response.StatusCode -ne 200) { throw "Smoke falhou em $($check.Path): HTTP $($response.StatusCode)" }
+            if (-not $response.Content.Contains($check.Required)) { throw "Smoke falhou em $($check.Path): conteúdo inesperado" }
+            Write-Host "OK $($check.Path)"
+          }
+          $homeResponse = Invoke-WebRequest -Uri "$base/?qa=$(Get-Date -Format yyyyMMddHHmmssfff)" -Method Get -UseBasicParsing -TimeoutSec 30
+          if ($homeResponse.StatusCode -ne 200 -or -not $homeResponse.Content.Contains('<div id="root">')) { throw 'Portal público não carregou o HTML do app' }
+          $adminResponse = Invoke-WebRequest -Uri "$base/admin?qa=$(Get-Date -Format yyyyMMddHHmmssfff)" -Method Get -UseBasicParsing -TimeoutSec 30
+          if ($adminResponse.StatusCode -ne 200 -or -not $adminResponse.Content.Contains('<div id="root">')) { throw 'Editor /admin não carregou o HTML do app' }
+          Write-Host 'Smoke pós-deploy concluído.'
+
+      - name: Informações do deploy
+        uses: actions/upload-artifact@v4
+        with:
+          name: ASTERYON-v2.1-SaaS-Cloudflare-D1-Deploy
+          path: deploy-info/*
+          if-no-files-found: error

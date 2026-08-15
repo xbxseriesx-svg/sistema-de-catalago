@@ -1,0 +1,219 @@
+diff --git a/src/editor/PropertiesPanel.tsx b/src/editor/PropertiesPanel.tsx
+index c605afb..8529859 100644
+--- a/src/editor/PropertiesPanel.tsx
++++ b/src/editor/PropertiesPanel.tsx
+@@ -105,7 +105,7 @@ function PropertiesContent({ node, mode, device, dispatch }: { node: EditorNode;
+       {node.type === 'search' && <SearchSection node={node} updateProp={updateProp} />}
+       {node.type === 'breadcrumb' && <BreadcrumbSection node={node} updateProp={updateProp} />}
+       <AppearanceSection node={node} updateStyle={updateStyle} update={update} mode={mode} />
+-      {mode === 'professional' && <ResponsiveSection node={node} update={update} />}
++      {mode === 'professional' && <ResponsiveSection node={node} device={device} update={update} />}
+     </div>
+   );
+ }
+@@ -566,29 +566,71 @@ function AppearanceSection({ node, updateStyle, update, mode }: { node: EditorNo
+   );
+ }
+ 
+-function ResponsiveSection({ node, update }: { node: EditorNode; update: (c: Partial<EditorNode>) => void }) {
++function ResponsiveSection({ node, device, update }: { node: EditorNode; device: 'desktop' | 'tablet' | 'mobile'; update: (c: Partial<EditorNode>) => void }) {
+   const devices: { key: 'desktop' | 'tablet' | 'mobile'; label: string }[] = [
+     { key: 'desktop', label: 'Desktop' },
+     { key: 'tablet', label: 'Tablet' },
+     { key: 'mobile', label: 'Mobile' },
+   ];
+   const responsive = node.responsive || {};
++  const current = getResponsiveRect(node, device);
++
++  const patchDevice = (key: 'desktop' | 'tablet' | 'mobile', patch: Partial<{ x: number; y: number; width: number; height: number }>) => {
++    if (key === 'desktop') {
++      update({
++        x: patch.x ?? node.x,
++        y: patch.y ?? node.y,
++        width: patch.width ?? node.width,
++        height: patch.height ?? node.height,
++      });
++      return;
++    }
++    const base = responsive[key] || getResponsiveRect(node, key);
++    update({ responsive: { ...responsive, [key]: { ...base, ...patch } } });
++  };
++
++  const applyCurrentToAll = () => {
++    update({
++      x: current.x,
++      y: current.y,
++      width: current.width,
++      height: current.height,
++      responsive: {
++        ...responsive,
++        tablet: { ...current },
++        mobile: { ...current },
++      },
++    });
++  };
+ 
+   return (
+     <Section title="Ajuste por dispositivo" defaultOpen={false}>
+-      <p className="text-[10px] text-zinc-500 mb-2">Ajuste apenas quando quiser um posicionamento diferente neste dispositivo.</p>
++      <div className="mb-2 rounded-lg border border-blue-500/20 bg-blue-500/5 p-2">
++        <p className="text-[10px] text-zinc-400">Edite cada modo separadamente ou replique o ajuste atual para todos os modos.</p>
++        <button
++          type="button"
++          onClick={applyCurrentToAll}
++          className="mt-2 w-full rounded border border-blue-500/40 bg-blue-500/10 px-2 py-1.5 text-[10px] font-bold text-blue-300 hover:bg-blue-500/20"
++        >
++          Salvar ajuste atual em todos os modos
++        </button>
++      </div>
+       {devices.map((d) => {
+-        const r = responsive[d.key];
++        const r = getResponsiveRect(node, d.key);
++        const active = d.key === device;
+         return (
+-          <div key={d.key} className="bg-zinc-800/50 rounded p-2 space-y-1.5">
+-            <div className="text-[10px] font-semibold text-zinc-400 uppercase">{d.label}</div>
++          <div key={d.key} className={`rounded p-2 space-y-1.5 border ${active ? 'border-blue-500/40 bg-blue-500/5' : 'border-transparent bg-zinc-800/50'}`}>
++            <div className="flex items-center justify-between">
++              <div className="text-[10px] font-semibold text-zinc-400 uppercase">{d.label}</div>
++              {active && <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-[8px] font-black text-blue-300">ATUAL</span>}
++            </div>
+             <Row label="X / Y">
+-              <NumberInput value={r?.x ?? 0} onChange={(v) => update({ responsive: { ...responsive, [d.key]: { ...r, x: v, y: r?.y ?? 0, width: r?.width ?? node.width, height: r?.height ?? node.height } } })} />
+-              <NumberInput value={r?.y ?? 0} onChange={(v) => update({ responsive: { ...responsive, [d.key]: { ...r, x: r?.x ?? 0, y: v, width: r?.width ?? node.width, height: r?.height ?? node.height } } })} />
++              <NumberInput value={r.x} onChange={(v) => patchDevice(d.key, { x: v })} />
++              <NumberInput value={r.y} onChange={(v) => patchDevice(d.key, { y: v })} />
+             </Row>
+             <Row label="L / A">
+-              <NumberInput value={r?.width ?? node.width} onChange={(v) => update({ responsive: { ...responsive, [d.key]: { ...r, x: r?.x ?? 0, y: r?.y ?? 0, width: v, height: r?.height ?? node.height } } })} />
+-              <NumberInput value={r?.height ?? node.height} onChange={(v) => update({ responsive: { ...responsive, [d.key]: { ...r, x: r?.x ?? 0, y: r?.y ?? 0, width: r?.width ?? node.width, height: v } } })} />
++              <NumberInput value={r.width} onChange={(v) => patchDevice(d.key, { width: v })} />
++              <NumberInput value={r.height} onChange={(v) => patchDevice(d.key, { height: v })} />
+             </Row>
+           </div>
+         );
+diff --git a/src/editor/store.tsx b/src/editor/store.tsx
+index 0dd0b2f..d06133d 100644
+--- a/src/editor/store.tsx
++++ b/src/editor/store.tsx
+@@ -68,6 +68,7 @@ type Action =
+   | { type: 'MOVE_TO_PARENT'; nodeId: string; parentId: string | null; toIndex?: number }
+   | { type: 'CHECKPOINT' }
+   | { type: 'SAVE_DRAFT' }
++  | { type: 'MARK_SAVED' }
+   | { type: 'CREATE_SNAPSHOT'; label?: string }
+   | { type: 'PUBLISH' }
+   | { type: 'TOGGLE_PREVIEW' }
+@@ -553,6 +554,8 @@ function reducer(state: EditorState, action: Action): EditorState {
+       const snap = { id: uid(), createdAt: now, label: 'Rascunho salvo', nodes: deepCloneNodes(state.nodes) };
+       return { ...state, lastSavedAt: now, snapshots: [...state.snapshots, snap].slice(-30) };
+     }
++    case 'MARK_SAVED':
++      return { ...state, lastSavedAt: new Date().toISOString() };
+     case 'CREATE_SNAPSHOT': {
+       const now = new Date().toISOString();
+       const snap = { id: uid(), createdAt: now, label: action.label?.trim() || 'Ponto de restauração', nodes: deepCloneNodes(state.nodes) };
+@@ -643,6 +646,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
+   const [cloudError, setCloudError] = useState<string | null>(null);
+   const cloudRevisionRef = useRef<number | null>(null);
+   cloudRevisionRef.current = cloudRevision;
++  const lastPersistedNodesRef = useRef('');
++  const saveChainRef = useRef<Promise<void>>(Promise.resolve());
+ 
+   useEffect(() => {
+     if (!cloudEnabled) return;
+@@ -652,6 +657,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
+     Promise.all([cloudApi.getDraft('home'), cloudApi.getSnapshots('home')])
+       .then(([draft, snaps]) => {
+         if (cancelled) return;
++        lastPersistedNodesRef.current = JSON.stringify(draft.page.nodes);
+         dispatch({ type: 'REPLACE_NODES', nodes: draft.page.nodes });
+         dispatch({ type: 'SET_SNAPSHOTS', snapshots: snaps.snapshots });
+         setCloudRevision(draft.page.revision);
+@@ -691,6 +697,23 @@ export function EditorProvider({ children }: { children: ReactNode }) {
+   const getBreadcrumbCb = useCallback((id: string) => getBreadcrumb(stateRef.current.nodes, id), []);
+   const flattenNodes = useCallback(() => flatten(stateRef.current.nodes), []);
+ 
++  const persistCloudDraft = useCallback((nodes: EditorNode[]) => {
++    if (!cloudEnabled) return Promise.resolve();
++    const payload = deepCloneNodes(nodes);
++    const serialized = JSON.stringify(payload);
++    const run = async () => {
++      if (serialized === lastPersistedNodesRef.current) return;
++      const result = await cloudApi.saveDraft(payload, cloudRevisionRef.current ?? undefined, 'home');
++      cloudRevisionRef.current = result.revision;
++      setCloudRevision(result.revision);
++      lastPersistedNodesRef.current = serialized;
++      setCloudError(null);
++    };
++    const next = saveChainRef.current.catch(() => undefined).then(run);
++    saveChainRef.current = next.catch(() => undefined);
++    return next;
++  }, [cloudEnabled]);
++
+   const addElement = useCallback(
+     (type: NodeType, parentId: string | null = null, position?: { x: number; y: number }) => {
+       const node = createElement(type);
+@@ -704,34 +727,40 @@ export function EditorProvider({ children }: { children: ReactNode }) {
+ 
+   const saveDraft = useCallback(async () => {
+     setCloudError(null);
+-    if (cloudEnabled) {
+-      try {
+-        const result = await cloudApi.saveDraft(stateRef.current.nodes, cloudRevisionRef.current ?? undefined, 'home');
+-        setCloudRevision(result.revision);
+-      } catch (err) {
+-        const message = err instanceof Error ? err.message : 'Falha ao salvar no D1';
+-        setCloudError(message);
+-        throw err;
+-      }
++    try {
++      await persistCloudDraft(stateRef.current.nodes);
++      dispatch({ type: 'SAVE_DRAFT' });
++    } catch (err) {
++      const message = err instanceof Error ? err.message : 'Falha ao salvar no D1';
++      setCloudError(message);
++      throw err;
+     }
+-    dispatch({ type: 'SAVE_DRAFT' });
+-  }, [cloudEnabled]);
++  }, [persistCloudDraft]);
++
++  useEffect(() => {
++    if (!cloudEnabled || cloudLoading || cloudRevision === null) return;
++    const serialized = JSON.stringify(state.nodes);
++    if (serialized === lastPersistedNodesRef.current) return;
++    const timer = window.setTimeout(() => {
++      void persistCloudDraft(stateRef.current.nodes)
++        .then(() => dispatch({ type: 'MARK_SAVED' }))
++        .catch((err) => setCloudError(err instanceof Error ? err.message : 'Falha no salvamento automático do D1'));
++    }, 850);
++    return () => window.clearTimeout(timer);
++  }, [cloudEnabled, cloudLoading, cloudRevision, state.nodes, persistCloudDraft]);
+ 
+   const publish = useCallback(async () => {
+     setCloudError(null);
+-    if (cloudEnabled) {
+-      try {
+-        const saved = await cloudApi.saveDraft(stateRef.current.nodes, cloudRevisionRef.current ?? undefined, 'home');
+-        setCloudRevision(saved.revision);
+-        await cloudApi.publish('home');
+-      } catch (err) {
+-        const message = err instanceof Error ? err.message : 'Falha ao publicar';
+-        setCloudError(message);
+-        throw err;
+-      }
++    try {
++      await persistCloudDraft(stateRef.current.nodes);
++      if (cloudEnabled) await cloudApi.publish('home');
++    } catch (err) {
++      const message = err instanceof Error ? err.message : 'Falha ao publicar';
++      setCloudError(message);
++      throw err;
+     }
+     dispatch({ type: 'PUBLISH' });
+-  }, [cloudEnabled]);
++  }, [cloudEnabled, persistCloudDraft]);
+ 
+   const createSnapshot = useCallback(async (label = 'Ponto manual') => {
+     if (cloudEnabled) {

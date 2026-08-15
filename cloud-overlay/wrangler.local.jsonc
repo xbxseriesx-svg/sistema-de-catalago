@@ -1,0 +1,21 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cloudflare/workers-sdk/main/packages/wrangler/config-schema.json",
+  "name": "sistema-de-catalago",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-13",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sistema-de-catalago",
+      "database_id": "local",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "observability": { "enabled": true }
+}
