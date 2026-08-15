@@ -1,263 +1,40 @@
-# ASTERYON Catálogo Digital
+# ASTERYON Catálogo — V58
 
-Plataforma de catálogo empresarial com dois módulos separados em produção:
+Este repositório contém somente a versão **58** do sistema publicada originalmente na Cloudflare.
 
-- **Portal Público:** domínio oficial da empresa, sem login para o visitante.
-- **Painel Administrativo:** subdomínio `admin`, com construção visual e publicação controlada.
+## Conteúdo
 
-## Editor Visual Pro
+- `public/`: frontend compilado da V58.
+- `worker/`: API do Worker adaptada para Supabase.
+- `wrangler.jsonc`: configuração única do Cloudflare Worker.
+- `.github/workflows/deploy-v58.yml`: deploy manual validado.
 
-O Editor Visual trabalha **somente sobre rascunhos**. O Portal Público lê exclusivamente a última versão publicada.
+## Arquitetura
 
-Layout inspirado em ferramentas profissionais de construção visual:
+`GitHub → Cloudflare Worker + Static Assets → Supabase`
 
-- Barra superior: **Undo · Redo · Salvar · Preview · Publicar**.
-- Biblioteca de blocos à esquerda.
-- Preview WYSIWYG em tempo real no centro.
-- Painel contextual de propriedades à direita.
-- Modos independentes **Desktop · Tablet · Mobile**.
+- Worker: `sistema-de-catalago`
+- Supabase: `bjcfknhiwjxznxydvmzt`
+- D1 e R2 antigos não são utilizados.
 
-### Drag & Drop
+## Segredos obrigatórios
 
-Implementado com `dnd-kit`:
+Configure na Cloudflare ou no GitHub Actions, sem gravar os valores no código:
 
-- reordenação de seções e blocos;
-- componentes aninháveis em Container, Linha e Coluna;
-- indicadores **Inserir acima · Inserir abaixo · Inserir dentro**;
-- blocos bloqueados não podem ser movidos;
-- biblioteca pode ser arrastada para o canvas.
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `SDM_BOOTSTRAP_TOKEN`
 
-### Biblioteca de blocos
+Para o workflow do GitHub também são necessários:
 
-Container, Linha, Coluna, Header, Banner Hero, Banner Interno, Carrossel, Card, Produto, Vitrine, Categoria, Marca, Distribuição, Promoção, Texto, Botão, Imagem, Vídeo, Galeria, FAQ, Formulário, Rodapé, Mapa e HTML customizado isolado em `iframe sandbox`.
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
 
-### Blocos inteligentes
-
-Vitrines suportam origem:
-
-- Manual
-- Categoria
-- Marca
-- Distribuição
-- Promoção
-- Mais acessados
-- Mais pesquisados
-- Mais recentes
-- Destaques
-
-A camada `src/catalog/data.ts` contém o resolver de demonstração. Em produção, a mesma interface passa a buscar os dados no Supabase.
-
-### Propriedades contextuais
-
-Ao selecionar um bloco, o painel direito disponibiliza controles específicos para:
-
-- conteúdo;
-- tipografia;
-- layout por dispositivo;
-- largura, altura, colunas, gap, margem e padding;
-- cores por paleta ou hexadecimal;
-- gradiente e imagem de fundo;
-- borda, radius e sombra;
-- hover e transição;
-- visibilidade Desktop/Tablet/Mobile;
-- metadados do Inspector Avançado.
-
-Todo bloco possui ações rápidas para **Duplicar, Excluir, Ocultar, Bloquear, Copiar Estilo, Colar Estilo e Salvar como Template**.
-
-## ASTERYON AI
-
-O Editor possui um copiloto criativo integrado para design, UX, branding, marketing, conteúdo e arquitetura da informação.
-
-Fluxo obrigatório:
-
-`Gerar → Preview → Aprovar → Aplicar ao Rascunho`
-
-A IA **nunca publica**, nunca altera `published`, nunca escreve diretamente em produção e nunca muda preços ou produtos reais automaticamente.
-
-Funções disponíveis na primeira versão:
-
-- criação de temas personalizados;
-- criação de fundos e direção visual;
-- geração de layout para Home/Landing Page;
-- geração de banners e campanhas;
-- geração de copy original;
-- sugestão de estrutura de catálogo;
-- análise de contraste, mobile, espaçamento, acessibilidade, SEO e performance;
-- melhoria visual de página;
-- direção de identidade visual;
-- briefing estruturado para imagens geradas por IA.
-
-O botão **ASTERYON AI** fica na barra superior do Editor Visual. As propostas são exibidas em formato visual e JSON estruturado. Somente propostas aprovadas podem ser aplicadas ao rascunho atual.
-
-### Pesquisa online
-
-A pesquisa é opcional e limitada a inspiração para:
-
-- tendências visuais;
-- datas comemorativas;
-- paletas de cores;
-- branding;
-- marketing;
-- UX/UI;
-- referências de campanhas;
-- padrões visuais modernos.
-
-É proibido copiar textos, slogans, logos, banners, imagens, sites ou layouts de terceiros.
-
-### Provider de IA
-
-O frontend tenta chamar a Edge Function `supabase/functions/asteryon-ai`. As credenciais do provedor ficam exclusivamente no backend, usando:
-
-- `ASTERYON_AI_PROVIDER_URL`
-- `ASTERYON_AI_PROVIDER_KEY`
-
-Se o provider não estiver configurado ou estiver indisponível, o sistema usa um motor local seguro para continuar oferecendo geração estruturada e análise sem tocar na produção.
-
-## Design System Global
-
-Controla tokens reutilizáveis de:
-
-- fonte principal e secundária;
-- cor primária, secundária e destaque;
-- fundo geral e dos cards;
-- bordas e sombras;
-- radius de cards e botões;
-- unidade de espaçamento.
-
-## Identidade Visual
-
-Área dedicada a:
-
-- Logo Principal
-- Logo Mobile
-- Favicon
-- Ícone PWA
-- Marca d'água
-
-O sistema também inclui o novo símbolo ASTERYON, baseado no conceito **Aster = Estrela**, combinando uma estrela geométrica com a letra `A`.
-
-## Temas
-
-Temas nativos:
-
-- Padrão
-- Natal
-- Black Friday
-- Carnaval
-- Dia das Mães
-- Dia dos Pais
-- Dia das Crianças
-- Ano Novo
-
-O motor permite controlar intensidade, partículas e animações por Desktop/Mobile. O ASTERYON AI também pode gerar nomes e configurações de temas personalizados, mantendo as credenciais de IA fora do frontend.
-
-## Undo, Redo e Histórico
-
-Estado do editor mantido com Zustand no formato:
-
-```ts
-{
-  past: [],
-  present: {},
-  future: []
-}
-```
-
-Atalhos:
-
-- `Ctrl + Z` — Undo
-- `Ctrl + Shift + Z` — Redo
-
-Snapshots automáticos são criados:
-
-- a cada 25 ações;
-- a cada 5 minutos.
-
-O Histórico Visual registra as ações, e os snapshots podem ser restaurados.
-
-## Sandbox e Time Machine
-
-- Vários rascunhos paralelos podem existir sem afetar a produção.
-- Uma versão publicada pode ser restaurada para rascunho.
-- Versões podem ser duplicadas em novos Sandboxes.
-- Publicações anteriores são preservadas como versões arquivadas.
-
-## Preview e Publicação
-
-O **Modo Visitante** remove todos os controles administrativos e renderiza o rascunho exatamente como portal.
-
-Antes da publicação, o sistema exibe:
-
-- resumo das mudanças;
-- blocos criados, alterados e removidos;
-- mudanças em banners, vitrines, tema, rodapé, design system e identidade;
-- comparação lado a lado **Publicado x Novo Rascunho**.
-
-Estados previstos:
-
-`draft → preview → scheduled → published → archived`
-
-A publicação cria uma nova versão imutável e mantém as anteriores disponíveis para restauração.
-
-## Supabase
-
-A migração `supabase/migrations/202608120001_editor_visual_pro.sql` adiciona:
-
-- `site_pages`
-- `site_sandboxes`
-- `site_drafts`
-- `site_versions`
-- `editor_snapshots`
-- `editor_activity`
-- `component_templates`
-- `design_systems`
-- `visual_identity`
-
-Também cria o bucket privado `catalog-editor-assets` e a função transacional `publish_site_draft`.
-
-O Portal Público deve consultar apenas a versão apontada por `site_pages.published_version_id`, impedindo que um rascunho seja exibido acidentalmente.
-
-A Edge Function `supabase/functions/publish-scheduled` processa publicações agendadas quando acionada por um scheduler/cron seguro.
-
-## Stack
-
-- React 18
-- TypeScript
-- Vite
-- Tailwind CSS
-- dnd-kit
-- Zustand
-- Zod
-- React Hook Form
-- Supabase / PostgreSQL / Storage
-
-## Rodar localmente
+## Validação
 
 ```bash
-npm install
-npm run dev
+npm ci
+npm run check
+npm run deploy:dry
 ```
 
-- `http://localhost:5173/` — Portal Público
-- `http://localhost:5173/admin` — Editor Visual Pro
-
-Validação:
-
-```bash
-npm run typecheck
-npm run build
-```
-
-O GitHub Actions executa typecheck e build antes da integração na branch `main`.
-
-## Produção
-
-Arquitetura planejada:
-
-`GitHub → Supabase/PostgreSQL + Storage → Cloudflare`
-
-- `www.empresa.com.br` → Portal Público
-- `admin.empresa.com.br` → Painel Administrativo
-- Supabase Auth + RLS por empresa/usuário
-- Storage para produtos, logos, banners e encartes
-- Cloudflare para domínio, HTTPS, CDN, cache, rate limit e proteção
+A raiz do repositório já está preparada para importação direta em **Workers & Pages → Import repository**.
