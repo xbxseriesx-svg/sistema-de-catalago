@@ -23,6 +23,46 @@ const uid = (prefix = 'id') => `${prefix}_${crypto.randomUUID()}`;
 const clean = (value: unknown) => String(value ?? '').trim();
 const slug = (value: unknown) => clean(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+function normalizeDepartment(value: unknown) {
+  const key = slug(value);
+  if (['atacado', 'atacadista', 'wholesale'].includes(key)) return 'Atacado';
+  if (['distribuicao', 'distribuidor', 'distribution'].includes(key)) return 'Distribuição';
+  return '';
+}
+
+function activeStatus(value: unknown, fallback = 'active') {
+  const key = slug(value);
+  if (['active', 'ativo', 'published', 'publicado'].includes(key)) return 'active';
+  if (['inactive', 'inativo', 'archived', 'arquivado', 'draft', 'rascunho'].includes(key)) return 'inactive';
+  return fallback;
+}
+
+function postgrestLiteral(value: unknown) {
+  const escaped = clean(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return encodeURIComponent(`"${escaped}"`);
+}
+
+function hasValue(value: unknown) {
+  return value !== undefined && value !== null && clean(value) !== '';
+}
+
+function keepOr<T>(incoming: T | null | undefined, previous: T | null | undefined): T | null {
+  return hasValue(incoming) ? incoming as T : previous ?? null;
+}
+
+function marketingLayout(value: any) {
+  const source = value && typeof value === 'object' ? value : {};
+  const finite = (input: unknown, fallback: number) => Number.isFinite(Number(input)) ? Number(input) : fallback;
+  return {
+    x: Math.max(0, finite(source.x, 0)),
+    y: Math.max(0, finite(source.y, 0)),
+    width: Math.max(240, finite(source.width, 1440)),
+    height: Math.max(140, finite(source.height, 560)),
+    zIndex: Math.max(1, Math.round(finite(source.zIndex, 700))),
+    visible: source.visible !== false,
+  };
+}
+
 function cookie(req: Request, name: string) {
   for (const item of (req.headers.get('cookie') || '').split(';')) {
     const [key, ...value] = item.trim().split('=');
@@ -70,6 +110,28 @@ async function supabase(env: Env, path: string, init: RequestInit = {}, userToke
 
 async function table(env: Env, name: string, query = '', init: RequestInit = {}) {
   return supabase(env, `/rest/v1/${name}${query ? `?${query}` : ''}`, init);
+}
+
+async function tableAll(env: Env, name: string, query = '', pageSize = 500, maxRows = 10000) {
+  const rows: any[] = [];
+  for (let offset = 0; offset < maxRows; offset += pageSize) {
+    const page = await table(env, name, `${query}${query ? '&' : ''}limit=${pageSize}&offset=${offset}`);
+    if (!Array.isArray(page)) throw new Error(`Resposta inválida ao consultar ${name}`);
+    rows.push(...page);
+    if (page.length < pageSize) return rows;
+  }
+  throw new Error(`A consulta de ${name} excedeu o limite seguro de ${maxRows} registros`);
+}
+
+async function tableByValues(env: Env, name: string, baseQuery: string, column: string, values: string[]) {
+  const rows: any[] = [];
+  for (let index = 0; index < values.length; index += 150) {
+    const list = values.slice(index, index + 150).map(postgrestLiteral).join(',');
+    const page = await table(env, name, `${baseQuery}${baseQuery ? '&' : ''}${column}=in.(${list})`);
+    if (!Array.isArray(page)) throw new Error(`Resposta inválida ao consultar ${name}`);
+    rows.push(...page);
+  }
+  return rows;
 }
 
 async function currentUser(req: Request, env: Env) {
@@ -145,32 +207,44 @@ async function authRoute(req: Request, env: Env, path: string) {
   return null;
 }
 
+async function brandsPayload(env: Env) {
+  const brands = await tableAll(env, 'brands', `company_id=eq.${COMPANY_ID}&select=id,name,slug,active,data&order=name.asc`);
+  return brands.map((brand: any) => ({ ...brand.data, id: brand.id, name: brand.name, slug: brand.slug, status: brand.active ? 'active' : 'inactive' }));
+}
+
+async function offersPayload(env: Env, publicOnly: boolean) {
+  const offers = await table(env, 'offers', `company_id=eq.${COMPANY_ID}${publicOnly ? '&status=eq.published' : ''}&select=*&order=featured.desc,updated_at.desc`);
+  const links = offers?.length ? await tableAll(env, 'offer_products', `offer_id=in.(${offers.map((x: any) => postgrestLiteral(x.id)).join(',')})&select=offer_id,product_id,sort_order&order=sort_order.asc`) : [];
+  return (offers || []).map((offer: any) => ({ ...offer.data, id: offer.id, title: offer.title, description: offer.description, status: offer.status, featured: offer.featured, startsAt: offer.starts_at, endsAt: offer.ends_at, productIds: (links || []).filter((link: any) => link.offer_id === offer.id).map((link: any) => link.product_id) }));
+}
+
 async function catalogPayload(env: Env, publicOnly: boolean) {
   const status = publicOnly ? '&status=eq.active' : '';
-  const products = await table(env, 'products', `company_id=eq.${COMPANY_ID}${status}&select=*&order=name.asc&limit=5000`, { headers: { range: '0-4999' } });
-  const brands = await table(env, 'brands', `company_id=eq.${COMPANY_ID}&select=id,name,slug,active,data&order=name.asc`);
-  const hierarchy = await table(env, 'hierarchy_nodes', `company_id=eq.${COMPANY_ID}&select=id,name,slug,type,parent_id,sort_order,active&order=sort_order.asc,name.asc`);
-  const settings = await table(env, 'catalog_settings', `company_id=eq.${COMPANY_ID}&select=display_fields&limit=1`);
-  const offers = await table(env, 'offers', `company_id=eq.${COMPANY_ID}${publicOnly ? '&status=eq.published' : ''}&select=*&order=featured.desc,updated_at.desc`);
-  const links = offers?.length ? await table(env, 'offer_products', `offer_id=in.(${offers.map((x: any) => x.id).join(',')})&select=offer_id,product_id,sort_order&order=sort_order.asc`) : [];
+  const [products, brands, hierarchy, settings, promotions] = await Promise.all([
+    tableAll(env, 'products', `company_id=eq.${COMPANY_ID}${status}&select=*&order=name.asc`),
+    brandsPayload(env),
+    tableAll(env, 'hierarchy_nodes', `company_id=eq.${COMPANY_ID}&select=id,name,slug,type,parent_id,sort_order,active&order=sort_order.asc,name.asc`),
+    table(env, 'catalog_settings', `company_id=eq.${COMPANY_ID}&select=display_fields&limit=1`),
+    offersPayload(env, publicOnly),
+  ]);
   return {
     products: (products || []).map((p: any) => ({ ...p.data, id: p.id, code: p.code, name: p.name, image: p.image_url || p.data?.image, gallery: p.gallery, status: p.status === 'active' ? 'ativo' : 'rascunho' })),
-    brands: (brands || []).map((b: any) => ({ ...b.data, id: b.id, name: b.name, slug: b.slug, status: b.active ? 'active' : 'inactive' })),
+    brands,
     distributions: [],
     hierarchy: (hierarchy || []).map((h: any) => ({ id: h.id, name: h.name, slug: h.slug, level: h.type, parent_id: h.parent_id, parentId: h.parent_id, sort_order: h.sort_order, sortOrder: h.sort_order, status: h.active ? 'active' : 'inactive' })),
-    promotions: (offers || []).map((o: any) => ({ ...o.data, id: o.id, title: o.title, description: o.description, status: o.status, featured: o.featured, startsAt: o.starts_at, endsAt: o.ends_at, productIds: (links || []).filter((l: any) => l.offer_id === o.id).map((l: any) => l.product_id) })),
+    promotions,
     settings: { displayFields: settings?.[0]?.display_fields || [] },
   };
 }
 
 async function publicRoute(req: Request, env: Env, path: string) {
-  if (path === '/api/health') return ok({ service: 'sistema-de-catalago', database: 'Supabase Postgres', d1: false, r2: false, release: 'cde35de1', editor: '2.1' });
+  if (path === '/api/health') return ok({ service: 'sistema-de-catalago', database: 'Supabase Postgres', d1: false, r2: false, release: 'v58', editor: '2.1.58' });
   if (path === '/api/public/catalog' && req.method === 'GET') return ok({ catalog: await catalogPayload(env, true) });
-  if (path === '/api/public/brands' && req.method === 'GET') return ok({ brands: (await catalogPayload(env, true)).brands });
+  if (path === '/api/public/brands' && req.method === 'GET') return ok({ brands: await brandsPayload(env) });
   if (path === '/api/public/marketing' && req.method === 'GET') {
-    const rows = await table(env, 'marketing_settings', `company_id=eq.${COMPANY_ID}&select=theme,banner,video_banner,carousel&limit=1`);
+    const rows = await table(env, 'marketing_settings', `company_id=eq.${COMPANY_ID}&select=theme,banner,video_banner,carousel,settings&limit=1`);
     const m = rows?.[0] || {};
-    return ok({ marketing: { theme: m.theme || {}, banner: m.banner || {}, videoBanner: m.video_banner || {}, carousel: m.carousel || {} } });
+    return ok({ marketing: { theme: m.theme || {}, banner: m.banner || {}, videoBanner: m.video_banner || {}, carousel: m.carousel || {}, layout: marketingLayout(m.settings?.layout) } });
   }
   const mediaMatch = path.match(/^\/api\/public\/media\/([^/]+)$/);
   if (mediaMatch && req.method === 'GET') {
@@ -204,7 +278,7 @@ async function adminRoute(req: Request, env: Env, path: string) {
   }
   if (path === '/api/admin/brands' && req.method === 'GET') {
     const auth = await requireUser(req, env); if (auth.error) return auth.error;
-    const brands = (await catalogPayload(env, false)).brands; return ok({ brands });
+    return ok({ brands: await brandsPayload(env) });
   }
   if (path === '/api/admin/brands' && req.method === 'POST') {
     const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
@@ -217,10 +291,20 @@ async function adminRoute(req: Request, env: Env, path: string) {
     const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
     const input = await body(req), incoming = Array.isArray(input.brands) ? input.brands.slice(0, 1000) : [];
     const existing = await table(env, 'brands', `company_id=eq.${COMPANY_ID}&select=id,slug`), bySlug = new Map((existing || []).map((x: any) => [x.slug, x]));
-    let inserted = 0, updated = 0, ignored = 0; const errors: string[] = [], rows: any[] = [];
-    incoming.forEach((raw: any, index: number) => { const name = clean(raw.name || raw.marca), key = slug(name); if (!name || !key) { ignored++; if (errors.length < 30) errors.push(`Linha ${index + 2}: marca sem nome`); return; } const old: any = bySlug.get(key); if (old) updated++; else inserted++; rows.push({ id: old?.id || uid('brd'), company_id: COMPANY_ID, name, slug: key, description: clean(raw.description) || null, website: clean(raw.website) || null, active: raw.status !== 'inactive', data: raw }); });
+    let inserted = 0, updated = 0, ignored = 0; const errors: string[] = [], rows: any[] = [], seen = new Set<string>();
+    incoming.forEach((raw: any, index: number) => {
+      const name = clean(raw.name || raw.marca), key = slug(name);
+      if (!name || !key) { ignored++; if (errors.length < 30) errors.push(`Linha ${index + 2}: marca sem nome`); return; }
+      if (seen.has(key)) { ignored++; if (errors.length < 30) errors.push(`Linha ${index + 2}: marca repetida no arquivo`); return; }
+      seen.add(key);
+      const old: any = bySlug.get(key);
+      if (old) updated++; else inserted++;
+      const row = { id: old?.id || uid('brd'), company_id: COMPANY_ID, name, slug: key, description: clean(raw.description) || null, website: clean(raw.website) || null, active: activeStatus(raw.status, 'active') === 'active', data: raw };
+      rows.push(row);
+      bySlug.set(key, row);
+    });
     if (rows.length) await table(env, 'brands', 'on_conflict=company_id,slug', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(rows) });
-    return ok({ inserted, updated, ignored, errors, brands: (await catalogPayload(env, false)).brands });
+    return ok({ inserted, updated, ignored, errors, brands: await brandsPayload(env) });
   }
   const brandItem = path.match(/^\/api\/admin\/brands\/([^/]+)$/);
   if (brandItem && ['PUT', 'DELETE'].includes(req.method)) {
@@ -254,13 +338,15 @@ async function adminRoute(req: Request, env: Env, path: string) {
   if (path === '/api/admin/marketing' && req.method === 'PUT') {
     const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
     const input = await body(req), m = input.marketing || input;
-    await table(env, 'marketing_settings', `company_id=eq.${COMPANY_ID}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ theme: m.theme || {}, banner: m.banner || {}, video_banner: m.videoBanner || {}, carousel: m.carousel || {} }) });
-    await audit(env, auth.user, 'marketing.update', 'marketing', COMPANY_ID);
-    return ok({ marketing: m });
+    const current = (await table(env, 'marketing_settings', `company_id=eq.${COMPANY_ID}&select=settings&limit=1`))?.[0];
+    const layout = marketingLayout(m.layout);
+    await table(env, 'marketing_settings', `company_id=eq.${COMPANY_ID}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ theme: m.theme || {}, banner: m.banner || {}, video_banner: m.videoBanner || {}, carousel: m.carousel || {}, settings: { ...(current?.settings || {}), layout } }) });
+    await audit(env, auth.user, 'marketing.update', 'marketing', COMPANY_ID, { layout, slides: Array.isArray(m.carousel?.items) ? m.carousel.items.length : 0 });
+    return ok({ marketing: { ...m, layout } });
   }
   if (path === '/api/admin/catalog/offers' && req.method === 'GET') {
     const auth = await requireUser(req, env); if (auth.error) return auth.error;
-    return ok({ offers: (await catalogPayload(env, false)).promotions });
+    return ok({ offers: await offersPayload(env, false) });
   }
   if (path === '/api/admin/catalog/offers' && req.method === 'POST') {
     const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
@@ -275,20 +361,98 @@ async function adminRoute(req: Request, env: Env, path: string) {
   }
   if (path === '/api/admin/catalog/products/bulk' && req.method === 'POST') {
     const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
-    const input = await body(req), incoming = Array.isArray(input.products) ? input.products.slice(0, 5000) : []; if (!incoming.length) return fail('Nenhum produto recebido');
-    const existing = await table(env, 'products', `company_id=eq.${COMPANY_ID}&select=id,code,data&limit=5000`, { headers: { range: '0-4999' } }), byCode = new Map((existing || []).map((x: any) => [String(x.code), x]));
-    let inserted = 0, updated = 0, ignored = 0; const errors: string[] = [], rows: any[] = [];
+    const input = await body(req), incoming = Array.isArray(input.products) ? input.products.slice(0, 5000) : [];
+    if (!incoming.length) return fail('Nenhum produto recebido');
+
+    const requestedCodes: string[] = [...new Set<string>(incoming.map((p: any) => clean(p?.code ?? p?.codigo)).filter(Boolean))];
+    const existing = requestedCodes.length
+      ? await tableByValues(env, 'products', `company_id=eq.${COMPANY_ID}&select=*`, 'code', requestedCodes)
+      : [];
+    const byCode = new Map<string, any>((existing || []).map((x: any) => [clean(x.code), x]));
+    let hierarchy = await table(env, 'hierarchy_nodes', `company_id=eq.${COMPANY_ID}&select=id,type,name,slug,parent_id,sort_order,active`);
+    let brands = await table(env, 'brands', `company_id=eq.${COMPANY_ID}&select=id,name,slug,active`);
+    const seenCodes = new Set<string>(), errors: string[] = [];
+    let ignored = 0;
+
+    const nodeKey = (type: string, parentId: string | null, name: string) => `${type}:${parentId || ''}:${slug(name)}`;
+    const rebuildNodes = () => new Map<string, any>((hierarchy || []).map((node: any) => [nodeKey(node.type, node.parent_id, node.name), node]));
+    let nodes = rebuildNodes();
+    const departments = new Map<string, any>();
+    for (const node of hierarchy || []) if (node.type === 'departamento') departments.set(normalizeDepartment(node.name), node);
+
+    const valid: Array<{ index: number; p: any; code: string; name: string; previous: any; previousData: any; department: string; section: string; category: string }> = [];
     for (let index = 0; index < incoming.length; index++) {
-      const p = incoming[index] || {}, code = clean(p.code ?? p.codigo), name = clean(p.name ?? p.shortDescription ?? p.description ?? p.descricao);
-      if (!code || !name) { ignored++; if (errors.length < 30) errors.push(`Linha ${index + 2}: código ou descrição ausente`); continue; }
-      const previous: any = byCode.get(code), data = { ...(previous?.data || {}), ...p, code, name, shortDescription: clean(p.shortDescription) || name };
-      const brandName = clean(p.brandName ?? p.brand ?? p.marca); let brandId: string | null = null;
-      if (brandName) { const key = slug(brandName), found = await table(env, 'brands', `company_id=eq.${COMPANY_ID}&slug=eq.${encodeURIComponent(key)}&select=id&limit=1`); brandId = found?.[0]?.id || uid('brd'); if (!found?.length) await table(env, 'brands', '', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: brandId, company_id: COMPANY_ID, name: brandName, slug: key, active: true, data: {} }) }); }
-      const categoryName = clean(p.categoriaName ?? p.category ?? p.categoria) || 'Sem identificação', categorySlug = `importacao--${slug(categoryName)}`;
-      let category = await table(env, 'hierarchy_nodes', `company_id=eq.${COMPANY_ID}&type=eq.categoria&slug=eq.${encodeURIComponent(categorySlug)}&select=id&limit=1`), categoryId = category?.[0]?.id;
-      if (!categoryId) { categoryId = uid('cat'); await table(env, 'hierarchy_nodes', '', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: categoryId, company_id: COMPANY_ID, type: 'categoria', name: categoryName, slug: categorySlug, parent_id: 'secao_importacao_d1', sort_order: 100, active: true, data: {} }) }); }
-      const row = { id: previous?.id || uid('prd'), company_id: COMPANY_ID, code, name, ean: clean(p.ean) || null, short_description: data.shortDescription, long_description: clean(p.longDescription) || null, brand_id: brandId, departamento_id: 'dep_atacado', secao_id: 'secao_importacao_d1', categoria_id: categoryId, unit: clean(p.unit) || null, packaging: clean(p.packaging) || null, ncm: clean(p.ncm) || null, price: p.price ?? null, promo_price: p.promoPrice ?? null, stock: p.stock ?? null, image_url: clean(p.image) || null, video_url: clean(p.video) || null, gallery: Array.isArray(p.gallery) ? p.gallery : [], technical: p.technical || {}, attributes: p.attributes || {}, tags: Array.isArray(p.tags) ? p.tags : [], status: ['inactive', 'inativo'].includes(clean(p.status).toLowerCase()) ? 'inactive' : 'active', data };
-      rows.push(row); if (previous) updated++; else inserted++;
+      const p = incoming[index] || {}, code = clean(p.code ?? p.codigo), previous: any = byCode.get(code), previousData = previous?.data || {};
+      const name = clean(p.name ?? p.shortDescription ?? p.description ?? p.descricao) || clean(previous?.name ?? previousData.name);
+      const department = normalizeDepartment(p.departamentoName ?? p.department ?? p.departamento ?? previousData.departamentoName);
+      const section = clean(p.secaoName ?? p.section ?? p.secao ?? previousData.secaoName);
+      const category = clean(p.categoriaName ?? p.category ?? p.categoria ?? previousData.categoriaName);
+      if (seenCodes.has(code)) { ignored++; if (errors.length < 30) errors.push(`Linha ${index + 2}: código ${code || 'vazio'} repetido no arquivo`); continue; }
+      if (code) seenCodes.add(code);
+      if (!code || !name || !department || !section || !category) {
+        ignored++;
+        if (errors.length < 30) errors.push(`Linha ${index + 2}: ${!code ? 'Código; ' : ''}${!name ? 'Descrição; ' : ''}${!department ? 'Departamento deve ser Atacado ou Distribuição; ' : ''}${!section ? 'Seção; ' : ''}${!category ? 'Categoria; ' : ''}`.replace(/; $/, ''));
+        continue;
+      }
+      if (!departments.get(department)) { ignored++; if (errors.length < 30) errors.push(`Linha ${index + 2}: departamento ${department} não configurado`); continue; }
+      valid.push({ index, p, code, name, previous, previousData, department, section, category });
+    }
+
+    const missingSections = new Map<string, any>();
+    for (const item of valid) {
+      const department = departments.get(item.department), key = nodeKey('secao', department.id, item.section);
+      if (!nodes.has(key) && !missingSections.has(key)) missingSections.set(key, { id: uid('hier'), company_id: COMPANY_ID, type: 'secao', name: item.section, slug: `${slug(item.department)}--${slug(item.section)}`, parent_id: department.id, sort_order: 100, active: true, data: {} });
+    }
+    if (missingSections.size) await table(env, 'hierarchy_nodes', 'on_conflict=company_id,type,slug,parent_id', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify([...missingSections.values()]) });
+    if (missingSections.size) hierarchy = await table(env, 'hierarchy_nodes', `company_id=eq.${COMPANY_ID}&select=id,type,name,slug,parent_id,sort_order,active`);
+    nodes = rebuildNodes();
+
+    const missingCategories = new Map<string, any>();
+    for (const item of valid) {
+      const department = departments.get(item.department), section = nodes.get(nodeKey('secao', department.id, item.section));
+      if (!section) continue;
+      const key = nodeKey('categoria', section.id, item.category);
+      if (!nodes.has(key) && !missingCategories.has(key)) missingCategories.set(key, { id: uid('hier'), company_id: COMPANY_ID, type: 'categoria', name: item.category, slug: `${slug(item.section)}--${slug(item.category)}`, parent_id: section.id, sort_order: 100, active: true, data: {} });
+    }
+    if (missingCategories.size) await table(env, 'hierarchy_nodes', 'on_conflict=company_id,type,slug,parent_id', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify([...missingCategories.values()]) });
+    if (missingCategories.size) hierarchy = await table(env, 'hierarchy_nodes', `company_id=eq.${COMPANY_ID}&select=id,type,name,slug,parent_id,sort_order,active`);
+    nodes = rebuildNodes();
+
+    const brandMap = new Map<string, any>((brands || []).map((brand: any) => [slug(brand.name), brand]));
+    const missingBrands = new Map<string, any>();
+    for (const item of valid) {
+      const brandName = clean(item.p.brandName ?? item.p.brand ?? item.p.marca ?? item.previousData.brandName), key = slug(brandName);
+      if (key && !brandMap.has(key) && !missingBrands.has(key)) missingBrands.set(key, { id: uid('brd'), company_id: COMPANY_ID, name: brandName, slug: key, active: true, data: {} });
+    }
+    if (missingBrands.size) await table(env, 'brands', 'on_conflict=company_id,slug', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify([...missingBrands.values()]) });
+    if (missingBrands.size) brands = await table(env, 'brands', `company_id=eq.${COMPANY_ID}&select=id,name,slug,active`);
+    for (const brand of brands || []) brandMap.set(slug(brand.name), brand);
+
+    let inserted = 0, updated = 0; const rows: any[] = [];
+    for (const item of valid) {
+      const { p, code, name, previous, previousData, department, section, category } = item;
+      const departmentNode = departments.get(department), sectionNode = nodes.get(nodeKey('secao', departmentNode.id, section));
+      const categoryNode = sectionNode && nodes.get(nodeKey('categoria', sectionNode.id, category));
+      if (!sectionNode || !categoryNode) { ignored++; if (errors.length < 30) errors.push(`Linha ${item.index + 2}: falha ao resolver seção ou categoria`); continue; }
+      const brandName = clean(p.brandName ?? p.brand ?? p.marca ?? previousData.brandName), brandId = brandName ? brandMap.get(slug(brandName))?.id || previous?.brand_id || null : previous?.brand_id || null;
+      const image = clean(p.image) || clean(previous?.image_url) || clean(previousData.image) || null;
+      const gallery = Array.isArray(p.gallery) && p.gallery.length ? p.gallery : Array.isArray(previous?.gallery) ? previous.gallery : Array.isArray(previousData.gallery) ? previousData.gallery : [];
+      const shortDescription = clean(p.shortDescription) || clean(previous?.short_description) || name;
+      const longDescription = clean(p.longDescription) || clean(previous?.long_description) || clean(previousData.longDescription) || name;
+      const data = { ...previousData, ...p, code, name, shortDescription, longDescription, departamentoId: departmentNode.id, secaoId: sectionNode.id, categoriaId: categoryNode.id, departamentoName: department, secaoName: section, categoriaName: category, brandId, brandName: brandName || previousData.brandName || '', image, gallery };
+      rows.push({
+        id: previous?.id || uid('prd'), company_id: COMPANY_ID, code, name,
+        ean: keepOr(clean(p.ean) || null, previous?.ean), short_description: shortDescription, long_description: longDescription,
+        brand_id: brandId, departamento_id: departmentNode.id, secao_id: sectionNode.id, categoria_id: categoryNode.id,
+        unit: keepOr(clean(p.unit) || null, previous?.unit), packaging: keepOr(clean(p.packaging) || null, previous?.packaging), ncm: keepOr(clean(p.ncm) || null, previous?.ncm),
+        price: keepOr(p.price, previous?.price), promo_price: keepOr(p.promoPrice, previous?.promo_price), stock: keepOr(p.stock, previous?.stock),
+        image_url: image, video_url: clean(p.video ?? p.videoUrl) || clean(previous?.video_url) || null, gallery,
+        technical: p.technical && typeof p.technical === 'object' ? { ...(previous?.technical || {}), ...p.technical } : previous?.technical || {},
+        attributes: p.attributes && typeof p.attributes === 'object' ? { ...(previous?.attributes || {}), ...p.attributes } : previous?.attributes || {},
+        tags: Array.isArray(p.tags) ? p.tags : Array.isArray(previous?.tags) ? previous.tags : [],
+        status: activeStatus(p.status, previous?.status || 'active'), data,
+      });
+      if (previous) updated++; else inserted++;
     }
     for (let i = 0; i < rows.length; i += 200) await table(env, 'products', 'on_conflict=company_id,code', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(rows.slice(i, i + 200)) });
     const importId = uid('imp'); await audit(env, auth.user, 'products.bulk', 'import', importId, { total: incoming.length, inserted, updated, ignored, filename: clean(input.filename), errors });

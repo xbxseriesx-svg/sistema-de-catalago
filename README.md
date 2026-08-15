@@ -6,6 +6,8 @@ Este repositório contém somente a versão **58** do sistema publicada original
 
 - `public/`: frontend compilado da V58.
 - `worker/`: API do Worker adaptada para Supabase.
+- `supabase/migrations/`: ajustes versionados de segurança e integridade do banco.
+- `scripts/`: testes da importação e da estrutura do frontend.
 - `wrangler.jsonc`: configuração única do Cloudflare Worker.
 - `.github/workflows/deploy-v58.yml`: deploy manual validado.
 
@@ -21,7 +23,7 @@ Este repositório contém somente a versão **58** do sistema publicada original
 
 Configure na Cloudflare ou no GitHub Actions, sem gravar os valores no código:
 
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `SUPABASE_SECRET_KEY` (recomendado, formato `sb_secret_...`) ou `SUPABASE_SERVICE_ROLE_KEY` legado
 - `SDM_BOOTSTRAP_TOKEN`
 
 Para o workflow do GitHub também são necessários:
@@ -33,8 +35,7 @@ Para o workflow do GitHub também são necessários:
 
 ```bash
 npm ci
-npm run check
-npm run deploy:dry
+npm test
 ```
 
 A raiz do repositório já está preparada para importação direta em **Workers & Pages → Import repository**.
