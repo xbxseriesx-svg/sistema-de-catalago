@@ -2,6 +2,17 @@ name: Deploy catálogo V58 — Cloudflare + Supabase
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'worker/**'
+      - 'public/**'
+      - 'wrangler.jsonc'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/**'
+      - '.github/workflows/deploy-v58.yml'
 
 permissions:
   contents: read
@@ -57,6 +68,22 @@ jobs:
 
       - name: Publicar V58
         run: npx wrangler deploy --secrets-file .secrets.json
+
+      - name: Verificar produção V58
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          const base = 'https://sistema-de-catalago.xbxseriesx-svg.workers.dev';
+          for (const path of ['/api/health', '/api/auth/status']) {
+            const response = await fetch(`${base}${path}`);
+            const payload = await response.text();
+            if (!response.ok) {
+              throw new Error(`${path} retornou ${response.status}: ${payload.slice(0, 300)}`);
+            }
+            const data = JSON.parse(payload);
+            if (!data.ok) throw new Error(`${path} retornou ok=false`);
+          }
+          NODE
 
       - name: Remover arquivo temporário
         if: always()
