@@ -197,6 +197,47 @@ async function adminRoute(req: Request, env: Env, path: string) {
     const auth = await requireUser(req, env); if (auth.error) return auth.error;
     const brands = (await catalogPayload(env, false)).brands; return ok({ brands });
   }
+  if (path === '/api/admin/brands' && req.method === 'POST') {
+    const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
+    const input = await body(req), name = clean(input.name); if (!name) return fail('Informe o nome da marca');
+    const id = uid('brd'), item = { id, company_id: COMPANY_ID, name, slug: slug(name), description: clean(input.description) || null, website: clean(input.website) || null, logo_url: clean(input.logoUrl) || null, banner_url: clean(input.bannerUrl) || null, sort_order: Number(input.sortOrder || 0), active: input.status !== 'inactive', featured: !!input.featured, data: input.data || {} };
+    await table(env, 'brands', '', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify(item) });
+    await audit(env, auth.user, 'brand.create', 'brand', id); return ok({ brand: { ...item, status: item.active ? 'active' : 'inactive' } });
+  }
+  if (path === '/api/admin/brands/bulk' && req.method === 'POST') {
+    const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
+    const input = await body(req), incoming = Array.isArray(input.brands) ? input.brands.slice(0, 1000) : [];
+    const existing = await table(env, 'brands', `company_id=eq.${COMPANY_ID}&select=id,slug`), bySlug = new Map((existing || []).map((x: any) => [x.slug, x]));
+    let inserted = 0, updated = 0, ignored = 0; const errors: string[] = [], rows: any[] = [];
+    incoming.forEach((raw: any, index: number) => { const name = clean(raw.name || raw.marca), key = slug(name); if (!name || !key) { ignored++; if (errors.length < 30) errors.push(`Linha ${index + 2}: marca sem nome`); return; } const old: any = bySlug.get(key); if (old) updated++; else inserted++; rows.push({ id: old?.id || uid('brd'), company_id: COMPANY_ID, name, slug: key, description: clean(raw.description) || null, website: clean(raw.website) || null, active: raw.status !== 'inactive', data: raw }); });
+    if (rows.length) await table(env, 'brands', 'on_conflict=company_id,slug', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(rows) });
+    return ok({ inserted, updated, ignored, errors, brands: (await catalogPayload(env, false)).brands });
+  }
+  const brandItem = path.match(/^\/api\/admin\/brands\/([^/]+)$/);
+  if (brandItem && ['PUT', 'DELETE'].includes(req.method)) {
+    const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
+    const id = decodeURIComponent(brandItem[1]);
+    if (req.method === 'DELETE') { await table(env, 'brands', `id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } }); await audit(env, auth.user, 'brand.delete', 'brand', id); return ok({ id }); }
+    const input = await body(req), name = clean(input.name); if (!name) return fail('Informe o nome da marca');
+    const patch: any = { name, slug: slug(name), description: clean(input.description) || null, website: clean(input.website) || null, logo_url: clean(input.logoUrl) || null, banner_url: clean(input.bannerUrl) || null, sort_order: Number(input.sortOrder || 0), active: input.status !== 'inactive', featured: !!input.featured };
+    await table(env, 'brands', `id=eq.${encodeURIComponent(id)}&company_id=eq.${COMPANY_ID}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify(patch) });
+    await audit(env, auth.user, 'brand.update', 'brand', id); return ok({ brand: { id, ...patch, status: patch.active ? 'active' : 'inactive' } });
+  }
+  if (path === '/api/admin/hierarchy' && req.method === 'POST') {
+    const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
+    const input = await body(req), type = clean(input.level || input.type); if (!['secao', 'categoria'].includes(type)) return fail('Nível inválido');
+    const name = clean(input.name), parentId = clean(input.parentId) || null; if (!name || !parentId) return fail('Informe nome e item pai');
+    const id = uid('hier'); await table(env, 'hierarchy_nodes', '', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id, company_id: COMPANY_ID, type, name, slug: `${slug(parentId)}--${slug(name)}`, parent_id: parentId, sort_order: Number(input.sortOrder || 0), active: true, data: {} }) });
+    await audit(env, auth.user, 'hierarchy.create', type, id); return ok({ id });
+  }
+  const hierarchyItem = path.match(/^\/api\/admin\/hierarchy\/([^/]+)$/);
+  if (hierarchyItem && ['PUT', 'DELETE'].includes(req.method)) {
+    const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
+    const id = decodeURIComponent(hierarchyItem[1]);
+    if (req.method === 'DELETE') { try { await table(env, 'hierarchy_nodes', `id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } }); } catch { return fail('Não é possível excluir uma categoria em uso', 409, 'IN_USE'); } return ok({ id }); }
+    const input = await body(req), patch = { name: clean(input.name), active: input.status !== 'inactive', sort_order: Number(input.sortOrder || 0) }; if (!patch.name) return fail('Informe o nome');
+    await table(env, 'hierarchy_nodes', `id=eq.${encodeURIComponent(id)}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify(patch) }); return ok({ id });
+  }
   if (path === '/api/admin/marketing' && req.method === 'GET') {
     const auth = await requireUser(req, env); if (auth.error) return auth.error;
     return publicRoute(new Request(req, { method: 'GET' }), env, '/api/public/marketing');
@@ -207,6 +248,42 @@ async function adminRoute(req: Request, env: Env, path: string) {
     await table(env, 'marketing_settings', `company_id=eq.${COMPANY_ID}`, { method: 'PATCH', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ theme: m.theme || {}, banner: m.banner || {}, video_banner: m.videoBanner || {}, carousel: m.carousel || {} }) });
     await audit(env, auth.user, 'marketing.update', 'marketing', COMPANY_ID);
     return ok({ marketing: m });
+  }
+  if (path === '/api/admin/catalog/offers' && req.method === 'GET') {
+    const auth = await requireUser(req, env); if (auth.error) return auth.error;
+    return ok({ offers: (await catalogPayload(env, false)).promotions });
+  }
+  if (path === '/api/admin/catalog/offers' && req.method === 'POST') {
+    const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
+    return saveOffer(env, auth.user, await body(req), null);
+  }
+  const offerItem = path.match(/^\/api\/admin\/catalog\/offers\/([^/]+)$/);
+  if (offerItem && ['PUT', 'DELETE'].includes(req.method)) {
+    const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
+    const id = decodeURIComponent(offerItem[1]);
+    if (req.method === 'DELETE') { await table(env, 'offers', `id=eq.${encodeURIComponent(id)}&company_id=eq.${COMPANY_ID}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } }); await audit(env, auth.user, 'offer.delete', 'offer', id); return ok({ id }); }
+    return saveOffer(env, auth.user, await body(req), id);
+  }
+  if (path === '/api/admin/catalog/products/bulk' && req.method === 'POST') {
+    const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']); if (auth.error) return auth.error;
+    const input = await body(req), incoming = Array.isArray(input.products) ? input.products.slice(0, 5000) : []; if (!incoming.length) return fail('Nenhum produto recebido');
+    const existing = await table(env, 'products', `company_id=eq.${COMPANY_ID}&select=id,code,data&limit=5000`, { headers: { range: '0-4999' } }), byCode = new Map((existing || []).map((x: any) => [String(x.code), x]));
+    let inserted = 0, updated = 0, ignored = 0; const errors: string[] = [], rows: any[] = [];
+    for (let index = 0; index < incoming.length; index++) {
+      const p = incoming[index] || {}, code = clean(p.code ?? p.codigo), name = clean(p.name ?? p.shortDescription ?? p.description ?? p.descricao);
+      if (!code || !name) { ignored++; if (errors.length < 30) errors.push(`Linha ${index + 2}: código ou descrição ausente`); continue; }
+      const previous: any = byCode.get(code), data = { ...(previous?.data || {}), ...p, code, name, shortDescription: clean(p.shortDescription) || name };
+      const brandName = clean(p.brandName ?? p.brand ?? p.marca); let brandId: string | null = null;
+      if (brandName) { const key = slug(brandName), found = await table(env, 'brands', `company_id=eq.${COMPANY_ID}&slug=eq.${encodeURIComponent(key)}&select=id&limit=1`); brandId = found?.[0]?.id || uid('brd'); if (!found?.length) await table(env, 'brands', '', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: brandId, company_id: COMPANY_ID, name: brandName, slug: key, active: true, data: {} }) }); }
+      const categoryName = clean(p.categoriaName ?? p.category ?? p.categoria) || 'Sem identificação', categorySlug = `importacao--${slug(categoryName)}`;
+      let category = await table(env, 'hierarchy_nodes', `company_id=eq.${COMPANY_ID}&type=eq.categoria&slug=eq.${encodeURIComponent(categorySlug)}&select=id&limit=1`), categoryId = category?.[0]?.id;
+      if (!categoryId) { categoryId = uid('cat'); await table(env, 'hierarchy_nodes', '', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify({ id: categoryId, company_id: COMPANY_ID, type: 'categoria', name: categoryName, slug: categorySlug, parent_id: 'secao_importacao_d1', sort_order: 100, active: true, data: {} }) }); }
+      const row = { id: previous?.id || uid('prd'), company_id: COMPANY_ID, code, name, ean: clean(p.ean) || null, short_description: data.shortDescription, long_description: clean(p.longDescription) || null, brand_id: brandId, departamento_id: 'dep_atacado', secao_id: 'secao_importacao_d1', categoria_id: categoryId, unit: clean(p.unit) || null, packaging: clean(p.packaging) || null, ncm: clean(p.ncm) || null, price: p.price ?? null, promo_price: p.promoPrice ?? null, stock: p.stock ?? null, image_url: clean(p.image) || null, video_url: clean(p.video) || null, gallery: Array.isArray(p.gallery) ? p.gallery : [], technical: p.technical || {}, attributes: p.attributes || {}, tags: Array.isArray(p.tags) ? p.tags : [], status: ['inactive', 'inativo'].includes(clean(p.status).toLowerCase()) ? 'inactive' : 'active', data };
+      rows.push(row); if (previous) updated++; else inserted++;
+    }
+    for (let i = 0; i < rows.length; i += 200) await table(env, 'products', 'on_conflict=company_id,code', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(rows.slice(i, i + 200)) });
+    const importId = uid('imp'); await audit(env, auth.user, 'products.bulk', 'import', importId, { total: incoming.length, inserted, updated, ignored, filename: clean(input.filename), errors });
+    return ok({ importId, total: incoming.length, inserted, updated, ignored, errors });
   }
   const productMatch = path.match(/^\/api\/admin\/products\/([^/]+)$/);
   if (productMatch && ['PUT', 'DELETE'].includes(req.method)) {
@@ -318,6 +395,28 @@ async function adminRoute(req: Request, env: Env, path: string) {
     const id = decodeURIComponent(mediaItem[1]); await table(env, 'media_assets', `id=eq.${encodeURIComponent(id)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } }); return ok({ mediaKey: id });
   }
   return null;
+}
+
+async function saveOffer(env: Env, user: any, input: any, id: string | null) {
+  const offerId = id || uid('offer'), title = clean(input.title) || 'Vitrine de Ofertas';
+  const productIds = Array.isArray(input.productIds) ? [...new Set(input.productIds.map(clean).filter(Boolean))].slice(0, 1500) : [];
+  const item = {
+    id: offerId,
+    company_id: COMPANY_ID,
+    title,
+    description: clean(input.description) || null,
+    status: ['published', 'draft', 'archived'].includes(clean(input.status)) ? clean(input.status) : 'draft',
+    featured: !!input.featured,
+    starts_at: clean(input.startsAt) || null,
+    ends_at: clean(input.endsAt) || null,
+    display_config: { displayFields: Array.isArray(input.displayFields) ? input.displayFields : [] },
+    data: {},
+  };
+  await table(env, 'offers', 'on_conflict=id', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(item) });
+  await table(env, 'offer_products', `offer_id=eq.${encodeURIComponent(offerId)}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } });
+  if (productIds.length) await table(env, 'offer_products', '', { method: 'POST', headers: { prefer: 'return=minimal' }, body: JSON.stringify(productIds.map((productId, sortOrder) => ({ offer_id: offerId, product_id: productId, sort_order: sortOrder }))) });
+  await audit(env, user, id ? 'offer.update' : 'offer.create', 'offer', offerId, { products: productIds.length });
+  return ok({ offer: { id: offerId, title, description: item.description, status: item.status, featured: item.featured, startsAt: item.starts_at, endsAt: item.ends_at, productIds } });
 }
 
 function securityHeaders(response: Response) {
