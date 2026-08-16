@@ -13,8 +13,10 @@ const [css, js, index, importer, versionText, pkg, bundle] = await Promise.all([
   read('public/assets/index-V60Excel.js'),
 ]);
 
-assert.equal(versionText.trim(), '67', 'VERSION precisa ser 67.');
-assert.equal(pkg.version, '2.1.67', 'package.json precisa estar em 2.1.67.');
+const version = Number(versionText.trim());
+const packagePatch = Number(String(pkg.version).split('.').at(-1));
+assert.ok(Number.isFinite(version) && version >= 67, 'VERSION precisa ser 67 ou superior.');
+assert.equal(packagePatch, version, 'package.json precisa acompanhar VERSION.');
 
 // Um único layout, com adaptação por CSS/JS.
 assert.equal((index.match(/assets\/index-[^"']+\.js/g) || []).length, 1, 'Não pode haver bundles duplicados por dispositivo.');
@@ -97,4 +99,4 @@ assert.ok(files.length >= 20, `Auditoria deveria percorrer os arquivos de produ�
 assert.ok(fixedViewportMarkers > 0, 'Auditoria precisa detectar os tamanhos fixos legados tratados pela camada V67.');
 assert.ok(horizontalOverflowMarkers > 0, 'Auditoria precisa incluir pontos de overflow horizontal.');
 
-console.log(`QA Responsividade V67 OK: ${files.length} arquivos de produção auditados; renderer, viewport, orientação, toque, grids, modais e drawers validados.`);
+console.log(`QA Responsividade V67+ OK na V${version}: ${files.length} arquivos de produção auditados; renderer, viewport, orientação, toque, grids, modais e drawers validados.`);
