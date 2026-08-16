@@ -2,14 +2,16 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { buildModeloOficial } from './modelo-oficial.mjs';
 
-const [bundle, pkg, version] = await Promise.all([
+const [bundle, pkg, versionText] = await Promise.all([
   readFile('public/assets/index-V60Excel.js', 'utf8'),
   readFile('package.json', 'utf8').then(JSON.parse),
   readFile('VERSION', 'utf8').then((v) => v.trim()),
 ]);
 
-assert.equal(version, '68', 'A identidade Laurencini exige VERSION 68.');
-assert.equal(pkg.version, '2.1.68', 'package.json precisa estar em 2.1.68.');
+const version = Number(versionText);
+const packagePatch = Number(String(pkg.version).split('.').at(-1));
+assert.ok(Number.isFinite(version) && version >= 68, 'A identidade Laurencini exige VERSION 68 ou superior.');
+assert.equal(packagePatch, version, 'package.json precisa acompanhar VERSION.');
 assert.match(pkg.scripts['prepare:bundle'], /patch-brand-laurencini-v68\.mjs/);
 
 for (const value of ['#214C8F', '#123F7D', '#D13130', '#A7252A', '#F4F8FC', '#DCE6F2']) {
@@ -55,4 +57,4 @@ for (const node of official.nodes) walk(node);
 assert.ok(productButtons.length > 0, 'Modelo Oficial precisa manter botões de produto.');
 assert.ok(productButtons.every((node) => ['#214C8F', '#D13130'].includes(node.styles?.backgroundColor)), 'Botões de produto do Modelo Oficial precisam usar a marca.');
 
-console.log('QA Marca Laurencini V68 OK: 7 templates, biblioteca Supabase, Modelo Oficial e elementos novos padronizados.');
+console.log(`QA Marca Laurencini V68+ OK na V${version}: 7 templates, biblioteca Supabase, Modelo Oficial e elementos novos padronizados.`);
