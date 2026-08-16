@@ -8,9 +8,13 @@ const runtime = await readFile('public/system-runtime-v81.js', 'utf8');
 const index = await readFile('public/index.html', 'utf8');
 
 assert.match(bundle, /ASTER_V81_CORE_PATCH/, 'Patch V81 não materializado.');
+assert.match(bundle, /ASTER_V81_WHITE_SCREEN_FIX/, 'Hotfix V81 contra tela branca não materializado.');
 assert.match(bundle, /e\.type==="breadcrumb"&&l\.jsx\(wq,\{node:e,updateProp:d\}\),l\.jsx\(cq,\{node:e\}\),l\.jsx\(Cq/, 'Biblioteca de ação/alinhamento precisa estar no inspetor comum.');
 assert.equal((bundle.match(/l\.jsx\(cq,\{node:e\}\)/g) || []).length, 1, 'Ações não podem continuar duplicadas/exclusivas no inspetor de Botão.');
-assert.doesNotMatch(bundle, /e\.type==="button"\|\|e\.type==="productbutton"/, 'Renderer ainda restringe clique a botões.');
+assert.doesNotMatch(bundle, /\(Q\)&&l\.jsx\(yq,\{node:e,updateStyle:s,updateProp:d,mode:t\}\)/, 'Condição Q inválida derruba o editor ao selecionar um objeto.');
+assert.match(bundle, /\(e\.type==="button"\|\|e\.type==="productbutton"\)&&l\.jsx\(yq,\{node:e,updateStyle:s,updateProp:d,mode:t\}\)/, 'Painel específico de botão precisa manter sua condição de tipo válida.');
+assert.match(bundle, /y=h\.type!=="none"/, 'Renderer público precisa permitir ação resolvida em qualquer tipo de objeto.');
+assert.doesNotMatch(bundle, /y=\(d\.type==="button"\|\|d\.type==="productbutton"\)&&h\.type!=="none"/, 'Renderer público ainda restringe ação a botões.');
 assert.match(bundle, /querySelectorAll\('\[data-node-id\]'\)|closest\('\[data-node-id\]'\)|'\[data-node-id\]'/, 'Preview precisa delegar clique por node id, não por tipo de botão.');
 
 assert.match(bundle, /function V81Rules\(/);
@@ -56,4 +60,5 @@ assert.match(search, /consulta/);
 execFileSync(process.execPath, ['--check', 'public/assets/index-V60Excel.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/public-global-search-v78.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/system-runtime-v81.js'], { stdio: 'pipe' });
-console.log('QA UI V81: OK — ações/alinhamento universais, Regras, Carrossel Marcas/Produtos e Consulta geral validados.');
+execFileSync(process.execPath, ['--check', 'scripts/patch-white-screen-v81.mjs'], { stdio: 'pipe' });
+console.log('QA UI V81: OK — seleção sem tela branca, ações/alinhamento universais, Regras, Carrossel e Consulta geral validados.');
