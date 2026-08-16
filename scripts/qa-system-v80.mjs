@@ -4,11 +4,11 @@ import process from 'node:process';
 const read = (path) => fs.readFileSync(path, 'utf8');
 const must = (content, pattern, label) => {
   const ok = typeof pattern === 'string' ? content.includes(pattern) : pattern.test(content);
-  if (!ok) throw new Error(`QA V80: ausente/inválido: ${label}`);
+  if (!ok) throw new Error(`QA V81: ausente/inválido: ${label}`);
 };
 const mustNot = (content, pattern, label) => {
   const found = typeof pattern === 'string' ? content.includes(pattern) : pattern.test(content);
-  if (found) throw new Error(`QA V80: conteúdo indevido: ${label}`);
+  if (found) throw new Error(`QA V81: conteúdo indevido: ${label}`);
 };
 
 const index = read('public/index.html');
@@ -17,10 +17,13 @@ const marketingCanvas = read('public/marketing-canvas-hotfix.js');
 const bundle = read('public/assets/index-V60Excel.js');
 const worker = read('worker/index.ts');
 const pkg = JSON.parse(read('package.json'));
+const version = Number(read('VERSION').trim());
 
-must(index, '/system-runtime-v80.js?v=80', 'runtime V80 carregado no index');
+must(index, 'ASTERYON Editor V81', 'título oficial V81');
+must(index, '/system-runtime-v80.js?v=81', 'runtime legado V80 carregado com cache da release V81');
+must(index, '/system-runtime-v81.js?v=81', 'runtime V81 carregado no index');
 mustNot(index, '/marketing-panel-scope-v79.js', 'V79 antigo não deve continuar ativo');
-must(index, '/marketing-canvas-hotfix.js', 'objeto de Marketing no canvas carregado');
+must(index, '/marketing-canvas-hotfix.js?v=81', 'objeto de Marketing no canvas carregado');
 
 must(runtime, "['Produtos', 'Importar', 'Estrutura', 'Marcas', 'Ofertas', 'Marketing']", 'seis áreas de Gestão/Vínculos protegidas');
 must(runtime, 'adicionar vitrine editavel', 'detecção da vitrine externa');
@@ -57,9 +60,12 @@ must(worker, 'offer_products', 'vínculos oferta-produto Supabase');
 must(worker, 'page_snapshots', 'persistência de snapshots Supabase');
 must(worker, 'page_publications', 'persistência de publicações Supabase');
 
-if (!String(pkg.version).startsWith('2.1.80')) {
-  throw new Error(`QA V80: package version esperada 2.1.80, recebida ${pkg.version}`);
+if (version !== 81) {
+  throw new Error(`QA V81: VERSION esperada 81, recebida ${version}`);
+}
+if (pkg.version !== '2.1.81') {
+  throw new Error(`QA V81: package version esperada 2.1.81, recebida ${pkg.version}`);
 }
 
-console.log('QA V80 OK — Vínculos, Ofertas, Marketing, canvas, snapshots, publicação e rollback verificados estaticamente.');
+console.log('QA V81 OK — release, Vínculos, Ofertas, Marketing, canvas, snapshots, publicação e rollback verificados.');
 process.exit(0);
