@@ -34,7 +34,7 @@ replaceOnce(
 source = source.replace('["none","Nenhuma ação"]', '["none","Nenhum (padrão)"]');
 
 // Clique público para qualquer objeto com actionType real.
-replaceOnce('Q=I.type!=="none",H=e.type==="button"||e.type==="productbutton";', 'Q=I.type!=="none",H=Q;', 'renderer clicável universal');
+replaceOnce('Q=I.type!=="none",H=e.type==="button"||e.type==="productbutton"', 'Q=I.type!=="none",H=Q', 'renderer clicável universal');
 replaceOnce(
   `'[data-node-type="button"],[data-node-type="button"] *,[data-node-type="productbutton"],[data-node-type="productbutton"] *{pointer-events:auto!important;cursor:pointer!important;}'`,
   `'[data-node-id]{pointer-events:auto!important}'`,
