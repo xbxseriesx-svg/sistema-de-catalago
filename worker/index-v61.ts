@@ -119,8 +119,12 @@ function bytesFromBase64(value: string) {
   return bytes;
 }
 
+function arrayBufferFromBytes(bytes: Uint8Array): ArrayBuffer {
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+}
+
 async function sha256(bytes: Uint8Array) {
-  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  const digest = await crypto.subtle.digest('SHA-256', arrayBufferFromBytes(bytes));
   return [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
 }
 
@@ -155,7 +159,7 @@ async function uploadStorageObject(env: Env, objectPath: string, mime: string, b
   });
   const response = await fetch(
     `${env.SUPABASE_URL}/storage/v1/object/${encodeURIComponent(PRODUCT_BUCKET)}/${encodedObjectPath(objectPath)}`,
-    { method: 'POST', headers, body: bytes },
+    { method: 'POST', headers, body: arrayBufferFromBytes(bytes) },
   );
   const text = await response.text();
   if (!response.ok) throw new Error(`Supabase Storage ${response.status}: ${text.slice(0, 500)}`);
