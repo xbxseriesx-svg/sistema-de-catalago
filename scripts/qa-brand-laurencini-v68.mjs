@@ -2,17 +2,19 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { buildModeloOficial } from './modelo-oficial.mjs';
 
-const [bundle, pkg, versionText] = await Promise.all([
+const [bundle, pkg, versionText, prepareV81] = await Promise.all([
   readFile('public/assets/index-V60Excel.js', 'utf8'),
   readFile('package.json', 'utf8').then(JSON.parse),
   readFile('VERSION', 'utf8').then((v) => v.trim()),
+  readFile('scripts/prepare-bundle-v81.mjs', 'utf8'),
 ]);
 
 const version = Number(versionText);
 const packagePatch = Number(String(pkg.version).split('.').at(-1));
 assert.ok(Number.isFinite(version) && version >= 68, 'A identidade Laurencini exige VERSION 68 ou superior.');
 assert.equal(packagePatch, version, 'package.json precisa acompanhar VERSION.');
-assert.match(pkg.scripts['prepare:bundle'], /patch-brand-laurencini-v68\.mjs/);
+assert.equal(pkg.scripts['prepare:bundle'], 'node scripts/prepare-bundle-v81.mjs');
+assert.match(prepareV81, /patch-brand-laurencini-v68\.mjs/, 'Preparador V81 precisa preservar o patch Laurencini V68.');
 
 for (const value of ['#214C8F', '#123F7D', '#D13130', '#A7252A', '#F4F8FC', '#DCE6F2']) {
   assert.ok(bundle.includes(value), `Cor Laurencini ausente do bundle: ${value}`);

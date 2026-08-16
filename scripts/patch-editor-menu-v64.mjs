@@ -4,6 +4,14 @@ const assetPath = 'public/assets/index-V60Excel.js';
 const original = await readFile(assetPath, 'utf8');
 let source = original;
 
+// Bundles já materializados podem ter sido transformados por V65/V67/V68/V81 depois
+// do V64. O marcador estrutural é mais estável que a assinatura minificada original.
+const materializedMenuPreviews = source.split('"data-editor-menu-preview":"true"').length - 1;
+if (materializedMenuPreviews === 2 && source.includes('editorMode') && source.includes('data-menu-controlled')) {
+  console.log('Patch V64 do Menu no editor já materializado; nenhuma reaplicação necessária.');
+  process.exit(0);
+}
+
 // V64: o menu público também precisa ser renderizado dentro do canvas do editor.
 // Mantemos um único componente e apenas mudamos fixed -> absolute quando ele está
 // dentro do canvas, evitando duplicação visual no site publicado.
