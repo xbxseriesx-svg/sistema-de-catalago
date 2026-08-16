@@ -8,6 +8,7 @@
   const params = new URLSearchParams(location.search);
   const brandId = String(params.get('brandId') || '').trim();
   const brandName = String(params.get('brandName') || '').trim();
+  const mode = String(params.get('mode') || 'google').trim().toLowerCase();
   const status = document.getElementById('status');
   const grid = document.getElementById('grid');
   const brandNameNode = document.getElementById('brandName');
@@ -224,6 +225,17 @@
       render([]);
       return;
     }
+
+    if (mode === 'manual') {
+      setStatus('Modo manual: escolha uma imagem do computador. O sistema converterá para WEBP e vinculará à marca.');
+      grid.textContent = '';
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = 'Clique em “Enviar logo manualmente” para selecionar PNG, JPG/JPEG ou WEBP.';
+      grid.appendChild(empty);
+      return;
+    }
+
     try {
       setStatus(`Consultando Google Imagens por "logo ${brandName}"...`);
       const payload = await jsonRequest(`/api/admin/brand-images/search?provider=google&brandId=${encodeURIComponent(brandId)}`);
