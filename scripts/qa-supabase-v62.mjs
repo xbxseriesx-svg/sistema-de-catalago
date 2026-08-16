@@ -3,13 +3,14 @@ import { readFile, readdir } from 'node:fs/promises';
 const read = (path) => readFile(path, 'utf8');
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 
-const [bundle, index, imagePage, progress, wrangler, workerV71, workerV70, workerV62, version, pkg] = await Promise.all([
+const [bundle, index, imagePage, progress, wrangler, workerV71, workerV72, workerV70, workerV62, version, pkg] = await Promise.all([
   read('public/assets/index-V60Excel.js'),
   read('public/index.html'),
   read('public/importar-imagens.html'),
   read('public/import-progress-v62.js'),
   read('wrangler.jsonc'),
   read('worker/index-v71.ts'),
+  read('worker/index-v72.ts'),
   read('worker/index-v70.ts'),
   read('worker/index-v62.ts'),
   read('VERSION'),
@@ -20,11 +21,12 @@ const versionNumber = Number(version.trim());
 const packagePatch = Number(String(pkg.version).split('.').at(-1));
 assert(Number.isFinite(versionNumber) && versionNumber >= 70, 'VERSION precisa ser 70 ou superior nesta release.');
 assert(packagePatch === versionNumber, 'package.json precisa acompanhar VERSION.');
-assert(wrangler.includes('"main": "worker/index-v71.ts"'), 'Wrangler não aponta para o Worker V71 atual.');
-assert(workerV71.includes("import baseWorker from './index-v70'"), 'Worker V71 precisa preservar o fluxo de imagens V70.');
+assert(wrangler.includes('"main": "worker/index-v71.ts"'), 'Wrangler precisa permanecer apontando para o Worker V71 de entrada.');
+assert(workerV71.includes("import worker from './index-v72'"), 'Worker V71 precisa encaminhar para o hotfix V72.');
+assert(workerV72.includes("import baseWorker from './index-v70'"), 'Worker V72 precisa preservar o fluxo V70 como base.');
+assert(workerV72.includes('duckduckgoImageSearch'), 'Worker V72 precisa manter a pesquisa ampla da web.');
+assert(workerV72.includes('googleSearchUrl'), 'Worker V72 precisa manter o atalho para Google Imagens.');
 assert(workerV70.includes("import baseWorker from './index-v62'"), 'Worker V70 precisa preservar a base Supabase V62.');
-assert(workerV71.includes("'api-user-agent': USER_AGENT"), 'Worker V71 precisa identificar as consultas ao Wikimedia.');
-assert(workerV71.includes('openverseImageSearch'), 'Worker V71 precisa manter fallback Openverse.');
 assert(workerV62.includes("database: 'Supabase Postgres'"), 'Health não declara Supabase Postgres.');
 assert(workerV62.includes('d1: false'), 'Health precisa declarar d1=false.');
 assert(workerV62.includes("storage: 'Supabase Storage'"), 'Health não declara Supabase Storage.');
@@ -57,4 +59,4 @@ for (const name of workflowFiles) {
   assert(!/wrangler\s+deploy(?!\s+--dry-run)/.test(content), `${name} ainda tenta fazer deploy direto pela Action.`);
 }
 
-console.log(`QA Supabase V70+ OK na V${versionNumber}: Worker V71 sobre V70/V62, arquitetura, versões, progresso e textos legados validados.`);
+console.log(`QA Supabase V70+ OK na V${versionNumber}: entrada V71 -> hotfix V72 -> V70/V62, arquitetura e versões validadas.`);
