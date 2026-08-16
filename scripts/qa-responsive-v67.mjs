@@ -3,13 +3,14 @@ import { readFile, readdir } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 
 const read = (path) => readFile(path, 'utf8');
-const [css, js, index, importer, versionText, pkg] = await Promise.all([
+const [css, js, index, importer, versionText, pkg, bundle] = await Promise.all([
   read('public/responsive-v67.css'),
   read('public/responsive-v67.js'),
   read('public/index.html'),
   read('public/importar-imagens.html'),
   read('VERSION'),
   read('package.json').then(JSON.parse),
+  read('public/assets/index-V60Excel.js'),
 ]);
 
 assert.equal(versionText.trim(), '67', 'VERSION precisa ser 67.');
@@ -21,9 +22,9 @@ assert.doesNotMatch(index, /mobile\.html|tablet\.html|desktop\.html/i, 'Não dev
 assert.match(index, /viewport-fit=cover/, 'Viewport precisa suportar safe areas em celulares modernos.');
 assert.doesNotMatch(index, /user-scalable\s*=\s*no|maximum-scale\s*=\s*1/i, 'Zoom do usuário não pode ser bloqueado.');
 
-// Monitoramento de viewport e orientação.
-assert.match(js, /const MOBILE_MAX = 639\.98/);
-assert.match(js, /const TABLET_MAX = 1023\.98/);
+// Monitoramento de viewport e orientação, sincronizado ao renderer legado.
+assert.match(js, /const MOBILE_MAX = 767/);
+assert.match(js, /const TABLET_MAX = 1100/);
 assert.match(js, /visualViewport/);
 assert.match(js, /addEventListener\('resize'/);
 assert.match(js, /addEventListener\('orientationchange'/);
@@ -35,6 +36,9 @@ assert.match(js, /Fechar catálogo/);
 assert.match(js, /Fechar produto/);
 assert.match(js, /pointer: coarse/);
 assert.match(js, /navigator\.maxTouchPoints/);
+assert.match(bundle, /e<=767\?"mobile":e<=1100\?"tablet":"desktop"/, 'Renderer público perdeu os breakpoints reais.');
+assert.match(bundle, /orientationchange/, 'Renderer público não reage à orientação.');
+assert.match(bundle, /visualViewport/, 'Renderer público não reage ao visualViewport.');
 
 // CSS moderno e unidades responsivas.
 assert.match(css, /display:\s*flex/);
@@ -93,4 +97,4 @@ assert.ok(files.length >= 20, `Auditoria deveria percorrer os arquivos de produ�
 assert.ok(fixedViewportMarkers > 0, 'Auditoria precisa detectar os tamanhos fixos legados tratados pela camada V67.');
 assert.ok(horizontalOverflowMarkers > 0, 'Auditoria precisa incluir pontos de overflow horizontal.');
 
-console.log(`QA Responsividade V67 OK: ${files.length} arquivos de produção auditados; viewport, orientação, toque, grids, modais e drawers validados.`);
+console.log(`QA Responsividade V67 OK: ${files.length} arquivos de produção auditados; renderer, viewport, orientação, toque, grids, modais e drawers validados.`);
