@@ -3,16 +3,17 @@ import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
 const html = await readFile('public/index.html', 'utf8');
-const bundlePath = html.match(/src="\/(assets\/index-[^"]+\.js)"/)?.[1];
+const bundlePath = html.match(/src="\/(assets\/index-[^"?]+\.js)(?:\?v=\d+)?"/)?.[1];
 assert.ok(bundlePath, 'o HTML precisa apontar para o bundle JavaScript versionado');
 
-const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, systemRuntimeV80, baseWorker, workerV81, workerV62, pkg, imageImporter, importProgress, productModalV66, previewV69, previewCssV69, versionText] = await Promise.all([
+const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, systemRuntimeV80, systemRuntimeV81, baseWorker, workerV81, workerV62, pkg, imageImporter, importProgress, productModalV66, previewV69, previewCssV69, versionText] = await Promise.all([
   readFile('public/editor-overflow-fix.css', 'utf8'),
   readFile('public/responsive-v67.css', 'utf8'),
   readFile('public/responsive-v67.js', 'utf8'),
   readFile(`public/${bundlePath}`, 'utf8'),
   readFile('public/marketing-canvas-hotfix.js', 'utf8'),
   readFile('public/system-runtime-v80.js', 'utf8'),
+  readFile('public/system-runtime-v81.js', 'utf8'),
   readFile('worker/index.ts', 'utf8'),
   readFile('worker/index-v81.ts', 'utf8'),
   readFile('worker/index-v62.ts', 'utf8'),
@@ -30,6 +31,7 @@ assert.equal(version, 80, 'Release visual preservada em V80 durante a auditoria 
 assert.match(html, /lang="pt-BR"/);
 assert.match(html, /viewport-fit=cover/);
 assert.match(html, /ASTERYON Editor V80/);
+assert.match(html, /index-V60Excel\.js\?v=81/);
 assert.match(html, /editor-overflow-fix\.css\?v=80/);
 assert.match(html, /responsive-v67\.css\?v=80/);
 assert.match(html, /responsive-v67\.js\?v=80/);
@@ -38,6 +40,7 @@ assert.match(html, /template-preview-v69\.js\?v=80/);
 assert.match(html, /product-modal-v66\.js/);
 assert.match(html, /import-progress-v62\.js/);
 assert.match(html, /system-runtime-v80\.js\?v=80/);
+assert.match(html, /system-runtime-v81\.js\?v=81/);
 assert.doesNotMatch(html, /marketing-panel-scope-v79\.js/);
 assert.match(css, /min-height:\s*0/);
 assert.match(css, /overflow-y:\s*auto/);
@@ -94,6 +97,8 @@ assert.match(marketingHotfix, /Excluir todo o marketing/);
 assert.match(systemRuntimeV80, /data-asteryon-v80-links-context/);
 assert.match(systemRuntimeV80, /isolateNestedPanel/);
 assert.match(systemRuntimeV80, /hideDuplicateImporter/);
+assert.match(systemRuntimeV81, /Nenhum \(padrão\)/);
+assert.match(systemRuntimeV81, /option\.value === 'none'/);
 assert.match(baseWorker, /tableAll\(env, 'products'/);
 assert.match(baseWorker, /seenCodes/);
 assert.match(baseWorker, /select=theme,banner,video_banner,carousel,settings/);
@@ -125,6 +130,7 @@ assert.match(packageJson.scripts.test, /qa-system-v80\.mjs/);
 execFileSync(process.execPath, ['--check', `public/${bundlePath}`], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/marketing-canvas-hotfix.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/system-runtime-v80.js'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'public/system-runtime-v81.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/import-progress-v62.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/product-modal-v66.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/responsive-v67.js'], { stdio: 'pipe' });
