@@ -6,7 +6,7 @@ const html = await readFile('public/index.html', 'utf8');
 const bundlePath = html.match(/src="\/(assets\/index-[^"]+\.js)"/)?.[1];
 assert.ok(bundlePath, 'o HTML precisa apontar para o bundle JavaScript versionado');
 
-const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, systemRuntimeV80, baseWorker, workerV62, pkg, imageImporter, importProgress, productModalV66, previewV69, previewCssV69, versionText] = await Promise.all([
+const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, systemRuntimeV80, baseWorker, workerV81, workerV62, pkg, imageImporter, importProgress, productModalV66, previewV69, previewCssV69, versionText] = await Promise.all([
   readFile('public/editor-overflow-fix.css', 'utf8'),
   readFile('public/responsive-v67.css', 'utf8'),
   readFile('public/responsive-v67.js', 'utf8'),
@@ -14,6 +14,7 @@ const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, systemRuntimeV
   readFile('public/marketing-canvas-hotfix.js', 'utf8'),
   readFile('public/system-runtime-v80.js', 'utf8'),
   readFile('worker/index.ts', 'utf8'),
+  readFile('worker/index-v81.ts', 'utf8'),
   readFile('worker/index-v62.ts', 'utf8'),
   readFile('package.json', 'utf8'),
   readFile('public/importar-imagens.html', 'utf8'),
@@ -25,7 +26,7 @@ const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, systemRuntimeV
 ]);
 
 const version = Number(versionText.trim());
-assert.equal(version, 80, 'QA estático desta branch exige V80.');
+assert.equal(version, 80, 'Release visual preservada em V80 durante a auditoria funcional V81.');
 assert.match(html, /lang="pt-BR"/);
 assert.match(html, /viewport-fit=cover/);
 assert.match(html, /ASTERYON Editor V80/);
@@ -60,6 +61,11 @@ assert.match(bundle, /window\.addEventListener\("orientationchange",r\)/, 'Rende
 assert.match(bundle, /window\.visualViewport\?\.addEventListener\("resize",r\)/, 'Renderer público não monitora visualViewport.');
 assert.match(bundle, /const n=xt\(e,a\),i=t\/Math\.max\(1,n\.width\)/, 'Renderer público não aproveita toda a largura disponível.');
 assert.match(bundle, /LAURENCINI_BRAND/, 'Bundle não contém a normalização de marca V68+.');
+assert.match(bundle, /ASTER_V81_CORE_PATCH/, 'Bundle precisa materializar a auditoria funcional V81.');
+assert.match(bundle, /function V81Rules\(/, 'Tela de Regras V81 não foi materializada.');
+assert.match(bundle, /function V81CarouselEditor\(/, 'Editor de Carrossel V81 não foi materializado.');
+assert.match(bundle, /Apenas Marcas/, 'Carrossel não oferece modalidade Apenas Marcas.');
+assert.match(bundle, /Confirmar seleção/, 'Seleção do carrossel não possui confirmação explícita.');
 assert.doesNotMatch(bundle, /Cloudflare D1|D1 conectado|D1 sincronizado|Conectando ao ASTERYON D1/);
 assert.match(bundle, /Supabase Postgres/);
 assert.match(bundle, /Supabase conectado/);
@@ -94,6 +100,11 @@ assert.match(baseWorker, /select=theme,banner,video_banner,carousel,settings/);
 assert.match(baseWorker, /marketingLayout/);
 assert.match(baseWorker, /path === '\/api\/public\/catalog'/);
 assert.doesNotMatch(baseWorker, /departamento_id: 'dep_atacado'/);
+assert.match(workerV81, /version: 'V81'/);
+assert.match(workerV81, /company_id=eq\.\$\{COMPANY_ID\}/);
+assert.match(workerV81, /canonicalBrands/);
+assert.match(workerV81, /liveOffer/);
+assert.match(workerV81, /fonts\.googleapis\.com/);
 assert.match(workerV62, /database: 'Supabase Postgres'/);
 assert.match(workerV62, /storage: 'Supabase Storage'/);
 assert.match(workerV62, /d1: false/);
@@ -107,7 +118,7 @@ assert.match(previewCssV69, /ltp-brand-grid/);
 assert.match(previewCssV69, /@media \(max-width:720px\)/);
 const packageJson = JSON.parse(pkg);
 assert.equal(packageJson.version, '2.1.80');
-assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/patch-importer-v60.mjs && node scripts/patch-editor-menu-v64.mjs && node scripts/patch-catalog-modal-v65.mjs && node scripts/patch-responsive-v67.mjs && node scripts/patch-brand-laurencini-v68.mjs');
+assert.match(packageJson.scripts['prepare:bundle'], /patch-system-v81\.mjs/);
 assert.match(packageJson.scripts.test, /qa-template-preview-v69\.mjs/);
 assert.match(packageJson.scripts.test, /qa-system-v80\.mjs/);
 
@@ -119,7 +130,8 @@ execFileSync(process.execPath, ['--check', 'public/product-modal-v66.js'], { std
 execFileSync(process.execPath, ['--check', 'public/responsive-v67.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/template-preview-v69.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/patch-brand-laurencini-v68.mjs'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'scripts/patch-system-v81.mjs'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/qa-template-preview-v69.mjs'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/qa-system-v80.mjs'], { stdio: 'pipe' });
 
-console.log('QA estático da V80: OK');
+console.log('QA estático V80 + auditoria funcional V81: OK');
