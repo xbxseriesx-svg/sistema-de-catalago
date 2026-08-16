@@ -88,9 +88,16 @@ const newPalette = `const COLORS = Object.freeze({\n  navy: '#214C8F',\n  navyDe
 if (official.includes(oldPalette)) official = official.replace(oldPalette, newPalette);
 else if (!official.includes(newPalette)) throw new Error('V68: paleta do Modelo Oficial incompatível.');
 official = official
-  .replaceAll('#EEF2F7', '#F4F8FC')
+  .replaceAll('#183153', '#214C8F')
+  .replaceAll('#10253F', '#123F7D')
+  .replaceAll('#294D73', '#1E5EAA')
+  .replaceAll('#E27D33', '#D13130')
+  .replaceAll('#FFF0E4', '#FCEBEC')
+  .replaceAll('#64748B', '#66758A')
+  .replaceAll('#DDE5EE', '#DCE6F2')
   .replaceAll('#F5F7FA', '#F4F8FC')
   .replaceAll('#EAF1F8', '#EAF2FA')
+  .replaceAll('#EEF2F7', '#F4F8FC')
   .replaceAll('#B9C8D8', '#DCE6F2')
   .replaceAll('rgba(16,37,63,', 'rgba(18,63,125,');
 if (official !== officialOriginal) await writeFile(officialPath, official);
