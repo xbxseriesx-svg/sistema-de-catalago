@@ -21,7 +21,7 @@ type SearchImage = {
   mime: string;
   width?: number;
   height?: number;
-  provider: 'duckduckgo';
+  provider: 'google' | 'duckduckgo';
 };
 
 const ALLOWED_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
@@ -148,6 +148,55 @@ async function getBrand(req: Request, env: Env, brandId: string): Promise<Brand 
   } : null;
 }
 
+async function googleImageSearch(env: Env, query: string): Promise<SearchImage[]> {
+  const key = clean(env.GOOGLE_CSE_API_KEY);
+  const cx = clean(env.GOOGLE_CSE_CX);
+  if (!key || !cx) throw new Error('Google Imagens não configurado: defina GOOGLE_CSE_API_KEY e GOOGLE_CSE_CX na Cloudflare.');
+
+  const results: SearchImage[] = [];
+  for (const start of [1, 11, 21]) {
+    const params = new URLSearchParams({
+      key,
+      cx,
+      q: query,
+      searchType: 'image',
+      safe: 'active',
+      num: '10',
+      start: String(start),
+    });
+    const response = await fetch(`https://customsearch.googleapis.com/customsearch/v1?${params.toString()}`, {
+      headers: { accept: 'application/json', 'user-agent': USER_AGENT },
+    });
+    if (!response.ok) {
+      let detail = '';
+      try {
+        const payload = await response.json() as any;
+        detail = clean(payload?.error?.message);
+      } catch { /* noop */ }
+      throw new Error(`Google Imagens indisponível (${response.status})${detail ? `: ${detail}` : ''}`);
+    }
+    const payload = await response.json() as any;
+    const items = Array.isArray(payload?.items) ? payload.items : [];
+    for (const item of items) {
+      const imageUrl = clean(item.link);
+      const mime = allowedSearchMime(item.mime || item.fileFormat, imageUrl);
+      if (!imageUrl || !mime || !ALLOWED_MIMES.has(mime)) continue;
+      results.push({
+        url: imageUrl,
+        thumbnailUrl: clean(item.image?.thumbnailLink || item.link),
+        title: clean(item.title || query),
+        sourceUrl: clean(item.image?.contextLink),
+        mime,
+        width: Number(item.image?.width) || undefined,
+        height: Number(item.image?.height) || undefined,
+        provider: 'google',
+      });
+    }
+    if (items.length < 10 || results.length >= 24) break;
+  }
+  return results.slice(0, 24);
+}
+
 function extractVqd(html: string) {
   const patterns = [
     /vqd=["']?([0-9-]+)["'&]/i,
@@ -258,6 +307,34 @@ async function broadWebSearch(brand: Brand, env: Env) {
   return { images, notes };
 }
 
+async function handleGoogleOnlySearch(req: Request, env: Env, brand: Brand) {
+  if (!clean(env.GOOGLE_CSE_API_KEY) || !clean(env.GOOGLE_CSE_CX)) {
+    return fail(
+      'Google Imagens não está configurado neste Worker. Configure GOOGLE_CSE_API_KEY e GOOGLE_CSE_CX na Cloudflare para usar a busca oficial do Google.',
+      503,
+      'GOOGLE_IMAGES_NOT_CONFIGURED',
+    );
+  }
+
+  try {
+    const raw = await googleImageSearch(env, `logo ${brand.name}`);
+    const images = await signedResults(dedupe(raw), env);
+    return ok({
+      brand: { id: brand.id, name: brand.name, logoUrl: brand.logoUrl || null },
+      query: `logo ${brand.name}`,
+      provider: 'google',
+      providerMessage: `${images.length} resultado(s) encontrados no Google Imagens. Selecione a imagem correta da marca.`,
+      images,
+    });
+  } catch (error) {
+    return fail(
+      error instanceof Error ? error.message : 'Falha ao consultar Google Imagens.',
+      502,
+      'GOOGLE_IMAGES_UPSTREAM_ERROR',
+    );
+  }
+}
+
 async function handleSearch(req: Request, env: Env) {
   const auth = await requireEditor(req, env);
   if (auth.error || !auth.user) return auth.error!;
@@ -268,13 +345,25 @@ async function handleSearch(req: Request, env: Env) {
   const brand = await getBrand(req, env, brandId);
   if (!brand) return fail('Marca não encontrada', 404, 'BRAND_NOT_FOUND');
 
+  if (clean(url.searchParams.get('provider')).toLowerCase() === 'google') {
+    return await handleGoogleOnlySearch(req, env, brand);
+  }
+
   const hasGoogleApi = Boolean(clean(env.GOOGLE_CSE_API_KEY) && clean(env.GOOGLE_CSE_CX));
   if (hasGoogleApi) {
-    const official = await baseWorker.fetch(req, env as never);
     try {
-      const payload = await official.clone().json() as any;
-      if (official.ok && payload?.ok && Array.isArray(payload.images) && payload.images.length) return official;
-    } catch { /* continua para pesquisa web */ }
+      const rawGoogle = await googleImageSearch(env, `${brand.name} logo`);
+      const googleImages = await signedResults(dedupe(rawGoogle), env);
+      if (googleImages.length) {
+        return ok({
+          brand: { id: brand.id, name: brand.name, logoUrl: brand.logoUrl || null },
+          query: `${brand.name} logo`,
+          provider: 'google',
+          providerMessage: `${googleImages.length} resultado(s) encontrados no Google Imagens.`,
+          images: googleImages,
+        });
+      }
+    } catch { /* continua para pesquisa ampla */ }
   }
 
   const web = await broadWebSearch(brand, env);
@@ -284,7 +373,6 @@ async function handleSearch(req: Request, env: Env) {
       query: `${brand.name} logo`,
       provider: 'duckduckgo',
       providerMessage: `${web.images.length} resultado(s) encontrados na pesquisa ampla da web. Selecione a imagem correta da marca.`,
-      googleSearchUrl: `https://www.google.com/search?tbm=isch&safe=active&q=${encodeURIComponent(`logo ${brand.name}`)}`,
       images: web.images,
     });
   }
@@ -294,12 +382,7 @@ async function handleSearch(req: Request, env: Env) {
     const payload = await fallback.clone().json() as any;
     if (fallback.ok && payload?.ok) {
       const previous = clean(payload.providerMessage);
-      payload.providerMessage = [
-        ...web.notes,
-        previous,
-        'Use o botão Google Imagens para abrir a pesquisa completa da web caso necessário.',
-      ].filter(Boolean).join(' ');
-      payload.googleSearchUrl = `https://www.google.com/search?tbm=isch&safe=active&q=${encodeURIComponent(`logo ${brand.name}`)}`;
+      payload.providerMessage = [...web.notes, previous].filter(Boolean).join(' ');
       return json(payload, fallback.status);
     }
   } catch { /* devolve fallback original */ }
