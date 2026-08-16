@@ -1,11 +1,11 @@
-name: QA catálogo V67 — Responsividade + Supabase + Worker
+name: QA catálogo V68 — Marca Laurencini + Supabase + Worker
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-      - feature/auto-responsive-v67
+      - feature/laurencini-brand-v68
     paths:
       - 'worker/**'
       - 'public/**'
@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: catalogo-v67-qa-${{ github.ref }}
+  group: catalogo-v68-qa-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -39,6 +39,9 @@ jobs:
 
       - name: Instalar dependências
         run: npm ci --ignore-scripts
+
+      - name: Diagnosticar templates e temas existentes
+        run: node scripts/inspect-brand-templates-v68.mjs
 
       - name: Validar responsividade, catálogo, Supabase e Worker
         run: npm test
