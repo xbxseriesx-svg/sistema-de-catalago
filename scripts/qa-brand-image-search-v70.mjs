@@ -2,12 +2,13 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const [index, uiV70, uiV72, pickerHtml, pickerJs, workerV71, workerV72, workerV70, wrangler, version] = await Promise.all([
+const [index, uiV70, uiV72, pickerHtml, pickerJs, workerV81, workerV71, workerV72, workerV70, wrangler, version] = await Promise.all([
   readFile('public/index.html', 'utf8'),
   readFile('public/brand-image-search-v70.js', 'utf8'),
   readFile('public/brand-image-search-v72.js', 'utf8'),
   readFile('public/google-image-picker-v73.html', 'utf8'),
   readFile('public/google-image-picker-v73.js', 'utf8'),
+  readFile('worker/index-v81.ts', 'utf8'),
   readFile('worker/index-v71.ts', 'utf8'),
   readFile('worker/index-v72.ts', 'utf8'),
   readFile('worker/index-v70.ts', 'utf8'),
@@ -18,7 +19,8 @@ const [index, uiV70, uiV72, pickerHtml, pickerJs, workerV71, workerV72, workerV7
 assert.ok(Number(version) >= 70, 'A pesquisa de imagens das marcas exige V70 ou superior.');
 assert.match(index, /brand-image-search-v70\.js\?v=76/, 'Editor não carrega a interface base da pesquisa com cache V76.');
 assert.match(index, /brand-image-search-v72\.js\?v=77/, 'Editor não carrega o isolamento de marcas com cache V77.');
-assert.match(wrangler, /"main":\s*"worker\/index-v71\.ts"/, 'Wrangler precisa apontar para a entrada V71.');
+assert.match(wrangler, /"main":\s*"worker\/index-v81\.ts"/, 'Wrangler precisa apontar para a entrada auditada V81.');
+assert.match(workerV81, /import worker from '\.\/index-v71'/, 'V81 precisa preservar a cadeia V71/V72/V70.');
 assert.match(workerV71, /import worker from '\.\/index-v72'/, 'Entrada V71 não encaminha para V72.');
 assert.match(uiV70, /data-asteryon-brand-image-search/);
 assert.match(uiV70, /Pesquisar imagem da marca/);
@@ -80,4 +82,4 @@ execFileSync(process.execPath, ['--check', 'public/brand-image-search-v70.js'], 
 execFileSync(process.execPath, ['--check', 'public/brand-image-search-v72.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/google-image-picker-v73.js'], { stdio: 'pipe' });
 
-console.log('QA pesquisa de imagens V77: OK (brandId isolado + pesquisa web + upload manual + WEBP, sem propagação entre marcas)');
+console.log('QA pesquisa de imagens V77+V81: OK (brandId isolado + pesquisa web + upload manual + WEBP, sem propagação entre marcas)');
