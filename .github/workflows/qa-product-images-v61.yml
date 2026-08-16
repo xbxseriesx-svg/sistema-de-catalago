@@ -1,0 +1,35 @@
+name: QA imagens V61
+
+on:
+  push:
+    branches:
+      - fix/product-image-storage-v61
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  qa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+
+      - name: Validar TypeScript e Worker
+        run: npm run build
+
+      - name: Dry-run Cloudflare
+        run: npx wrangler deploy --dry-run --outdir .wrangler-dry-run
+
+      - name: QA estático existente
+        run: node scripts/qa-static.mjs
