@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - fix/catalog-live-v63
+      - fix/editor-menu-v64
     paths:
       - 'worker/**'
       - 'public/**'
@@ -39,6 +40,9 @@ jobs:
 
       - name: Instalar dependências
         run: npm ci --ignore-scripts
+
+      - name: Diagnosticar menu do editor
+        run: node scripts/inspect-editor-menu-v64.mjs
 
       - name: Validar catálogo, Supabase e Worker
         run: npm test
