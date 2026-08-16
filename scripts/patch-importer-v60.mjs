@@ -1,6 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 
-const assetPath = 'public/assets/index-_J4BqdfT.js';
+const assetPath = 'public/assets/index-V60Excel.js';
 const source = await readFile(assetPath, 'utf8');
 const start = source.indexOf('function TY(e)');
 const end = source.indexOf('function _Y(e,t)', start);

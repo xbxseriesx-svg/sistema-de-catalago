@@ -38,9 +38,9 @@ assert.match(worker, /seenCodes/);
 assert.match(worker, /select=theme,banner,video_banner,carousel,settings/);
 assert.match(worker, /marketingLayout/);
 assert.doesNotMatch(worker, /departamento_id: 'dep_atacado'/);
-assert.equal(JSON.parse(pkg).version, '2.1.59');
+assert.equal(JSON.parse(pkg).version, '2.1.60');
 
 execFileSync(process.execPath, ['--check', `public/${bundlePath}`], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/marketing-canvas-hotfix.js'], { stdio: 'pipe' });
 
-console.log('QA estático da V59: OK');
+console.log('QA estático da V60: OK');

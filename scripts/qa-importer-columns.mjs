@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const source = await readFile('public/assets/index-_J4BqdfT.js', 'utf8');
+const source = await readFile('public/assets/index-V60Excel.js', 'utf8');
 const start = source.indexOf('function TY(e)');
 const end = source.indexOf('function _Y(e,t)', start);
 assert.ok(start >= 0 && end > start, 'parser de planilha não encontrado no bundle');
