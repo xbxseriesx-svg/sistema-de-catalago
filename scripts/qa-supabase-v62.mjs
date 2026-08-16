@@ -14,15 +14,15 @@ const [bundle, index, imagePage, progress, wrangler, worker, version, pkg] = awa
   read('package.json').then(JSON.parse),
 ]);
 
-assert(version.trim() === '62', 'VERSION precisa ser 62.');
-assert(pkg.version === '2.1.62', 'package.json precisa estar em 2.1.62.');
-assert(wrangler.includes('"main": "worker/index-v62.ts"'), 'Wrangler não aponta para o Worker V62.');
-assert(worker.includes("database: 'Supabase Postgres'"), 'Health V62 não declara Supabase Postgres.');
-assert(worker.includes('d1: false'), 'Health V62 precisa declarar d1=false.');
-assert(worker.includes("storage: 'Supabase Storage'"), 'Health V62 não declara Supabase Storage.');
-assert(index.includes('/import-progress-v62.js'), 'Editor não carrega o progresso V62.');
-assert(index.includes('ASTERYON Editor V62'), 'Título do editor não está normalizado para V62.');
-assert(imagePage.includes('/import-progress-v62.js'), 'Importador de imagens não carrega o progresso V62.');
+assert(version.trim() === '63', 'VERSION precisa ser 63.');
+assert(pkg.version === '2.1.63', 'package.json precisa estar em 2.1.63.');
+assert(wrangler.includes('"main": "worker/index-v62.ts"'), 'Wrangler não aponta para o Worker Supabase atual.');
+assert(worker.includes("database: 'Supabase Postgres'"), 'Health não declara Supabase Postgres.');
+assert(worker.includes('d1: false'), 'Health precisa declarar d1=false.');
+assert(worker.includes("storage: 'Supabase Storage'"), 'Health não declara Supabase Storage.');
+assert(index.includes('/import-progress-v62.js'), 'Editor não carrega o progresso de importação.');
+assert(index.includes('ASTERYON Editor V63'), 'Título do editor não está normalizado para V63.');
+assert(imagePage.includes('/import-progress-v62.js'), 'Importador de imagens não carrega o progresso.');
 assert(imagePage.includes('Supabase Storage'), 'Importador de imagens ainda não identifica o Storage correto.');
 assert(progress.includes('asteryon:import-progress'), 'Helper de progresso do Excel ausente.');
 assert(progress.includes('Arquivos em processamento'), 'Helper de progresso das imagens ausente.');
@@ -49,4 +49,4 @@ for (const name of workflowFiles) {
   assert(!/wrangler\s+deploy(?!\s+--dry-run)/.test(content), `${name} ainda tenta fazer deploy direto pela Action.`);
 }
 
-console.log('QA Supabase V62 OK: arquitetura, versões, progresso e textos legados validados.');
+console.log('QA Supabase V63 OK: arquitetura, versões, progresso e textos legados validados.');
