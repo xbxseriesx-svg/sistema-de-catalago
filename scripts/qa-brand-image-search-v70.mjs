@@ -2,10 +2,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const [index, uiV70, uiV72, workerV71, workerV72, workerV70, wrangler, version] = await Promise.all([
+const [index, uiV70, uiV72, pickerHtml, pickerJs, workerV71, workerV72, workerV70, wrangler, version] = await Promise.all([
   readFile('public/index.html', 'utf8'),
   readFile('public/brand-image-search-v70.js', 'utf8'),
   readFile('public/brand-image-search-v72.js', 'utf8'),
+  readFile('public/google-image-picker-v73.html', 'utf8'),
+  readFile('public/google-image-picker-v73.js', 'utf8'),
   readFile('worker/index-v71.ts', 'utf8'),
   readFile('worker/index-v72.ts', 'utf8'),
   readFile('worker/index-v70.ts', 'utf8'),
@@ -14,8 +16,8 @@ const [index, uiV70, uiV72, workerV71, workerV72, workerV70, wrangler, version] 
 ]);
 
 assert.ok(Number(version) >= 70, 'A pesquisa de imagens das marcas exige V70 ou superior.');
-assert.match(index, /brand-image-search-v70\.js\?v=72/, 'Editor não carrega a interface base da pesquisa com cache V72.');
-assert.match(index, /brand-image-search-v72\.js\?v=72/, 'Editor não carrega o complemento da pesquisa V72.');
+assert.match(index, /brand-image-search-v70\.js\?v=73/, 'Editor não carrega a interface base da pesquisa com cache V73.');
+assert.match(index, /brand-image-search-v72\.js\?v=73/, 'Editor não carrega o complemento de popup V73.');
 assert.match(wrangler, /"main":\s*"worker\/index-v71\.ts"/, 'Wrangler precisa apontar para a entrada V71.');
 assert.match(workerV71, /import worker from '\.\/index-v72'/, 'Entrada V71 não encaminha para V72.');
 assert.match(uiV70, /data-asteryon-brand-image-search/);
@@ -27,12 +29,28 @@ assert.match(uiV70, /\/api\/admin\/brand-images\/upload/);
 assert.match(uiV70, /image\/webp/);
 assert.match(uiV70, /createImageBitmap/);
 assert.match(uiV70, /MutationObserver/);
+
 assert.match(uiV72, /Google Imagens/);
-assert.match(uiV72, /google\.com\/search\?tbm=isch/);
+assert.match(uiV72, /google-image-picker-v73\.html/);
+assert.match(uiV72, /window\.open/);
+assert.match(uiV72, /popup=yes/);
+assert.match(uiV72, /asteryon:brand-logo-updated/);
+assert.doesNotMatch(uiV72, /google\.com\/search\?tbm=isch/, 'O botão integrado não deve sair para google.com.');
+
+assert.match(pickerHtml, /Google Imagens — selecionar logo/);
+assert.match(pickerHtml, /google-image-picker-v73\.js\?v=73/);
+assert.match(pickerJs, /\/api\/admin\/brand-images\/search/);
+assert.match(pickerJs, /\/api\/admin\/brand-images\/fetch/);
+assert.match(pickerJs, /\/api\/admin\/brand-images\/upload/);
+assert.match(pickerJs, /image\/webp/);
+assert.match(pickerJs, /convertToWebp/);
+assert.match(pickerJs, /Usar esta imagem/);
+assert.match(pickerJs, /BroadcastChannel/);
+assert.match(pickerJs, /window\.opener\.postMessage/);
+assert.doesNotMatch(pickerJs, /image_gen|generate|gerar imagem/i, 'O seletor não pode conter fluxo de geração de imagem.');
+
 assert.match(workerV72, /duckduckgoImageSearch/);
 assert.match(workerV72, /duckduckgo\.com\/i\.js/);
-assert.match(workerV72, /googleSearchUrl/);
-assert.match(workerV72, /Pesquisa ampla da web|pesquisa ampla da web/i);
 assert.match(workerV72, /ASTERYON-Catalog\/2\.1\.72/);
 assert.match(workerV70, /\/api\/admin\/brand-images\/fetch/);
 assert.match(workerV70, /\/api\/admin\/brand-images\/upload/);
@@ -41,5 +59,6 @@ assert.match(workerV70, /sha256/);
 
 execFileSync(process.execPath, ['--check', 'public/brand-image-search-v70.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/brand-image-search-v72.js'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'public/google-image-picker-v73.js'], { stdio: 'pipe' });
 
-console.log('QA pesquisa de imagens das marcas V72: OK (pesquisa ampla da web + Google Imagens + gravação V70)');
+console.log('QA pesquisa de imagens V73: OK (popup integrado + seleção + WEBP + vínculo à marca, sem geração)');
