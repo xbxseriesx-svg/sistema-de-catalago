@@ -25,7 +25,9 @@ assert(wrangler.includes('"main": "worker/index-v71.ts"'), 'Wrangler precisa per
 assert(workerV71.includes("import worker from './index-v72'"), 'Worker V71 precisa encaminhar para o hotfix V72.');
 assert(workerV72.includes("import baseWorker from './index-v70'"), 'Worker V72 precisa preservar o fluxo V70 como base.');
 assert(workerV72.includes('duckduckgoImageSearch'), 'Worker V72 precisa manter a pesquisa ampla da web.');
-assert(workerV72.includes('googleSearchUrl'), 'Worker V72 precisa manter o atalho para Google Imagens.');
+assert(workerV72.includes('googleImageSearch'), 'Worker V72 precisa manter a consulta Google oficial.');
+assert(workerV72.includes('customsearch.googleapis.com/customsearch/v1'), 'Worker V72 não aponta para a API oficial do Google Custom Search.');
+assert(workerV72.includes('GOOGLE_IMAGES_NOT_CONFIGURED'), 'Worker V72 precisa informar quando as credenciais Google não estiverem configuradas.');
 assert(workerV70.includes("import baseWorker from './index-v62'"), 'Worker V70 precisa preservar a base Supabase V62.');
 assert(workerV62.includes("database: 'Supabase Postgres'"), 'Health não declara Supabase Postgres.');
 assert(workerV62.includes('d1: false'), 'Health precisa declarar d1=false.');
@@ -59,4 +61,4 @@ for (const name of workflowFiles) {
   assert(!/wrangler\s+deploy(?!\s+--dry-run)/.test(content), `${name} ainda tenta fazer deploy direto pela Action.`);
 }
 
-console.log(`QA Supabase V70+ OK na V${versionNumber}: entrada V71 -> hotfix V72 -> V70/V62, arquitetura e versões validadas.`);
+console.log(`QA Supabase V70+ OK na V${versionNumber}: entrada V71 -> hotfix V72 -> V70/V62, Google oficial, arquitetura e versões validadas.`);
