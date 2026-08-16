@@ -8,7 +8,7 @@ const search = await readFile('public/public-global-search-v78.js', 'utf8');
 assert.match(bundle, /ASTER_V81_CORE_PATCH/, 'Patch V81 não materializado.');
 assert.match(bundle, /e\.type==="breadcrumb"&&l\.jsx\(wq,\{node:e,updateProp:d\}\),l\.jsx\(cq,\{node:e\}\),l\.jsx\(Cq/, 'Biblioteca de ação/alinhamento precisa estar no inspetor comum.');
 assert.equal((bundle.match(/l\.jsx\(cq,\{node:e\}\)/g) || []).length, 1, 'Ações não podem continuar duplicadas/exclusivas no inspetor de Botão.');
-assert.match(bundle, /Q=I\.type!=="none",H=Q;/, 'Renderer precisa aceitar ação configurada em qualquer objeto.');
+assert.match(bundle, /Q=I\.type!=="none",H=Q(?:[,;])/, 'Renderer precisa aceitar ação configurada em qualquer objeto.');
 assert.doesNotMatch(bundle, /Q=I\.type!=="none",H=e\.type==="button"\|\|e\.type==="productbutton"/, 'Renderer ainda restringe clique a botões.');
 
 assert.match(bundle, /function V81Rules\(/);
@@ -35,8 +35,8 @@ assert.match(bundle, /Remover/);
 assert.match(bundle, /Confirmar seleção/);
 assert.match(bundle, /selectedBrandIds/);
 assert.match(bundle, /selectedProductIds/);
-assert.match(bundle, /href:`\/produto\/\$\{encodeURIComponent\(y\)\}`/, 'Produto selecionado no carrossel precisa abrir sua página/detalhes.');
-assert.match(bundle, /href:`\/marca\/\$\{encodeURIComponent\(s\.slug\|\|s\.id\|\|""\)\}`/, 'Logo da marca precisa ser navegável sem texto adicional no slide.');
+assert.match(bundle, /href:"\/produto\/"\+encodeURIComponent\(y\)/, 'Produto selecionado no carrossel precisa abrir sua página/detalhes.');
+assert.match(bundle, /href:"\/marca\/"\+encodeURIComponent\(s\.slug\|\|s\.id\|\|""\)/, 'Logo da marca precisa ser navegável sem texto adicional no slide.');
 
 assert.match(search, /Consulta geral do catálogo/);
 assert.match(search, /product\.code|product\.codigo/);
