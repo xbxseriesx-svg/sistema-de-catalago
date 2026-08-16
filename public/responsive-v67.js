@@ -1,7 +1,8 @@
 (() => {
   const root = document.documentElement;
-  const MOBILE_MAX = 639.98;
-  const TABLET_MAX = 1023.98;
+  // Mantém exatamente os mesmos limites do renderer público bJ do bundle.
+  const MOBILE_MAX = 767;
+  const TABLET_MAX = 1100;
   const TOOLBAR_ATTR = 'data-asteryon-mobile-toolbar';
   const BACKDROP_ATTR = 'data-asteryon-sidebar-backdrop';
   let raf = 0;
@@ -10,9 +11,10 @@
 
   const viewport = () => {
     const vv = window.visualViewport;
-    const width = Math.max(1, Math.round(vv?.width || window.innerWidth || root.clientWidth || 1));
+    const width = Math.max(1, Math.round(window.innerWidth || root.clientWidth || 1));
     const height = Math.max(1, Math.round(vv?.height || window.innerHeight || root.clientHeight || 1));
-    return { width, height };
+    const visualWidth = Math.max(1, Math.round(vv?.width || width));
+    return { width, height, visualWidth };
   };
 
   const deviceFor = (width) => {
@@ -162,10 +164,10 @@
 
   const apply = () => {
     raf = 0;
-    const { width, height } = viewport();
+    const { width, height, visualWidth } = viewport();
     const device = deviceFor(width);
-    const orientation = width > height ? 'landscape' : 'portrait';
-    const touch = matchMedia?.('(pointer: coarse)')?.matches || navigator.maxTouchPoints > 0;
+    const orientation = window.matchMedia?.('(orientation: landscape)')?.matches ? 'landscape' : 'portrait';
+    const touch = window.matchMedia?.('(pointer: coarse)')?.matches || navigator.maxTouchPoints > 0;
     const surface = detectSurface();
 
     root.dataset.asteryonDevice = device;
@@ -173,6 +175,7 @@
     root.dataset.asteryonTouch = touch ? 'true' : 'false';
     root.dataset.asteryonSurface = surface;
     root.style.setProperty('--asteryon-vw', `${width}px`);
+    root.style.setProperty('--asteryon-visual-vw', `${visualWidth}px`);
     root.style.setProperty('--asteryon-vh', `${height}px`);
     root.style.setProperty('--asteryon-dvh', `${height}px`);
     root.style.setProperty('--asteryon-touch', touch ? '1' : '0');
@@ -187,11 +190,11 @@
     markCatalogModal();
     markProductModalFallback();
 
-    const signature = `${width}x${height}:${device}:${orientation}:${touch ? 1 : 0}:${surface}`;
+    const signature = `${width}x${height}:${visualWidth}:${device}:${orientation}:${touch ? 1 : 0}:${surface}`;
     if (signature !== lastSignature) {
       lastSignature = signature;
       window.dispatchEvent(new CustomEvent('asteryon:viewport-change', {
-        detail: { width, height, device, orientation, touch, surface },
+        detail: { width, height, visualWidth, device, orientation, touch, surface },
       }));
     }
   };
