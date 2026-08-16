@@ -8,7 +8,7 @@
   const params = new URLSearchParams(location.search);
   const brandId = String(params.get('brandId') || '').trim();
   const brandName = String(params.get('brandName') || '').trim();
-  const mode = String(params.get('mode') || 'google').trim().toLowerCase();
+  const mode = String(params.get('mode') || 'web').trim().toLowerCase();
   const status = document.getElementById('status');
   const grid = document.getElementById('grid');
   const brandNameNode = document.getElementById('brandName');
@@ -126,7 +126,7 @@
   async function chooseImage(image, button) {
     button.disabled = true;
     try {
-      setStatus('Baixando a imagem original selecionada no Google Imagens...');
+      setStatus('Baixando a imagem original selecionada...');
       const proxyUrl = `/api/admin/brand-images/fetch?url=${encodeURIComponent(image.url)}&sig=${encodeURIComponent(image.signature)}`;
       const sourceResponse = await fetch(proxyUrl, { credentials: 'same-origin' });
       if (!sourceResponse.ok) {
@@ -138,8 +138,9 @@
       const sourceBlob = await sourceResponse.blob();
       setStatus('Convertendo para WEBP e otimizando a logo...');
       const webp = await convertToWebp(sourceBlob);
-      const logoUrl = await uploadWebp(webp, image.sourceUrl || image.url, 'google');
-      showSuccess(logoUrl, 'Logo do Google Imagens convertida, salva e vinculada à marca com sucesso.');
+      const provider = String(image.provider || 'web').toLowerCase();
+      const logoUrl = await uploadWebp(webp, image.sourceUrl || image.url, provider);
+      showSuccess(logoUrl, 'Logo convertida, salva e vinculada à marca com sucesso.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Falha ao aplicar a imagem.', 'error');
       button.disabled = false;
@@ -181,12 +182,16 @@
     }
   });
 
+  function providerLabel(image) {
+    return String(image?.provider || '').toLowerCase() === 'google' ? 'Google Imagens' : 'Pesquisa na web';
+  }
+
   function render(images) {
     grid.textContent = '';
     if (!images.length) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = 'Nenhuma imagem compatível foi encontrada no Google Imagens. Você também pode usar “Enviar logo manualmente”.';
+      empty.textContent = 'Nenhuma imagem compatível foi encontrada. Você também pode usar “Enviar logo manualmente”.';
       grid.appendChild(empty);
       return;
     }
@@ -206,7 +211,7 @@
 
       const meta = document.createElement('div');
       meta.className = 'meta';
-      meta.textContent = `${image.title || brandName} · Google Imagens`;
+      meta.textContent = `${image.title || brandName} · ${providerLabel(image)}`;
 
       const use = document.createElement('button');
       use.type = 'button';
@@ -237,21 +242,18 @@
     }
 
     try {
-      setStatus(`Consultando Google Imagens por "logo ${brandName}"...`);
-      const payload = await jsonRequest(`/api/admin/brand-images/search?provider=google&brandId=${encodeURIComponent(brandId)}`);
+      setStatus(`Pesquisando na web por "${brandName} logo"...`);
+      const payload = await jsonRequest(`/api/admin/brand-images/search?brandId=${encodeURIComponent(brandId)}`);
       const images = Array.isArray(payload.images) ? payload.images : [];
-      if (payload.provider !== 'google') throw new Error('A resposta recebida não veio do Google Imagens.');
-      setStatus(payload.providerMessage || `${images.length} resultado(s) encontrados no Google Imagens. Escolha uma imagem existente para converter e anexar à marca.`);
+      setStatus(payload.providerMessage || `${images.length} resultado(s) encontrados. Escolha uma imagem existente para converter e anexar à marca.`);
       render(images);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Falha ao pesquisar Google Imagens.';
+      const message = error instanceof Error ? error.message : 'Falha ao pesquisar imagens na web.';
       setStatus(message, 'error');
       grid.textContent = '';
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = error?.code === 'GOOGLE_IMAGES_NOT_CONFIGURED'
-        ? 'A busca Google ainda precisa das credenciais oficiais configuradas na Cloudflare. Enquanto isso, você pode usar “Enviar logo manualmente”.'
-        : 'Não foi possível carregar resultados do Google Imagens. Você pode usar “Enviar logo manualmente”.';
+      empty.textContent = 'Não foi possível carregar resultados da pesquisa. Você pode usar “Enviar logo manualmente”.';
       grid.appendChild(empty);
     }
   }
