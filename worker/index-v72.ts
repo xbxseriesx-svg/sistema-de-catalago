@@ -1,4 +1,4 @@
-import baseWorker from './index-v71';
+import baseWorker from './index-v70';
 
 type Env = {
   ASSETS: Fetcher;
