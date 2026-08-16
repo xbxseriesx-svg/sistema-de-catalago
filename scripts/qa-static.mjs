@@ -49,6 +49,9 @@ assert.match(responsiveJs, /orientationchange/);
 assert.match(responsiveJs, /asteryon:viewport-change/);
 assert.match(responsiveJs, /MutationObserver/);
 assert.match(responsiveJs, /data-asteryon-mobile-toolbar/);
+assert.match(bundle, /window\.addEventListener\("orientationchange",r\)/, 'Renderer público não monitora orientação.');
+assert.match(bundle, /window\.visualViewport\?\.addEventListener\("resize",r\)/, 'Renderer público não monitora visualViewport.');
+assert.match(bundle, /const n=xt\(e,a\),i=t\/Math\.max\(1,n\.width\)/, 'Renderer público não aproveita toda a largura disponível.');
 assert.doesNotMatch(bundle, /Cloudflare D1|D1 conectado|D1 sincronizado|Conectando ao ASTERYON D1/);
 assert.match(bundle, /Supabase Postgres/);
 assert.match(bundle, /Supabase conectado/);
@@ -84,7 +87,7 @@ assert.match(workerV62, /storage: 'Supabase Storage'/);
 assert.match(workerV62, /d1: false/);
 const packageJson = JSON.parse(pkg);
 assert.equal(packageJson.version, '2.1.67');
-assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/patch-importer-v60.mjs && node scripts/patch-editor-menu-v64.mjs && node scripts/patch-catalog-modal-v65.mjs');
+assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/patch-importer-v60.mjs && node scripts/patch-editor-menu-v64.mjs && node scripts/patch-catalog-modal-v65.mjs && node scripts/patch-responsive-v67.mjs');
 
 execFileSync(process.execPath, ['--check', `public/${bundlePath}`], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/marketing-canvas-hotfix.js'], { stdio: 'pipe' });
