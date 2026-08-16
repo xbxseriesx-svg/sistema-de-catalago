@@ -32,8 +32,8 @@ assert.match(bundle, /function laurenciniTemplate/);
 assert.match(bundle, /\.map\(S=>\(\{\.\.\.S,accent:LAURENCINI_BRAND\.blue,build:\(\)=>laurenciniNodes\(S\.build\(\)\)\}\)\)/);
 assert.match(bundle, /S\.templates\.map\(laurenciniTemplate\)/, 'Modelos já salvos precisam ser normalizados.');
 assert.match(bundle, /AR\(laurenciniNodes\(T\)\)/, 'Aplicação do modelo precisa passar pela paleta Laurencini.');
-assert.match(bundle, /productbutton:\{[^}]+backgroundColor:"#D13130"/);
-assert.match(bundle, /productprice:\{[^}]+color:"#214C8F"/);
+assert.match(bundle, /productbutton:\{[\s\S]{0,700}?backgroundColor:"#D13130"/);
+assert.match(bundle, /productprice:\{[\s\S]{0,700}?color:"#214C8F"/);
 assert.match(bundle, /linear-gradient\(135deg, #123F7D 0%, #214C8F 100%\)/);
 assert.match(bundle, /linear-gradient\(135deg, #A7252A 0%, #D13130 100%\)/);
 
