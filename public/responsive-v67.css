@@ -1,0 +1,391 @@
+/* ASTERYON V67 — camada responsiva única para editor, site público e importadores. */
+
+:root {
+  --asteryon-vw: 100vw;
+  --asteryon-vh: 100vh;
+  --asteryon-dvh: 100dvh;
+  --asteryon-touch: 0;
+  --asteryon-editor-top: 0px;
+  --asteryon-page-gutter: clamp(0.875rem, 2.5vw, 2rem);
+  --asteryon-control-height: 2.75rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body,
+#root {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+img,
+picture,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+svg {
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  max-width: 100%;
+  font: inherit;
+}
+
+button,
+[role="button"],
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+p,
+li,
+dd,
+dt,
+label,
+span,
+button,
+a {
+  overflow-wrap: anywhere;
+}
+
+/* O conteúdo principal nunca pode forçar a página além do viewport. */
+html[data-asteryon-surface="public"] #root,
+html[data-asteryon-surface="importer"] #root,
+html[data-asteryon-surface="public"] main,
+html[data-asteryon-surface="public"] section,
+html[data-asteryon-surface="public"] header,
+html[data-asteryon-surface="public"] footer {
+  min-width: 0;
+  max-width: 100%;
+}
+
+html[data-asteryon-surface="public"] .grid > *,
+html[data-asteryon-surface="importer"] .grid > * {
+  min-width: 0;
+}
+
+/* Tipografia fluida apenas na experiência pública/importador — não altera a UI do editor. */
+html[data-asteryon-surface="public"] h1,
+html[data-asteryon-surface="importer"] h1 {
+  font-size: clamp(1.75rem, 4vw, 3rem);
+  line-height: 1.08;
+}
+
+html[data-asteryon-surface="public"] h2,
+html[data-asteryon-surface="importer"] h2 {
+  font-size: clamp(1.35rem, 2.8vw, 2.25rem);
+  line-height: 1.15;
+}
+
+html[data-asteryon-surface="public"] h3,
+html[data-asteryon-surface="importer"] h3 {
+  font-size: clamp(1.05rem, 2vw, 1.5rem);
+}
+
+/* Catálogo em modal: estrutura marcada automaticamente pelo responsive-v67.js. */
+[data-asteryon-catalog-modal-root="true"] {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483644 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 100vh !important;
+  padding:
+    max(0.75rem, env(safe-area-inset-top))
+    max(0.75rem, env(safe-area-inset-right))
+    max(0.75rem, env(safe-area-inset-bottom))
+    max(0.75rem, env(safe-area-inset-left)) !important;
+  overflow: hidden !important;
+  overscroll-behavior: contain !important;
+}
+
+[data-asteryon-catalog-modal-panel="true"] {
+  width: min(100%, 80rem) !important;
+  max-width: 80rem !important;
+  max-height: calc(100dvh - 1.5rem) !important;
+  margin-inline: auto !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-gutter: stable !important;
+}
+
+[data-asteryon-catalog-modal-header="true"] {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 55 !important;
+}
+
+button[aria-label="Fechar catálogo"],
+button[aria-label="Fechar produto"] {
+  min-width: 2.75rem !important;
+  min-height: 2.75rem !important;
+  touch-action: manipulation;
+}
+
+/* Desktop: usa toda a área e mantém as barras do editor visíveis. */
+html[data-asteryon-device="desktop"] [data-asteryon-editor-sidebar] {
+  transform: none !important;
+  visibility: visible !important;
+}
+
+html[data-asteryon-device="desktop"] [data-asteryon-mobile-toolbar],
+html[data-asteryon-device="desktop"] [data-asteryon-sidebar-backdrop] {
+  display: none !important;
+}
+
+html[data-asteryon-device="desktop"][data-asteryon-surface="public"] .grid-cols-5,
+html[data-asteryon-device="desktop"][data-asteryon-surface="public"] .lg\:grid-cols-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+}
+
+html[data-asteryon-device="desktop"][data-asteryon-surface="public"] .grid-cols-4,
+html[data-asteryon-device="desktop"][data-asteryon-surface="public"] .lg\:grid-cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+/* Tablet: painéis do editor viram drawers e grids públicos reduzem colunas. */
+html[data-asteryon-device="tablet"][data-asteryon-surface="public"] .grid-cols-5,
+html[data-asteryon-device="tablet"][data-asteryon-surface="public"] .lg\:grid-cols-5,
+html[data-asteryon-device="tablet"][data-asteryon-surface="public"] .grid-cols-4,
+html[data-asteryon-device="tablet"][data-asteryon-surface="public"] .lg\:grid-cols-4,
+html[data-asteryon-device="tablet"][data-asteryon-surface="public"] .grid-cols-3,
+html[data-asteryon-device="tablet"][data-asteryon-surface="public"] .md\:grid-cols-3 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+html[data-asteryon-device="tablet"] {
+  --asteryon-page-gutter: clamp(1rem, 3vw, 1.75rem);
+}
+
+/* Editor tablet/celular: barras laterais são drawers, sem duplicar conteúdo. */
+html[data-asteryon-surface="editor"]:not([data-asteryon-device="desktop"]) [data-asteryon-editor-sidebar] {
+  position: fixed !important;
+  top: var(--asteryon-editor-top) !important;
+  bottom: 0 !important;
+  z-index: 2147483002 !important;
+  width: min(90vw, 25rem) !important;
+  max-width: min(90vw, 25rem) !important;
+  height: calc(100dvh - var(--asteryon-editor-top)) !important;
+  max-height: calc(100dvh - var(--asteryon-editor-top)) !important;
+  background: #111318 !important;
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.42) !important;
+  transition: transform 180ms ease, visibility 180ms ease !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+}
+
+html[data-asteryon-surface="editor"]:not([data-asteryon-device="desktop"]) [data-asteryon-editor-sidebar="left"] {
+  left: 0 !important;
+  right: auto !important;
+  transform: translateX(-103%) !important;
+}
+
+html[data-asteryon-surface="editor"]:not([data-asteryon-device="desktop"]) [data-asteryon-editor-sidebar="right"] {
+  left: auto !important;
+  right: 0 !important;
+  transform: translateX(103%) !important;
+}
+
+html[data-asteryon-surface="editor"]:not([data-asteryon-device="desktop"]) [data-asteryon-editor-sidebar][data-open="true"] {
+  transform: translateX(0) !important;
+  visibility: visible !important;
+}
+
+[data-asteryon-sidebar-backdrop] {
+  position: fixed;
+  inset: var(--asteryon-editor-top) 0 0;
+  z-index: 2147483001;
+  border: 0;
+  background: rgba(0, 0, 0, 0.52);
+  backdrop-filter: blur(2px);
+  display: none;
+}
+
+[data-asteryon-sidebar-backdrop][data-open="true"] {
+  display: block;
+}
+
+[data-asteryon-mobile-toolbar] {
+  position: fixed;
+  left: 50%;
+  bottom: max(0.65rem, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 2147483003;
+  display: flex;
+  gap: 0.5rem;
+  max-width: calc(100vw - 1rem);
+  padding: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: rgba(15, 18, 24, 0.94);
+  box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(12px);
+}
+
+[data-asteryon-mobile-toolbar] button {
+  min-height: 2.75rem;
+  min-width: 7rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  color: #fff;
+  background: #1d2635;
+  font-size: 0.875rem;
+  font-weight: 800;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+html[data-asteryon-surface="editor"]:not([data-asteryon-device="desktop"]) #root > div.h-screen.w-screen.overflow-hidden > div.flex.flex-1.overflow-hidden > *:not([data-asteryon-editor-sidebar]) {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Celular: controles amigáveis ao toque e sem zoom automático do Safari. */
+html[data-asteryon-device="mobile"] input,
+html[data-asteryon-device="mobile"] select,
+html[data-asteryon-device="mobile"] textarea {
+  min-height: 2.75rem;
+  font-size: 16px !important;
+}
+
+html[data-asteryon-device="mobile"] button {
+  min-height: 2.75rem;
+  touch-action: manipulation;
+}
+
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .grid-cols-5,
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .lg\:grid-cols-5,
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .grid-cols-4,
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .lg\:grid-cols-4,
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .grid-cols-3,
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .md\:grid-cols-3,
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .grid-cols-2,
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .sm\:grid-cols-2 {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+/* Em celulares mais largos ou paisagem, cards de produtos podem usar duas colunas. */
+@media (min-width: 480px) and (max-width: 639.98px) {
+  html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .grid-cols-2,
+  html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .sm\:grid-cols-2,
+  html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .grid-cols-3,
+  html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .grid-cols-4,
+  html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .grid-cols-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+html[data-asteryon-device="mobile"][data-asteryon-orientation="landscape"][data-asteryon-surface="public"] .grid-cols-2,
+html[data-asteryon-device="mobile"][data-asteryon-orientation="landscape"][data-asteryon-surface="public"] .grid-cols-3,
+html[data-asteryon-device="mobile"][data-asteryon-orientation="landscape"][data-asteryon-surface="public"] .grid-cols-4,
+html[data-asteryon-device="mobile"][data-asteryon-orientation="landscape"][data-asteryon-surface="public"] .grid-cols-5 {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .px-16,
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .px-12,
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .px-10,
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .px-8,
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .px-6 {
+  padding-inline: var(--asteryon-page-gutter) !important;
+}
+
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .w-\[1100px\],
+html[data-asteryon-device="tablet"][data-asteryon-surface="public"] .w-\[1100px\] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .min-w-\[520px\],
+html[data-asteryon-device="mobile"][data-asteryon-surface="public"] .min-w-\[960px\] {
+  min-width: 0 !important;
+}
+
+/* Importador de imagens: um card por linha no tablet/celular e largura fluida. */
+html[data-asteryon-surface="importer"] body {
+  width: 100%;
+  min-height: 100dvh;
+  padding:
+    max(var(--asteryon-page-gutter), env(safe-area-inset-top))
+    max(var(--asteryon-page-gutter), env(safe-area-inset-right))
+    max(var(--asteryon-page-gutter), env(safe-area-inset-bottom))
+    max(var(--asteryon-page-gutter), env(safe-area-inset-left)) !important;
+}
+
+html[data-asteryon-surface="importer"] .shell {
+  width: 100% !important;
+  max-width: 73.75rem !important;
+}
+
+html[data-asteryon-surface="importer"] .grid {
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+}
+
+html[data-asteryon-surface="importer"] button,
+html[data-asteryon-surface="importer"] input,
+html[data-asteryon-surface="importer"] select,
+html[data-asteryon-surface="importer"] textarea {
+  min-height: 2.75rem;
+}
+
+html[data-asteryon-device="tablet"][data-asteryon-surface="importer"] .grid,
+html[data-asteryon-device="mobile"][data-asteryon-surface="importer"] .grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+html[data-asteryon-device="mobile"][data-asteryon-surface="importer"] body {
+  padding: max(0.75rem, env(safe-area-inset-top)) max(0.75rem, env(safe-area-inset-right)) max(0.75rem, env(safe-area-inset-bottom)) max(0.75rem, env(safe-area-inset-left)) !important;
+}
+
+/* Modais em telas pequenas: ocupam a área disponível sem cortar cabeçalho/fechar. */
+html[data-asteryon-device="mobile"] [data-asteryon-catalog-modal-root="true"],
+html[data-asteryon-device="mobile"] [data-asteryon-product-modal-root="true"] {
+  padding: 0 !important;
+}
+
+html[data-asteryon-device="mobile"] [data-asteryon-catalog-modal-panel="true"],
+html[data-asteryon-device="mobile"] [data-asteryon-product-modal-panel="true"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: 100dvh !important;
+  min-height: 100dvh !important;
+  border-radius: 0 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
