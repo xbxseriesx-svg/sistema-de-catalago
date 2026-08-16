@@ -139,7 +139,9 @@ function hex(bytes: ArrayBuffer) {
 }
 
 async function sha256(bytes: Uint8Array) {
-  return hex(await crypto.subtle.digest('SHA-256', bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)));
+  const copy = new Uint8Array(bytes.byteLength);
+  copy.set(bytes);
+  return hex(await crypto.subtle.digest('SHA-256', copy.buffer));
 }
 
 function isAllowedImage(bytes: Uint8Array, mime: string) {
