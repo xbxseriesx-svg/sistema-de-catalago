@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const [preview, css, index, logoWrapper, logoFile, worker, pkg, version] = await Promise.all([
+const [preview, css, index, logoWrapper, logoFile, worker, pkg, versionText] = await Promise.all([
   readFile('public/template-preview-v69.js', 'utf8'),
   readFile('public/template-preview-v69.css', 'utf8'),
   readFile('public/index.html', 'utf8'),
@@ -13,11 +13,13 @@ const [preview, css, index, logoWrapper, logoFile, worker, pkg, version] = await
   readFile('VERSION', 'utf8').then((value) => value.trim()),
 ]);
 
-assert.equal(version, '70', 'O preview completo precisa estar na release V70.');
-assert.equal(pkg.version, '2.1.70', 'package.json precisa estar em 2.1.70.');
-assert.match(index, /template-preview-v69\.css\?v=70/);
-assert.match(index, /template-preview-v69\.js\?v=70/);
-assert.match(index, /ASTERYON Editor V70/);
+const version = Number(versionText);
+const packagePatch = Number(String(pkg.version).split('.').at(-1));
+assert.ok(Number.isFinite(version) && version >= 69, 'O preview completo precisa preservar a correção V69 ou superior.');
+assert.equal(packagePatch, version, 'package.json precisa acompanhar VERSION.');
+assert.match(index, new RegExp(`template-preview-v69\\.css\\?v=${version}`));
+assert.match(index, new RegExp(`template-preview-v69\\.js\\?v=${version}`));
+assert.match(index, new RegExp(`ASTERYON Editor V${version}`));
 assert.match(preview, /\/api\/public\/catalog/);
 assert.match(worker, /path === '\/api\/public\/catalog'/, 'O preview precisa usar o catálogo público real do Supabase.');
 assert.match(preview, /MutationObserver/, 'Os botões de preview precisam acompanhar a renderização dinâmica dos cards.');
@@ -56,4 +58,4 @@ assert.match(css, /overflow:auto/);
 
 execFileSync(process.execPath, ['--check', 'public/template-preview-v69.js'], { stdio: 'pipe' });
 
-console.log('QA Preview V69 na release V70 OK: 8 templates, logo original Laurencini, catálogo real Supabase e fluxo existente preservado.');
+console.log(`QA Preview V69+ na release V${version} OK: 8 templates, logo original Laurencini, catálogo real Supabase e fluxo existente preservado.`);
