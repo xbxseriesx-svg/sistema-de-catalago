@@ -18,7 +18,7 @@ const [css, bundle, marketingHotfix, baseWorker, workerV62, pkg, imageImporter, 
 ]);
 
 assert.match(html, /lang="pt-BR"/);
-assert.match(html, /ASTERYON Editor V63/);
+assert.match(html, /ASTERYON Editor V64/);
 assert.match(html, /editor-overflow-fix\.css/);
 assert.match(html, /import-progress-v62\.js/);
 assert.match(css, /min-height:\s*0/);
@@ -57,11 +57,11 @@ assert.match(workerV62, /database: 'Supabase Postgres'/);
 assert.match(workerV62, /storage: 'Supabase Storage'/);
 assert.match(workerV62, /d1: false/);
 const packageJson = JSON.parse(pkg);
-assert.equal(packageJson.version, '2.1.63');
-assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/patch-importer-v60.mjs');
+assert.equal(packageJson.version, '2.1.64');
+assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/patch-importer-v60.mjs && node scripts/patch-editor-menu-v64.mjs');
 
 execFileSync(process.execPath, ['--check', `public/${bundlePath}`], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/marketing-canvas-hotfix.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/import-progress-v62.js'], { stdio: 'pipe' });
 
-console.log('QA estático da V63: OK');
+console.log('QA estático da V64: OK');
