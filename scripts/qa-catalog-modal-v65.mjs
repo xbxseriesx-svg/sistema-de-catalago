@@ -6,9 +6,11 @@ const version = (await readFile('VERSION', 'utf8')).trim();
 const pkg = JSON.parse(await readFile('package.json', 'utf8'));
 const html = await readFile('public/index.html', 'utf8');
 
-assert.equal(version, '65', 'VERSION precisa ser 65.');
-assert.equal(pkg.version, '2.1.65', 'package.json precisa estar em 2.1.65.');
-assert.match(html, /ASTERYON Editor V65/, 'Título do editor precisa indicar V65.');
+const versionNumber = Number(version);
+const packagePatch = Number(String(pkg.version).split('.').at(-1));
+assert.ok(Number.isFinite(versionNumber) && versionNumber >= 65, 'VERSION precisa ser 65 ou superior.');
+assert.equal(packagePatch, versionNumber, 'Patch do package.json precisa acompanhar VERSION.');
+assert.match(html, new RegExp(`ASTERYON Editor V${version}`), 'Título do editor precisa acompanhar VERSION.');
 
 assert.match(bundle, /asteryon:catalog-open/, 'Evento de abertura do catálogo não existe.');
 assert.match(bundle, /asteryon:product-open/, 'Evento de abertura do produto não existe.');
@@ -30,4 +32,4 @@ assert.match(bundle, /onClick:\(\)=>oP\?oP\(o\):window\.location\.assign/, 'Prod
 assert.match(bundle, /product:x,products:a/, 'Modal público não recebe o catálogo para calcular similares.');
 assert.match(bundle, /product:eP,products:D\.products/, 'Modal no Preview do editor não recebe o catálogo real.');
 
-console.log('QA Catálogo V65 OK: catálogo em pop-up, produto com similares e Menu editável por ação.');
+console.log(`QA Catálogo V65+ OK na V${version}: catálogo em pop-up, produto com similares e Menu editável por ação.`);
