@@ -16,8 +16,8 @@ const [index, uiV70, uiV72, pickerHtml, pickerJs, workerV71, workerV72, workerV7
 ]);
 
 assert.ok(Number(version) >= 70, 'A pesquisa de imagens das marcas exige V70 ou superior.');
-assert.match(index, /brand-image-search-v70\.js\?v=74/, 'Editor não carrega a interface base da pesquisa com cache V74.');
-assert.match(index, /brand-image-search-v72\.js\?v=74/, 'Editor não carrega o complemento de popup com cache V74.');
+assert.match(index, /brand-image-search-v70\.js\?v=75/, 'Editor não carrega a interface base da pesquisa com cache V75.');
+assert.match(index, /brand-image-search-v72\.js\?v=75/, 'Editor não carrega o complemento de popup com cache V75.');
 assert.match(wrangler, /"main":\s*"worker\/index-v71\.ts"/, 'Wrangler precisa apontar para a entrada V71.');
 assert.match(workerV71, /import worker from '\.\/index-v72'/, 'Entrada V71 não encaminha para V72.');
 assert.match(uiV70, /data-asteryon-brand-image-search/);
@@ -31,22 +31,27 @@ assert.match(uiV70, /createImageBitmap/);
 assert.match(uiV70, /MutationObserver/);
 
 assert.match(uiV72, /Google Imagens/);
-assert.match(uiV72, /google-image-picker-v73\.html\?v=74/);
+assert.match(uiV72, /Logo manual/);
+assert.match(uiV72, /mode.*manual/);
+assert.match(uiV72, /google-image-picker-v73\.html\?v=75/);
 assert.match(uiV72, /window\.open/);
 assert.match(uiV72, /popup=yes/);
 assert.match(uiV72, /asteryon:brand-logo-updated/);
 assert.doesNotMatch(uiV72, /google\.com\/search\?tbm=isch/, 'O botão integrado não deve sair para google.com.');
 
 assert.match(pickerHtml, /Google Imagens — selecionar logo/);
-assert.match(pickerHtml, /google-image-picker-v73\.js\?v=74/);
-assert.match(pickerHtml, /Consultando Google Imagens/);
+assert.match(pickerHtml, /Enviar logo manualmente/);
+assert.match(pickerHtml, /accept="image\/png,image\/jpeg,image\/webp"/);
+assert.match(pickerHtml, /google-image-picker-v73\.js\?v=75/);
 assert.match(pickerJs, /provider=google/);
 assert.match(pickerJs, /\/api\/admin\/brand-images\/search/);
 assert.match(pickerJs, /\/api\/admin\/brand-images\/fetch/);
 assert.match(pickerJs, /\/api\/admin\/brand-images\/upload/);
-assert.match(pickerJs, /provider=google/);
 assert.match(pickerJs, /image\/webp/);
 assert.match(pickerJs, /convertToWebp/);
+assert.match(pickerJs, /chooseManualFile/);
+assert.match(pickerJs, /provider.*manual|['"]manual['"]/);
+assert.match(pickerJs, /MAX_SOURCE_BYTES/);
 assert.match(pickerJs, /Usar esta imagem/);
 assert.match(pickerJs, /Google Imagens/);
 assert.match(pickerJs, /BroadcastChannel/);
@@ -70,4 +75,4 @@ execFileSync(process.execPath, ['--check', 'public/brand-image-search-v70.js'], 
 execFileSync(process.execPath, ['--check', 'public/brand-image-search-v72.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/google-image-picker-v73.js'], { stdio: 'pipe' });
 
-console.log('QA pesquisa de imagens V74: OK (popup Google oficial + seleção + WEBP + vínculo à marca, sem geração)');
+console.log('QA pesquisa de imagens V75: OK (Google oficial + upload manual + WEBP + vínculo à marca, sem geração)');
