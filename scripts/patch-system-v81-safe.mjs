@@ -31,7 +31,6 @@ replaceOnce(
   'e.type==="breadcrumb"&&l.jsx(wq,{node:e,updateProp:d}),l.jsx(cq,{node:e}),l.jsx(Cq,{node:e,updateStyle:s,update:o,mode:t})',
   'inserir ações no inspetor comum',
 );
-replaceCount('Nenhuma ação', 'Nenhum (padrão)', 1, 'rótulo padrão da função ao clicar');
 
 // Clique público para qualquer objeto com actionType real.
 replaceCount('e.type==="button"||e.type==="productbutton"', 'Q', 1, 'restrição de clique apenas a botões');
