@@ -22,13 +22,13 @@ const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, baseWorker, wo
 ]);
 
 const version = Number(versionText.trim());
-assert.equal(version, 67, 'QA estático desta branch exige V67.');
+assert.equal(version, 68, 'QA estático desta branch exige V68.');
 assert.match(html, /lang="pt-BR"/);
 assert.match(html, /viewport-fit=cover/);
-assert.match(html, /ASTERYON Editor V67/);
-assert.match(html, /editor-overflow-fix\.css\?v=67/);
-assert.match(html, /responsive-v67\.css\?v=67/);
-assert.match(html, /responsive-v67\.js\?v=67/);
+assert.match(html, /ASTERYON Editor V68/);
+assert.match(html, /editor-overflow-fix\.css\?v=68/);
+assert.match(html, /responsive-v67\.css\?v=68/);
+assert.match(html, /responsive-v67\.js\?v=68/);
 assert.match(html, /product-modal-v66\.js/);
 assert.match(html, /import-progress-v62\.js/);
 assert.match(css, /min-height:\s*0/);
@@ -52,6 +52,7 @@ assert.match(responsiveJs, /data-asteryon-mobile-toolbar/);
 assert.match(bundle, /window\.addEventListener\("orientationchange",r\)/, 'Renderer público não monitora orientação.');
 assert.match(bundle, /window\.visualViewport\?\.addEventListener\("resize",r\)/, 'Renderer público não monitora visualViewport.');
 assert.match(bundle, /const n=xt\(e,a\),i=t\/Math\.max\(1,n\.width\)/, 'Renderer público não aproveita toda a largura disponível.');
+assert.match(bundle, /LAURENCINI_BRAND/, 'Bundle não contém a normalização de marca V68.');
 assert.doesNotMatch(bundle, /Cloudflare D1|D1 conectado|D1 sincronizado|Conectando ao ASTERYON D1/);
 assert.match(bundle, /Supabase Postgres/);
 assert.match(bundle, /Supabase conectado/);
@@ -86,13 +87,14 @@ assert.match(workerV62, /database: 'Supabase Postgres'/);
 assert.match(workerV62, /storage: 'Supabase Storage'/);
 assert.match(workerV62, /d1: false/);
 const packageJson = JSON.parse(pkg);
-assert.equal(packageJson.version, '2.1.67');
-assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/patch-importer-v60.mjs && node scripts/patch-editor-menu-v64.mjs && node scripts/patch-catalog-modal-v65.mjs && node scripts/patch-responsive-v67.mjs');
+assert.equal(packageJson.version, '2.1.68');
+assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/patch-importer-v60.mjs && node scripts/patch-editor-menu-v64.mjs && node scripts/patch-catalog-modal-v65.mjs && node scripts/patch-responsive-v67.mjs && node scripts/patch-brand-laurencini-v68.mjs');
 
 execFileSync(process.execPath, ['--check', `public/${bundlePath}`], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/marketing-canvas-hotfix.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/import-progress-v62.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/product-modal-v66.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/responsive-v67.js'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'scripts/patch-brand-laurencini-v68.mjs'], { stdio: 'pipe' });
 
-console.log('QA estático da V67: OK');
+console.log('QA estático da V68: OK');
