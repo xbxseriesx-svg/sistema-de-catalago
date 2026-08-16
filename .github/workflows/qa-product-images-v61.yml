@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - refactor/supabase-v62-import-progress
       - fix/catalog-live-v63
     paths:
       - 'worker/**'
@@ -40,9 +39,6 @@ jobs:
 
       - name: Instalar dependências
         run: npm ci --ignore-scripts
-
-      - name: Diagnosticar catálogo compilado
-        run: node scripts/inspect-catalog-v63.mjs
 
       - name: Validar catálogo, Supabase e Worker
         run: npm test
