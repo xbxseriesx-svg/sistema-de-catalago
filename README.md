@@ -1,4 +1,4 @@
-# ASTERYON Catálogo — V68
+# ASTERYON Catálogo — V69
 
 Versão oficial do catálogo ASTERYON com dados e mídias no **Supabase** e aplicação publicada na **Cloudflare** a partir do repositório GitHub.
 
@@ -17,13 +17,42 @@ Versão oficial do catálogo ASTERYON com dados e mídias no **Supabase** e apli
 - Worker: `sistema-de-catalago`
 - Supabase Project ID: `bjcfknhiwjxznxydvmzt`
 - Entry point: `worker/index-v62.ts`
-- Versão da aplicação: `2.1.68`
+- Versão da aplicação: `2.1.69`
 
-## Identidade visual Distribuidora Laurencini — V68
+## Preview completo dos templates — V69
 
-A V68 padroniza todos os modelos de template com a identidade cromática da **Distribuidora Laurencini**, sem alterar a estrutura, posição ou comportamento dos componentes.
+A V69 acrescenta um modo **Pré-visualizar modelo completo** na biblioteca de templates. A prévia abre em tela cheia e mostra cada modelo já montado como uma página final, antes de substituir o layout atual do editor.
 
-### Paleta oficial
+### Dados reais na prévia
+
+A camada de preview consulta exclusivamente o endpoint público existente `/api/public/catalog`, portanto usa a mesma fonte Supabase já utilizada pelo catálogo publicado.
+
+Na fotografia da base usada na implementação da V69 havia:
+
+- `2.513` produtos;
+- `260` marcas;
+- `58` nós de hierarquia;
+- `8` templates cadastrados;
+- `2.392` mídias;
+- `2.301` vínculos produto ↔ mídia.
+
+Esses números são apenas uma fotografia da base e podem crescer normalmente. A prévia não fixa esses totais: ela calcula os indicadores novamente a cada abertura com os dados recebidos do catálogo público.
+
+Os previews podem utilizar:
+
+- nome, código, descrição, imagem e embalagem do produto;
+- marca vinculada;
+- departamento;
+- seção;
+- categoria;
+- logos de marcas quando disponíveis no catálogo;
+- quantidades reais do portfólio e da hierarquia.
+
+Não existe seed fictício para preencher os previews.
+
+### Identidade Distribuidora Laurencini
+
+Todos os previews usam o nome **Distribuidora Laurencini**, a logo Laurencini incorporada à V69 e a paleta oficial já criada na V68.
 
 - Azul institucional: `#214C8F`
 - Azul profundo: `#123F7D`
@@ -32,23 +61,67 @@ A V68 padroniza todos os modelos de template com a identidade cromática da **Di
 - Vermelho profundo: `#A7252A`
 - Fundo claro: `#F4F8FC`
 - Borda clara: `#DCE6F2`
-- Texto principal: `#172033`
-- Texto secundário: `#66758A`
-- Branco: `#FFFFFF`
 
-### Modelos padronizados
+### Modelos com preview completo
 
-A normalização é aplicada aos sete modelos prontos do editor:
+A V69 cobre os sete modelos prontos e também o Modelo Oficial:
 
-- Varejo Contínuo
-- Atacado B2B
-- Distribuidora Institucional
-- Catálogo de Marcas B2B
-- Distribuidora União • Figma B2B
-- Catálogo Hierárquico B2B
-- Vitrine Atacado Pro
+- Varejo Contínuo;
+- Atacado B2B;
+- Distribuidora Institucional;
+- Catálogo de Marcas B2B;
+- Distribuidora União • Figma B2B;
+- Catálogo Hierárquico B2B;
+- Vitrine Atacado Pro;
+- Modelo Oficial.
 
-Além dos modelos nativos, qualquer modelo já salvo na biblioteca do Supabase é convertido para a paleta Laurencini quando é carregado e novamente validado quando é aplicado ao canvas. Isso evita que modelos antigos mantenham verde, laranja, roxo ou cores genéricas.
+Cada família recebe uma composição visual própria, mas todas são montadas com a mesma base real de produtos, marcas e hierarquia.
+
+### Referência estrutural institucional
+
+A organização dos previews usa como referência conceitual sites de distribuidores B2B, incluindo a estrutura institucional observada no site da Wilso: navegação por departamentos, segmentos atendidos, marcas, apresentação da empresa e contato.
+
+Foram **deliberadamente desconsiderados** os recursos de e-commerce e venda, entre eles:
+
+- carrinho;
+- checkout;
+- adicionar ao carrinho;
+- compra online;
+- pedidos;
+- pagamento;
+- boleto;
+- faturamento e demais fluxos comerciais transacionais.
+
+O objetivo é apresentar portfólio e empresa, não transformar os templates em loja virtual.
+
+### Catálogo e produto continuam com a regra existente
+
+A V69 **não substitui nem reimplementa** as regras de abertura do catálogo e do produto.
+
+- O botão **Aplicar este modelo** do preview fecha a prévia e aciona o mesmo botão **Aplicar modelo** já existente no card original.
+- O catálogo publicado continua abrindo no pop-up atual do ASTERYON.
+- O produto continua abrindo no modal atual, com informações e produtos similares.
+- A camada de preview não adiciona rota administrativa nem novo fluxo de produto.
+- A prévia visual usa somente `/api/public/catalog`.
+
+Assim, a novidade fica isolada na escolha do template, sem alterar o comportamento já aprovado do catálogo publicado.
+
+### Busca dentro do preview
+
+O campo de busca da prévia filtra os produtos carregados do catálogo por:
+
+- descrição/nome;
+- código;
+- marca;
+- departamento;
+- seção;
+- categoria.
+
+Essa busca serve apenas para demonstrar o template preenchido; não substitui a busca e os filtros do catálogo oficial.
+
+## Identidade visual Distribuidora Laurencini — V68+
+
+A V68 padronizou todos os modelos de template com a identidade cromática da **Distribuidora Laurencini**, sem alterar a estrutura, posição ou comportamento dos componentes.
 
 ### Regras de marca
 
@@ -60,6 +133,8 @@ Além dos modelos nativos, qualquer modelo já salvo na biblioteca do Supabase �
 - Gradientes promocionais usam `#A7252A → #D13130`.
 - Elementos novos inseridos pelo editor já nascem com a identidade Laurencini.
 - O Modelo Oficial também é convertido integralmente para a mesma paleta durante o build.
+
+Além dos modelos nativos, qualquer modelo já salvo na biblioteca do Supabase é convertido para a paleta Laurencini quando é carregado e novamente validado quando é aplicado ao canvas.
 
 ## Catálogo e dados reais
 
@@ -161,7 +236,7 @@ npm ci
 npm test
 ```
 
-O QA da V68 valida TypeScript, Worker, Supabase, autenticação, importação Excel, campos da planilha, marketing, Modelo Oficial, catálogo real, modais V65/V66, responsividade V67+ e a identidade Laurencini V68. O teste de marca confirma os sete templates, a biblioteca Supabase, os elementos novos e as cores oficiais.
+O QA da V69 valida TypeScript, Worker, Supabase, autenticação, importação Excel, campos da planilha, marketing, Modelo Oficial, catálogo real, modais V65/V66, responsividade V67+, identidade Laurencini V68+ e os previews completos V69. O teste V69 confirma os oito modelos, a logo, a dependência apenas do catálogo público, a ausência de recursos de e-commerce e a reutilização do fluxo atual de aplicação do template.
 
 ## Recuperação
 
