@@ -25,7 +25,10 @@
     let payload = null;
     try { payload = text ? JSON.parse(text) : null; } catch { payload = null; }
     if (!response.ok || payload?.ok === false) {
-      throw new Error(payload?.error?.message || payload?.message || `Falha HTTP ${response.status}`);
+      const error = new Error(payload?.error?.message || payload?.message || `Falha HTTP ${response.status}`);
+      error.code = payload?.error?.code || '';
+      error.status = response.status;
+      throw error;
     }
     return payload || {};
   }
@@ -91,7 +94,7 @@
   async function chooseImage(image, button) {
     button.disabled = true;
     try {
-      setStatus('Baixando a imagem original...');
+      setStatus('Baixando a imagem original selecionada no Google Imagens...');
       const proxyUrl = `/api/admin/brand-images/fetch?url=${encodeURIComponent(image.url)}&sig=${encodeURIComponent(image.signature)}`;
       const sourceResponse = await fetch(proxyUrl, { credentials: 'same-origin' });
       if (!sourceResponse.ok) {
@@ -105,7 +108,7 @@
       const webp = await convertToWebp(sourceBlob);
 
       setStatus(`Salvando a logo na marca (${Math.max(1, Math.round(webp.size / 1024))} KB)...`);
-      const uploadUrl = `/api/admin/brand-images/upload?brandId=${encodeURIComponent(brandId)}&source=${encodeURIComponent(image.sourceUrl || image.url)}&provider=${encodeURIComponent(image.provider || 'web')}`;
+      const uploadUrl = `/api/admin/brand-images/upload?brandId=${encodeURIComponent(brandId)}&source=${encodeURIComponent(image.sourceUrl || image.url)}&provider=google`;
       const payload = await jsonRequest(uploadUrl, {
         method: 'POST',
         headers: { 'content-type': 'image/webp' },
@@ -114,7 +117,7 @@
 
       const logoUrl = payload.url || payload.brand?.logoUrl || '';
       notifyEditor({ brandId, brandName, url: logoUrl });
-      setStatus('Logo convertida, salva e vinculada à marca com sucesso.', 'success');
+      setStatus('Logo do Google Imagens convertida, salva e vinculada à marca com sucesso.', 'success');
 
       grid.textContent = '';
       const box = document.createElement('div');
@@ -134,12 +137,12 @@
     }
   }
 
-  function render(images, provider) {
+  function render(images) {
     grid.textContent = '';
     if (!images.length) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = 'Nenhuma imagem compatível foi encontrada.';
+      empty.textContent = 'Nenhuma imagem compatível foi encontrada no Google Imagens.';
       grid.appendChild(empty);
       return;
     }
@@ -159,7 +162,7 @@
 
       const meta = document.createElement('div');
       meta.className = 'meta';
-      meta.textContent = `${image.title || brandName}${provider ? ` · ${provider}` : ''}`;
+      meta.textContent = `${image.title || brandName} · Google Imagens`;
 
       const use = document.createElement('button');
       use.type = 'button';
@@ -175,19 +178,26 @@
   async function load() {
     if (!brandId) {
       setStatus('Marca não identificada. Feche esta janela e abra novamente pela lista de marcas.', 'error');
-      render([], '');
+      render([]);
       return;
     }
     try {
-      const payload = await jsonRequest(`/api/admin/brand-images/search?brandId=${encodeURIComponent(brandId)}`);
+      setStatus(`Consultando Google Imagens por "logo ${brandName}"...`);
+      const payload = await jsonRequest(`/api/admin/brand-images/search?provider=google&brandId=${encodeURIComponent(brandId)}`);
       const images = Array.isArray(payload.images) ? payload.images : [];
-      const providerNames = { google: 'Google Images', duckduckgo: 'Pesquisa web', wikimedia: 'Wikimedia', openverse: 'Openverse' };
-      const provider = providerNames[payload.provider] || 'Pesquisa web';
-      setStatus(payload.providerMessage || `${images.length} resultado(s) encontrados em ${provider}. Escolha uma imagem existente para converter e anexar à marca.`);
-      render(images, provider);
+      if (payload.provider !== 'google') throw new Error('A resposta recebida não veio do Google Imagens.');
+      setStatus(payload.providerMessage || `${images.length} resultado(s) encontrados no Google Imagens. Escolha uma imagem existente para converter e anexar à marca.`);
+      render(images);
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Falha ao pesquisar imagens.', 'error');
-      render([], '');
+      const message = error instanceof Error ? error.message : 'Falha ao pesquisar Google Imagens.';
+      setStatus(message, 'error');
+      grid.textContent = '';
+      const empty = document.createElement('div');
+      empty.className = 'empty';
+      empty.textContent = error?.code === 'GOOGLE_IMAGES_NOT_CONFIGURED'
+        ? 'A busca Google ainda precisa das credenciais oficiais configuradas na Cloudflare.'
+        : 'Não foi possível carregar resultados do Google Imagens.';
+      grid.appendChild(empty);
     }
   }
 
