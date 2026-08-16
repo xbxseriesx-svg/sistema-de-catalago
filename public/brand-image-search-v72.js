@@ -2,8 +2,8 @@
   'use strict';
 
   const MODAL_ID = 'asteryon-brand-image-search-modal-v70';
-  const GOOGLE_BUTTON_ATTR = 'data-asteryon-google-images-v75';
-  const MANUAL_BUTTON_ATTR = 'data-asteryon-manual-logo-v75';
+  const WEB_BUTTON_ATTR = 'data-asteryon-web-images-v76';
+  const MANUAL_BUTTON_ATTR = 'data-asteryon-manual-logo-v76';
   const nativeFetch = window.fetch.bind(window);
   let currentBrand = { id: '', name: '' };
 
@@ -40,13 +40,13 @@
     return `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
   }
 
-  function openPicker(brandId, brandName, mode = 'google') {
+  function openPicker(brandId, brandName, mode = 'web') {
     if (!brandId) {
       alert('Aguarde a marca carregar e tente novamente.');
       return;
     }
-    const url = `/google-image-picker-v73.html?v=75&mode=${encodeURIComponent(mode)}&brandId=${encodeURIComponent(brandId)}&brandName=${encodeURIComponent(brandName || '')}`;
-    const popup = window.open(url, 'asteryonGoogleImagePicker', popupFeatures());
+    const url = `/google-image-picker-v73.html?v=76&mode=${encodeURIComponent(mode)}&brandId=${encodeURIComponent(brandId)}&brandName=${encodeURIComponent(brandName || '')}`;
+    const popup = window.open(url, 'asteryonBrandImagePicker', popupFeatures());
     if (!popup) alert('O navegador bloqueou o pop-up. Libere pop-ups para este endereço e tente novamente.');
     else popup.focus();
   }
@@ -79,7 +79,7 @@
     if (!modal.querySelector(`[${MANUAL_BUTTON_ATTR}]`)) {
       const manualButton = document.createElement('button');
       manualButton.type = 'button';
-      manualButton.setAttribute(MANUAL_BUTTON_ATTR, 'v75');
+      manualButton.setAttribute(MANUAL_BUTTON_ATTR, 'v76');
       manualButton.textContent = 'Logo manual';
       manualButton.title = 'Escolher uma logo do computador, converter para WEBP e vincular à marca';
       styleButton(manualButton, true);
@@ -91,19 +91,19 @@
       head.insertBefore(manualButton, close);
     }
 
-    if (!modal.querySelector(`[${GOOGLE_BUTTON_ATTR}]`)) {
-      const googleButton = document.createElement('button');
-      googleButton.type = 'button';
-      googleButton.setAttribute(GOOGLE_BUTTON_ATTR, 'v75');
-      googleButton.textContent = 'Google Imagens';
-      googleButton.title = 'Abrir pop-up com resultados oficiais do Google Imagens';
-      styleButton(googleButton, false);
-      googleButton.addEventListener('click', () => {
+    if (!modal.querySelector(`[${WEB_BUTTON_ATTR}]`)) {
+      const webButton = document.createElement('button');
+      webButton.type = 'button';
+      webButton.setAttribute(WEB_BUTTON_ATTR, 'v76');
+      webButton.textContent = 'Pesquisar na web';
+      webButton.title = 'Pesquisar imagens existentes da marca na web';
+      styleButton(webButton, false);
+      webButton.addEventListener('click', () => {
         const selectedBrandName = String(title?.textContent || currentBrand.name || '').trim();
         currentBrand.name = selectedBrandName || currentBrand.name;
-        openPicker(currentBrand.id, currentBrand.name, 'google');
+        openPicker(currentBrand.id, currentBrand.name, 'web');
       });
-      head.insertBefore(googleButton, close);
+      head.insertBefore(webButton, close);
     }
   }
 
