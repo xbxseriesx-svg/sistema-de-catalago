@@ -6,12 +6,13 @@ const html = await readFile('public/index.html', 'utf8');
 const bundlePath = html.match(/src="\/(assets\/index-[^"]+\.js)"/)?.[1];
 assert.ok(bundlePath, 'o HTML precisa apontar para o bundle JavaScript versionado');
 
-const [css, bundle, marketingHotfix, worker, pkg] = await Promise.all([
+const [css, bundle, marketingHotfix, worker, pkg, imageImporter] = await Promise.all([
   readFile('public/editor-overflow-fix.css', 'utf8'),
   readFile(`public/${bundlePath}`, 'utf8'),
   readFile('public/marketing-canvas-hotfix.js', 'utf8'),
   readFile('worker/index.ts', 'utf8'),
   readFile('package.json', 'utf8'),
+  readFile('public/importar-imagens.html', 'utf8'),
 ]);
 
 assert.match(html, /lang="pt-BR"/);
@@ -27,6 +28,11 @@ assert.match(bundle, /descricao da secao/);
 assert.match(bundle, /nome da categoria/);
 assert.match(bundle, /sourceColumns/);
 assert.match(bundle, /Sem categoria/);
+assert.match(bundle, /href:"\/importar-imagens\.html"/);
+assert.match(bundle, /Planilha importa os dados dos produtos\. Imagens abre o importador V61 em lote/);
+assert.match(imageImporter, /Selecionar pasta de imagens/);
+assert.match(imageImporter, /webkitdirectory/);
+assert.match(imageImporter, /Converter e importar imagens encontradas/);
 assert.match(html, /marketing-canvas-hotfix\.js/);
 assert.match(marketingHotfix, /data-marketing-hotfix/);
 assert.match(marketingHotfix, /data-marketing-drag-handle/);
@@ -45,4 +51,4 @@ assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/patch-importer
 execFileSync(process.execPath, ['--check', `public/${bundlePath}`], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/marketing-canvas-hotfix.js'], { stdio: 'pipe' });
 
-console.log('QA estático da V60: OK');
+console.log('QA estático da V60/V61: OK');
