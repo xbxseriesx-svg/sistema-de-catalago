@@ -6,8 +6,10 @@ const html = await readFile('public/index.html', 'utf8');
 const bundlePath = html.match(/src="\/(assets\/index-[^"]+\.js)"/)?.[1];
 assert.ok(bundlePath, 'o HTML precisa apontar para o bundle JavaScript versionado');
 
-const [css, bundle, marketingHotfix, baseWorker, workerV62, pkg, imageImporter, importProgress, productModalV66] = await Promise.all([
+const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, baseWorker, workerV62, pkg, imageImporter, importProgress, productModalV66, versionText] = await Promise.all([
   readFile('public/editor-overflow-fix.css', 'utf8'),
+  readFile('public/responsive-v67.css', 'utf8'),
+  readFile('public/responsive-v67.js', 'utf8'),
   readFile(`public/${bundlePath}`, 'utf8'),
   readFile('public/marketing-canvas-hotfix.js', 'utf8'),
   readFile('worker/index.ts', 'utf8'),
@@ -16,11 +18,17 @@ const [css, bundle, marketingHotfix, baseWorker, workerV62, pkg, imageImporter, 
   readFile('public/importar-imagens.html', 'utf8'),
   readFile('public/import-progress-v62.js', 'utf8'),
   readFile('public/product-modal-v66.js', 'utf8'),
+  readFile('VERSION', 'utf8'),
 ]);
 
+const version = Number(versionText.trim());
+assert.equal(version, 67, 'QA estático desta branch exige V67.');
 assert.match(html, /lang="pt-BR"/);
-assert.match(html, /ASTERYON Editor V66/);
-assert.match(html, /editor-overflow-fix\.css\?v=66/);
+assert.match(html, /viewport-fit=cover/);
+assert.match(html, /ASTERYON Editor V67/);
+assert.match(html, /editor-overflow-fix\.css\?v=67/);
+assert.match(html, /responsive-v67\.css\?v=67/);
+assert.match(html, /responsive-v67\.js\?v=67/);
 assert.match(html, /product-modal-v66\.js/);
 assert.match(html, /import-progress-v62\.js/);
 assert.match(css, /min-height:\s*0/);
@@ -28,6 +36,19 @@ assert.match(css, /overflow-y:\s*auto/);
 assert.match(css, /scrollbar-gutter:\s*stable/);
 assert.match(css, /data-asteryon-product-modal-panel/);
 assert.match(productModalV66, /MutationObserver/);
+assert.match(responsiveCss, /data-asteryon-device="desktop"/);
+assert.match(responsiveCss, /data-asteryon-device="tablet"/);
+assert.match(responsiveCss, /data-asteryon-device="mobile"/);
+assert.match(responsiveCss, /data-asteryon-orientation="landscape"/);
+assert.match(responsiveCss, /grid-template-columns/);
+assert.match(responsiveCss, /clamp\(/);
+assert.match(responsiveCss, /100dvh/);
+assert.match(responsiveCss, /overflow-x:\s*hidden/);
+assert.match(responsiveJs, /visualViewport/);
+assert.match(responsiveJs, /orientationchange/);
+assert.match(responsiveJs, /asteryon:viewport-change/);
+assert.match(responsiveJs, /MutationObserver/);
+assert.match(responsiveJs, /data-asteryon-mobile-toolbar/);
 assert.doesNotMatch(bundle, /Cloudflare D1|D1 conectado|D1 sincronizado|Conectando ao ASTERYON D1/);
 assert.match(bundle, /Supabase Postgres/);
 assert.match(bundle, /Supabase conectado/);
@@ -43,7 +64,8 @@ assert.match(imageImporter, /Selecionar pasta de imagens/);
 assert.match(imageImporter, /webkitdirectory/);
 assert.match(imageImporter, /Converter e importar imagens encontradas/);
 assert.match(imageImporter, /Supabase Storage/);
-assert.match(imageImporter, /import-progress-v62\.js/);
+assert.match(imageImporter, /responsive-v67\.css/);
+assert.match(imageImporter, /responsive-v67\.js/);
 assert.match(importProgress, /Arquivos em processamento/);
 assert.match(importProgress, /asteryon:import-progress/);
 assert.match(html, /marketing-canvas-hotfix\.js/);
@@ -61,12 +83,13 @@ assert.match(workerV62, /database: 'Supabase Postgres'/);
 assert.match(workerV62, /storage: 'Supabase Storage'/);
 assert.match(workerV62, /d1: false/);
 const packageJson = JSON.parse(pkg);
-assert.equal(packageJson.version, '2.1.66');
+assert.equal(packageJson.version, '2.1.67');
 assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/patch-importer-v60.mjs && node scripts/patch-editor-menu-v64.mjs && node scripts/patch-catalog-modal-v65.mjs');
 
 execFileSync(process.execPath, ['--check', `public/${bundlePath}`], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/marketing-canvas-hotfix.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/import-progress-v62.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/product-modal-v66.js'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'public/responsive-v67.js'], { stdio: 'pipe' });
 
-console.log('QA estático da V66: OK');
+console.log('QA estático da V67: OK');
