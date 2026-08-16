@@ -1,17 +1,17 @@
 const FONT = 'Inter, sans-serif';
 
 const COLORS = Object.freeze({
-  navy: '#183153',
-  navyDeep: '#10253F',
-  navySoft: '#294D73',
-  orange: '#E27D33',
-  orangeSoft: '#FFF0E4',
+  navy: '#214C8F',
+  navyDeep: '#123F7D',
+  navySoft: '#1E5EAA',
+  orange: '#D13130',
+  orangeSoft: '#FCEBEC',
   ink: '#172033',
-  muted: '#64748B',
-  line: '#DDE5EE',
+  muted: '#66758A',
+  line: '#DCE6F2',
   surface: '#FFFFFF',
-  canvas: '#F5F7FA',
-  paleBlue: '#EAF1F8',
+  canvas: '#F4F8FC',
+  paleBlue: '#EAF2FA',
 });
 
 let sequence = 0;
@@ -114,7 +114,7 @@ function benefitCard(index, title, body, x, tabletX, tabletY, mobileY) {
     shape(`Ícone ${index}`, rect([20, 22, 44, 44], [20, 22, 44, 44], [18, 18, 42, 42]), COLORS.orangeSoft, 12),
     textNode(`Título benefício ${index}`, title, rect([20, 82, 240, 28], [20, 80, 310, 28], [76, 20, 250, 28]), 17, 800, COLORS.navy),
     textNode(`Texto benefício ${index}`, body, rect([20, 116, 246, 46], [20, 114, 315, 46], [76, 54, 250, 72]), 12, 450, COLORS.muted),
-  ], { border: `1px solid ${COLORS.line}`, borderRadius: 16, backgroundColor: COLORS.surface, boxShadow: '0 8px 24px rgba(16,37,63,0.06)' });
+  ], { border: `1px solid ${COLORS.line}`, borderRadius: 16, backgroundColor: COLORS.surface, boxShadow: '0 8px 24px rgba(18,63,125,0.06)' });
 }
 
 function productCard(index, x, tabletX, tabletY, mobileY) {
@@ -123,12 +123,12 @@ function productCard(index, x, tabletX, tabletY, mobileY) {
   return group(`Produto editável ${index}`, rect(
     [x, 246, 278, 430], [tabletX, tabletY, 332, 430], [20, mobileY, 350, 410],
   ), [
-    imagePlaceholder(`Imagem do produto ${index}`, rect([16, 16, 246, 220], [16, 16, 300, 220], [15, 15, 320, 205]), '#EEF2F7', 14, 'productimage'),
+    imagePlaceholder(`Imagem do produto ${index}`, rect([16, 16, 246, 220], [16, 16, 300, 220], [15, 15, 320, 205]), '#F4F8FC', 14, 'productimage'),
     node('productbrand', `Marca produto ${index}`, rect([18, 252, 200, 18], [18, 252, 270, 18], [18, 235, 270, 18]), { text: 'MARCA EDITÁVEL' }, { color: COLORS.orange, fontSize: 10, textAlign: 'left', fontFamily: FONT, fontWeight: 800, lineHeight: 1.25 }),
     node('productname', `Nome produto ${index}`, rect([18, 278, 240, 46], [18, 278, 286, 46], [18, 261, 310, 46]), { text: names[index - 1] }, { color: COLORS.ink, fontSize: 16, textAlign: 'left', fontFamily: FONT, fontWeight: 750, lineHeight: 1.25 }),
     node('productprice', `Preço produto ${index}`, rect([18, 342, 120, 28], [18, 342, 150, 28], [18, 326, 150, 28]), { text: prices[index - 1] }, { color: COLORS.navy, fontSize: 19, textAlign: 'left', fontFamily: FONT, fontWeight: 850, lineHeight: 1.25 }),
     node('productbutton', `Ação produto ${index}`, rect([154, 336, 106, 40], [204, 336, 110, 40], [220, 320, 112, 42]), { text: 'Detalhes', actionType: 'product-info', actionValue: '' }, { color: '#FFFFFF', display: 'flex', fontSize: 13, alignItems: 'center', fontFamily: FONT, fontWeight: 750, borderRadius: 10, justifyContent: 'center', backgroundColor: COLORS.navy }),
-  ], { border: `1px solid ${COLORS.line}`, borderRadius: 18, backgroundColor: COLORS.surface, boxShadow: '0 10px 30px rgba(16,37,63,0.08)' });
+  ], { border: `1px solid ${COLORS.line}`, borderRadius: 18, backgroundColor: COLORS.surface, boxShadow: '0 10px 30px rgba(18,63,125,0.08)' });
 }
 
 function faqItem(index, title, body, y, tabletY, mobileY) {
@@ -158,18 +158,18 @@ export function buildModeloOficial() {
     button('Menu catálogo', 'Catálogo', rect([190, 140, 110, 42], [136, 194, 100, 42], [92, 244, 84, 42]), 'transparent', '#FFFFFF', 'scroll', '#catalogo', { fontSize: 12 }),
     button('Menu empresa', 'Quem somos', rect([304, 140, 138, 42], [240, 194, 130, 42], [180, 244, 104, 42]), 'transparent', '#FFFFFF', 'scroll', '#quem-somos', { fontSize: 12 }),
     button('Menu contato', 'Contato', rect([446, 140, 105, 42], [374, 194, 102, 42], [288, 244, 88, 42]), 'transparent', '#FFFFFF', 'scroll', '#contato', { fontSize: 12 }),
-  ], { backgroundColor: COLORS.surface, boxShadow: '0 2px 14px rgba(16,37,63,0.08)' });
+  ], { backgroundColor: COLORS.surface, boxShadow: '0 2px 14px rgba(18,63,125,0.08)' });
 
   const hero = group('Hero banner principal', rect(
     [0, 190, 1440, 640], [0, 250, 834, 680], [0, 310, 390, 880],
   ), [
-    shape('Fundo do hero', rect([0, 0, 1440, 640], [0, 0, 834, 680], [0, 0, 390, 880]), 'linear-gradient(135deg, #F5F7FA 0%, #EAF1F8 100%)'),
+    shape('Fundo do hero', rect([0, 0, 1440, 640], [0, 0, 834, 680], [0, 0, 390, 880]), 'linear-gradient(135deg, #F4F8FC 0%, #EAF2FA 100%)'),
     textNode('Selo do hero', 'SOLUÇÕES PARA NEGÓCIOS', rect([86, 100, 400, 24], [50, 74, 350, 24], [20, 54, 320, 24]), 12, 850, COLORS.orange, 'left', { letterSpacing: '0.08em' }),
     textNode('Título principal', 'Catálogo inteligente para negócios que querem crescer.', rect([86, 140, 610, 166], [50, 112, 650, 140], [20, 92, 350, 176]), 46, 900, COLORS.navy, 'left', { lineHeight: 1.12 }),
     textNode('Texto do hero', 'Apresente seu portfólio, organize oportunidades e facilite o contato comercial em uma experiência moderna e configurável.', rect([86, 328, 570, 90], [50, 272, 620, 76], [20, 286, 350, 110]), 17, 450, COLORS.muted, 'left', { lineHeight: 1.45 }),
     button('CTA hero catálogo', 'Explorar catálogo', rect([86, 458, 180, 52], [50, 376, 180, 50], [20, 426, 168, 50]), COLORS.orange, '#FFFFFF', 'scroll', '#catalogo'),
     button('CTA hero contato', 'Falar com especialista', rect([282, 458, 210, 52], [246, 376, 210, 50], [202, 426, 168, 50]), COLORS.surface, COLORS.navy, 'scroll', '#contato', { border: `1px solid ${COLORS.line}` }),
-    imagePlaceholder('Imagem principal substituível', rect([800, 70, 550, 500], [50, 462, 734, 184], [20, 516, 350, 330]), '#B9C8D8', 28),
+    imagePlaceholder('Imagem principal substituível', rect([800, 70, 550, 500], [50, 462, 734, 184], [20, 516, 350, 330]), '#DCE6F2', 28),
     textNode('Legenda placeholder hero', 'PLACEHOLDER DE IMAGEM OU BANNER', rect([870, 292, 410, 30], [202, 540, 430, 28], [62, 660, 266, 48]), 12, 750, '#FFFFFF', 'center'),
   ]);
 
@@ -199,7 +199,7 @@ export function buildModeloOficial() {
     [0, 1380, 1440, 460], [0, 1660, 834, 540], [0, 2430, 390, 780],
   ), [
     group('Banner campanha principal', rect([86, 58, 790, 344], [40, 42, 754, 230], [20, 34, 350, 330]), [
-      shape('Fundo campanha principal', rect([0, 0, 790, 344], [0, 0, 754, 230], [0, 0, 350, 330]), 'linear-gradient(120deg, #183153 0%, #294D73 100%)', 22),
+      shape('Fundo campanha principal', rect([0, 0, 790, 344], [0, 0, 754, 230], [0, 0, 350, 330]), 'linear-gradient(120deg, #214C8F 0%, #1E5EAA 100%)', 22),
       textNode('Selo campanha', 'CAMPANHA EDITÁVEL', rect([42, 48, 280, 22], [34, 30, 260, 22], [24, 28, 260, 22]), 11, 850, '#FFBC85'),
       textNode('Título campanha', 'Condições especiais para o seu negócio', rect([42, 84, 440, 92], [34, 60, 420, 70], [24, 62, 300, 102]), 31, 850, '#FFFFFF'),
       textNode('Texto campanha', 'Troque título, texto, chamada e imagem diretamente no editor.', rect([42, 190, 430, 56], [34, 136, 420, 46], [24, 176, 300, 64]), 14, 450, '#DCE8F4'),
@@ -262,7 +262,7 @@ export function buildModeloOficial() {
       textNode(`Texto depoimento ${index}`, `Depoimento fictício ${index}. Substitua este texto por uma experiência real autorizada pelo cliente.`, rect([24, 66, 336, 86], [22, 62, 316, 82], [20, 68, 310, 92]), 14, 450, COLORS.ink, 'left', { lineHeight: 1.45 }),
       textNode(`Nome depoimento ${index}`, `Cliente Exemplo ${index}`, rect([24, 174, 220, 24], [22, 160, 220, 24], [20, 182, 240, 24]), 13, 800, COLORS.navy),
       textNode(`Cargo depoimento ${index}`, 'Empresa demonstrativa', rect([24, 202, 230, 20], [22, 186, 230, 20], [20, 212, 240, 20]), 11, 500, COLORS.muted),
-    ], { border: `1px solid ${COLORS.line}`, borderRadius: 16, backgroundColor: COLORS.surface, boxShadow: '0 8px 26px rgba(16,37,63,0.06)' })),
+    ], { border: `1px solid ${COLORS.line}`, borderRadius: 16, backgroundColor: COLORS.surface, boxShadow: '0 8px 26px rgba(18,63,125,0.06)' })),
   ], { backgroundColor: COLORS.canvas }, { anchorId: 'depoimentos' });
 
   const faq = group('Perguntas frequentes', rect(
@@ -281,7 +281,7 @@ export function buildModeloOficial() {
   const newsletter = group('Contato e newsletter', rect(
     [0, 4750, 1440, 450], [0, 5670, 834, 440], [0, 8420, 390, 600],
   ), [
-    shape('Fundo contato newsletter', rect([86, 66, 1268, 300], [40, 46, 754, 348], [20, 38, 350, 520]), 'linear-gradient(120deg, #183153 0%, #10253F 100%)', 24),
+    shape('Fundo contato newsletter', rect([86, 66, 1268, 300], [40, 46, 754, 348], [20, 38, 350, 520]), 'linear-gradient(120deg, #214C8F 0%, #123F7D 100%)', 24),
     textNode('Selo contato', 'MANTENHA O RELACIONAMENTO', rect([132, 112, 340, 22], [76, 82, 330, 22], [44, 72, 300, 22]), 11, 850, '#FFBC85'),
     textNode('Título contato', 'Receba novidades e oportunidades', rect([132, 146, 510, 82], [76, 116, 660, 54], [44, 106, 300, 104]), 30, 880, '#FFFFFF'),
     textNode('Texto contato', 'Conteúdo demonstrativo para newsletter ou chamada comercial.', rect([132, 238, 500, 50], [76, 178, 650, 46], [44, 220, 300, 62]), 14, 450, '#DCE8F4'),
