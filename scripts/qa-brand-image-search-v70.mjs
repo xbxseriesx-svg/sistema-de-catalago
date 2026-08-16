@@ -32,7 +32,7 @@ assert.match(uiV70, /MutationObserver/);
 
 assert.match(uiV72, /Google Imagens/);
 assert.match(uiV72, /Logo manual/);
-assert.match(uiV72, /mode.*manual/);
+assert.match(uiV72, /openPicker\(currentBrand\.id, currentBrand\.name, 'manual'\)/);
 assert.match(uiV72, /google-image-picker-v73\.html\?v=75/);
 assert.match(uiV72, /window\.open/);
 assert.match(uiV72, /popup=yes/);
@@ -50,7 +50,7 @@ assert.match(pickerJs, /\/api\/admin\/brand-images\/upload/);
 assert.match(pickerJs, /image\/webp/);
 assert.match(pickerJs, /convertToWebp/);
 assert.match(pickerJs, /chooseManualFile/);
-assert.match(pickerJs, /provider.*manual|['"]manual['"]/);
+assert.match(pickerJs, /['"]manual['"]/);
 assert.match(pickerJs, /MAX_SOURCE_BYTES/);
 assert.match(pickerJs, /Usar esta imagem/);
 assert.match(pickerJs, /Google Imagens/);
