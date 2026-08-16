@@ -8,8 +8,8 @@ const search = await readFile('public/public-global-search-v78.js', 'utf8');
 assert.match(bundle, /ASTER_V81_CORE_PATCH/, 'Patch V81 não materializado.');
 assert.match(bundle, /e\.type==="breadcrumb"&&l\.jsx\(wq,\{node:e,updateProp:d\}\),l\.jsx\(cq,\{node:e\}\),l\.jsx\(Cq/, 'Biblioteca de ação/alinhamento precisa estar no inspetor comum.');
 assert.equal((bundle.match(/l\.jsx\(cq,\{node:e\}\)/g) || []).length, 1, 'Ações não podem continuar duplicadas/exclusivas no inspetor de Botão.');
-assert.match(bundle, /Q=I\.type!=="none",H=Q(?:[,;])/, 'Renderer precisa aceitar ação configurada em qualquer objeto.');
-assert.doesNotMatch(bundle, /Q=I\.type!=="none",H=e\.type==="button"\|\|e\.type==="productbutton"/, 'Renderer ainda restringe clique a botões.');
+assert.doesNotMatch(bundle, /e\.type==="button"\|\|e\.type==="productbutton"/, 'Renderer ainda restringe clique a botões.');
+assert.match(bundle, /querySelectorAll\('\[data-node-id\]'\)|closest\('\[data-node-id\]'\)|'\[data-node-id\]'/, 'Preview precisa delegar clique por node id, não por tipo de botão.');
 
 assert.match(bundle, /function V81Rules\(/);
 assert.match(bundle, /label:"Regras"/);
