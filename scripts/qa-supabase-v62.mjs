@@ -14,14 +14,16 @@ const [bundle, index, imagePage, progress, wrangler, worker, version, pkg] = awa
   read('package.json').then(JSON.parse),
 ]);
 
-assert(version.trim() === '65', 'VERSION precisa ser 65.');
-assert(pkg.version === '2.1.65', 'package.json precisa estar em 2.1.65.');
+const versionNumber = Number(version.trim());
+const packagePatch = Number(String(pkg.version).split('.').at(-1));
+assert(Number.isFinite(versionNumber) && versionNumber >= 65, 'VERSION precisa ser 65 ou superior.');
+assert(packagePatch === versionNumber, 'package.json precisa acompanhar VERSION.');
 assert(wrangler.includes('"main": "worker/index-v62.ts"'), 'Wrangler não aponta para o Worker Supabase atual.');
 assert(worker.includes("database: 'Supabase Postgres'"), 'Health não declara Supabase Postgres.');
 assert(worker.includes('d1: false'), 'Health precisa declarar d1=false.');
 assert(worker.includes("storage: 'Supabase Storage'"), 'Health não declara Supabase Storage.');
 assert(index.includes('/import-progress-v62.js'), 'Editor não carrega o progresso de importação.');
-assert(index.includes('ASTERYON Editor V65'), 'Título do editor não está normalizado para V65.');
+assert(index.includes(`ASTERYON Editor V${versionNumber}`), 'Título do editor não acompanha VERSION.');
 assert(imagePage.includes('/import-progress-v62.js'), 'Importador de imagens não carrega o progresso.');
 assert(imagePage.includes('Supabase Storage'), 'Importador de imagens ainda não identifica o Storage correto.');
 assert(progress.includes('asteryon:import-progress'), 'Helper de progresso do Excel ausente.');
@@ -49,4 +51,4 @@ for (const name of workflowFiles) {
   assert(!/wrangler\s+deploy(?!\s+--dry-run)/.test(content), `${name} ainda tenta fazer deploy direto pela Action.`);
 }
 
-console.log('QA Supabase V65 OK: arquitetura, versões, progresso e textos legados validados.');
+console.log(`QA Supabase V65+ OK na V${versionNumber}: arquitetura, versões, progresso e textos legados validados.`);
