@@ -24,15 +24,15 @@ const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, baseWorker, wo
 ]);
 
 const version = Number(versionText.trim());
-assert.equal(version, 69, 'QA estático desta branch exige V69.');
+assert.equal(version, 70, 'QA estático desta branch exige V70.');
 assert.match(html, /lang="pt-BR"/);
 assert.match(html, /viewport-fit=cover/);
-assert.match(html, /ASTERYON Editor V69/);
-assert.match(html, /editor-overflow-fix\.css\?v=69/);
-assert.match(html, /responsive-v67\.css\?v=69/);
-assert.match(html, /responsive-v67\.js\?v=69/);
-assert.match(html, /template-preview-v69\.css\?v=69/);
-assert.match(html, /template-preview-v69\.js\?v=69/);
+assert.match(html, /ASTERYON Editor V70/);
+assert.match(html, /editor-overflow-fix\.css\?v=70/);
+assert.match(html, /responsive-v67\.css\?v=70/);
+assert.match(html, /responsive-v67\.js\?v=70/);
+assert.match(html, /template-preview-v69\.css\?v=70/);
+assert.match(html, /template-preview-v69\.js\?v=70/);
 assert.match(html, /product-modal-v66\.js/);
 assert.match(html, /import-progress-v62\.js/);
 assert.match(css, /min-height:\s*0/);
@@ -100,7 +100,7 @@ assert.match(previewCssV69, /ltp-products/);
 assert.match(previewCssV69, /ltp-brand-grid/);
 assert.match(previewCssV69, /@media \(max-width:720px\)/);
 const packageJson = JSON.parse(pkg);
-assert.equal(packageJson.version, '2.1.69');
+assert.equal(packageJson.version, '2.1.70');
 assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/patch-importer-v60.mjs && node scripts/patch-editor-menu-v64.mjs && node scripts/patch-catalog-modal-v65.mjs && node scripts/patch-responsive-v67.mjs && node scripts/patch-brand-laurencini-v68.mjs');
 assert.match(packageJson.scripts.test, /qa-template-preview-v69\.mjs/);
 
@@ -113,4 +113,4 @@ execFileSync(process.execPath, ['--check', 'public/template-preview-v69.js'], { 
 execFileSync(process.execPath, ['--check', 'scripts/patch-brand-laurencini-v68.mjs'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/qa-template-preview-v69.mjs'], { stdio: 'pipe' });
 
-console.log('QA estático da V69: OK');
+console.log('QA estático da V70: OK');
