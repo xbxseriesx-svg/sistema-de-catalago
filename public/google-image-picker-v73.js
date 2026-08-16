@@ -3,6 +3,8 @@
 
   const MAX_DIMENSION = 1400;
   const TARGET_BYTES = 300 * 1024;
+  const MAX_SOURCE_BYTES = 15 * 1024 * 1024;
+  const ALLOWED_SOURCE_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp']);
   const params = new URLSearchParams(location.search);
   const brandId = String(params.get('brandId') || '').trim();
   const brandName = String(params.get('brandName') || '').trim();
@@ -10,6 +12,8 @@
   const grid = document.getElementById('grid');
   const brandNameNode = document.getElementById('brandName');
   const closeBtn = document.getElementById('closeBtn');
+  const manualUploadBtn = document.getElementById('manualUploadBtn');
+  const manualFile = document.getElementById('manualFile');
 
   brandNameNode.textContent = brandName || 'Marca não identificada';
   closeBtn.addEventListener('click', () => window.close());
@@ -91,6 +95,33 @@
     } catch { /* noop */ }
   }
 
+  function showSuccess(logoUrl, message) {
+    notifyEditor({ brandId, brandName, url: logoUrl });
+    setStatus(message, 'success');
+    grid.textContent = '';
+    const box = document.createElement('div');
+    box.className = 'successBox';
+    const img = document.createElement('img');
+    img.alt = `Logo aplicada em ${brandName}`;
+    img.src = logoUrl;
+    const label = document.createElement('strong');
+    label.textContent = 'Imagem aplicada com sucesso.';
+    box.append(img, label);
+    grid.appendChild(box);
+    setTimeout(() => window.close(), 1400);
+  }
+
+  async function uploadWebp(webp, source, provider) {
+    setStatus(`Salvando a logo na marca (${Math.max(1, Math.round(webp.size / 1024))} KB)...`);
+    const uploadUrl = `/api/admin/brand-images/upload?brandId=${encodeURIComponent(brandId)}&source=${encodeURIComponent(source || provider)}&provider=${encodeURIComponent(provider)}`;
+    const payload = await jsonRequest(uploadUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'image/webp' },
+      body: webp,
+    });
+    return payload.url || payload.brand?.logoUrl || '';
+  }
+
   async function chooseImage(image, button) {
     button.disabled = true;
     try {
@@ -106,43 +137,55 @@
       const sourceBlob = await sourceResponse.blob();
       setStatus('Convertendo para WEBP e otimizando a logo...');
       const webp = await convertToWebp(sourceBlob);
-
-      setStatus(`Salvando a logo na marca (${Math.max(1, Math.round(webp.size / 1024))} KB)...`);
-      const uploadUrl = `/api/admin/brand-images/upload?brandId=${encodeURIComponent(brandId)}&source=${encodeURIComponent(image.sourceUrl || image.url)}&provider=google`;
-      const payload = await jsonRequest(uploadUrl, {
-        method: 'POST',
-        headers: { 'content-type': 'image/webp' },
-        body: webp,
-      });
-
-      const logoUrl = payload.url || payload.brand?.logoUrl || '';
-      notifyEditor({ brandId, brandName, url: logoUrl });
-      setStatus('Logo do Google Imagens convertida, salva e vinculada à marca com sucesso.', 'success');
-
-      grid.textContent = '';
-      const box = document.createElement('div');
-      box.className = 'successBox';
-      const img = document.createElement('img');
-      img.alt = `Logo aplicada em ${brandName}`;
-      img.src = logoUrl;
-      const label = document.createElement('strong');
-      label.textContent = 'Imagem aplicada com sucesso.';
-      box.append(img, label);
-      grid.appendChild(box);
-
-      setTimeout(() => window.close(), 1400);
+      const logoUrl = await uploadWebp(webp, image.sourceUrl || image.url, 'google');
+      showSuccess(logoUrl, 'Logo do Google Imagens convertida, salva e vinculada à marca com sucesso.');
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Falha ao aplicar a imagem.', 'error');
       button.disabled = false;
     }
   }
 
+  async function chooseManualFile(file) {
+    if (!brandId) throw new Error('Marca não identificada.');
+    if (!file) return;
+    const type = String(file.type || '').toLowerCase();
+    if (!ALLOWED_SOURCE_TYPES.has(type)) throw new Error('Formato não permitido. Use PNG, JPG/JPEG ou WEBP.');
+    if (file.size <= 0) throw new Error('O arquivo selecionado está vazio.');
+    if (file.size > MAX_SOURCE_BYTES) throw new Error('A imagem manual deve ter no máximo 15 MB.');
+
+    setStatus(`Processando arquivo manual "${file.name}"...`);
+    const webp = await convertToWebp(file);
+    const logoUrl = await uploadWebp(webp, `manual:${file.name}`, 'manual');
+    showSuccess(logoUrl, 'Logo enviada manualmente, convertida para WEBP e vinculada à marca com sucesso.');
+  }
+
+  manualUploadBtn?.addEventListener('click', () => {
+    if (!brandId) {
+      setStatus('Marca não identificada. Feche esta janela e abra novamente pela lista de marcas.', 'error');
+      return;
+    }
+    manualFile.value = '';
+    manualFile.click();
+  });
+
+  manualFile?.addEventListener('change', async () => {
+    const file = manualFile.files?.[0];
+    if (!file) return;
+    manualUploadBtn.disabled = true;
+    try {
+      await chooseManualFile(file);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Falha ao enviar a logo manualmente.', 'error');
+      manualUploadBtn.disabled = false;
+    }
+  });
+
   function render(images) {
     grid.textContent = '';
     if (!images.length) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.textContent = 'Nenhuma imagem compatível foi encontrada no Google Imagens.';
+      empty.textContent = 'Nenhuma imagem compatível foi encontrada no Google Imagens. Você também pode usar “Enviar logo manualmente”.';
       grid.appendChild(empty);
       return;
     }
@@ -195,8 +238,8 @@
       const empty = document.createElement('div');
       empty.className = 'empty';
       empty.textContent = error?.code === 'GOOGLE_IMAGES_NOT_CONFIGURED'
-        ? 'A busca Google ainda precisa das credenciais oficiais configuradas na Cloudflare.'
-        : 'Não foi possível carregar resultados do Google Imagens.';
+        ? 'A busca Google ainda precisa das credenciais oficiais configuradas na Cloudflare. Enquanto isso, você pode usar “Enviar logo manualmente”.'
+        : 'Não foi possível carregar resultados do Google Imagens. Você pode usar “Enviar logo manualmente”.';
       grid.appendChild(empty);
     }
   }
