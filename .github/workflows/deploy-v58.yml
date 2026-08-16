@@ -26,11 +26,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID || vars.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      SDM_BOOTSTRAP_TOKEN: ${{ secrets.SDM_BOOTSTRAP_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -44,8 +41,6 @@ jobs:
         run: |
           test -n "$CLOUDFLARE_ACCOUNT_ID" || (echo "Falta CLOUDFLARE_ACCOUNT_ID" && exit 1)
           test -n "$CLOUDFLARE_API_TOKEN" || (echo "Falta CLOUDFLARE_API_TOKEN" && exit 1)
-          test -n "$SUPABASE_SECRET_KEY$SUPABASE_SERVICE_ROLE_KEY" || (echo "Falta SUPABASE_SECRET_KEY ou SUPABASE_SERVICE_ROLE_KEY" && exit 1)
-          test -n "$SDM_BOOTSTRAP_TOKEN" || (echo "Falta SDM_BOOTSTRAP_TOKEN" && exit 1)
 
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
@@ -56,21 +51,8 @@ jobs:
       - name: Validar V59, Worker, modelo e importação
         run: npm test
 
-      - name: Preparar segredos do primeiro deploy
-        shell: bash
-        run: |
-          node --input-type=module <<'NODE'
-          import { writeFileSync } from 'node:fs';
-          const secrets = {
-            SDM_BOOTSTRAP_TOKEN: process.env.SDM_BOOTSTRAP_TOKEN
-          };
-          if (process.env.SUPABASE_SECRET_KEY) secrets.SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
-          if (process.env.SUPABASE_SERVICE_ROLE_KEY) secrets.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-          writeFileSync('.secrets.json', JSON.stringify(secrets));
-          NODE
-
       - name: Publicar V59
-        run: npx wrangler deploy --secrets-file .secrets.json
+        run: npx wrangler deploy --keep-vars
 
       - name: Verificar produção V59
         shell: bash
@@ -87,8 +69,3 @@ jobs:
             if (!data.ok) throw new Error(`${path} retornou ok=false`);
           }
           NODE
-
-      - name: Remover arquivo temporário
-        if: always()
-        shell: bash
-        run: rm -f .secrets.json
