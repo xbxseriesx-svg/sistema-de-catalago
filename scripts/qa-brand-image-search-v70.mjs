@@ -17,7 +17,7 @@ const [index, uiV70, uiV72, pickerHtml, pickerJs, workerV71, workerV72, workerV7
 
 assert.ok(Number(version) >= 70, 'A pesquisa de imagens das marcas exige V70 ou superior.');
 assert.match(index, /brand-image-search-v70\.js\?v=76/, 'Editor não carrega a interface base da pesquisa com cache V76.');
-assert.match(index, /brand-image-search-v72\.js\?v=76/, 'Editor não carrega o complemento de popup com cache V76.');
+assert.match(index, /brand-image-search-v72\.js\?v=77/, 'Editor não carrega o isolamento de marcas com cache V77.');
 assert.match(wrangler, /"main":\s*"worker\/index-v71\.ts"/, 'Wrangler precisa apontar para a entrada V71.');
 assert.match(workerV71, /import worker from '\.\/index-v72'/, 'Entrada V71 não encaminha para V72.');
 assert.match(uiV70, /data-asteryon-brand-image-search/);
@@ -32,12 +32,18 @@ assert.match(uiV70, /MutationObserver/);
 
 assert.match(uiV72, /Pesquisar na web/);
 assert.match(uiV72, /Logo manual/);
-assert.match(uiV72, /openPicker\(currentBrand\.id, currentBrand\.name, 'manual'\)/);
-assert.match(uiV72, /openPicker\(currentBrand\.id, currentBrand\.name, 'web'\)/);
-assert.match(uiV72, /google-image-picker-v73\.html\?v=76/);
+assert.match(uiV72, /data-asteryon-brand-id-v77/);
+assert.match(uiV72, /markActiveContext/);
+assert.match(uiV72, /applyLogoOnlyToExactRow/);
+assert.match(uiV72, /rows\.length !== 1/);
+assert.match(uiV72, /detail\?\.brandId/);
+assert.match(uiV72, /openPicker\(modalBrandId\(\), modalBrandName\(\), 'manual'\)/);
+assert.match(uiV72, /openPicker\(modalBrandId\(\), modalBrandName\(\), 'web'\)/);
+assert.match(uiV72, /google-image-picker-v73\.html\?v=77/);
 assert.match(uiV72, /window\.open/);
 assert.match(uiV72, /popup=yes/);
 assert.match(uiV72, /asteryon:brand-logo-updated/);
+assert.doesNotMatch(uiV72, /const brandName = normalize\(detail\.brandName\)/, 'V77 não pode localizar a linha apenas pelo nome da marca.');
 assert.doesNotMatch(uiV72, /google\.com\/search\?tbm=isch/, 'O botão integrado não deve sair para google.com.');
 
 assert.match(pickerHtml, /Pesquisa de imagens — ASTERYON/);
@@ -74,4 +80,4 @@ execFileSync(process.execPath, ['--check', 'public/brand-image-search-v70.js'], 
 execFileSync(process.execPath, ['--check', 'public/brand-image-search-v72.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/google-image-picker-v73.js'], { stdio: 'pipe' });
 
-console.log('QA pesquisa de imagens V76: OK (pesquisa web + upload manual + WEBP + vínculo à marca, sem geração)');
+console.log('QA pesquisa de imagens V77: OK (brandId isolado + pesquisa web + upload manual + WEBP, sem propagação entre marcas)');
