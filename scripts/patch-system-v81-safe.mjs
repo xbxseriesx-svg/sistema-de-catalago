@@ -32,8 +32,14 @@ replaceOnce(
   'inserir ações no inspetor comum',
 );
 
-// Clique público para qualquer objeto com actionType real.
-replaceCount('e.type==="button"||e.type==="productbutton"', 'Q', 1, 'restrição de clique apenas a botões');
+// Clique público para qualquer objeto cuja ação resolvida não seja "none".
+// IMPORTANTE: o alvo é a condição do renderer NR. Uma substituição genérica aqui
+// atingia o inspetor hq e gerava ReferenceError (Q), derrubando o editor ao selecionar.
+replaceOnce(
+  'y=(d.type==="button"||d.type==="productbutton")&&h.type!=="none"',
+  'y=h.type!=="none"',
+  'restrição de clique apenas a botões no renderer público',
+);
 replaceOnce(
   `'[data-node-type="button"],[data-node-type="button"] *,[data-node-type="productbutton"],[data-node-type="productbutton"] *{pointer-events:auto!important;cursor:pointer!important;}'`,
   `'[data-node-id]{pointer-events:auto!important}'`,
