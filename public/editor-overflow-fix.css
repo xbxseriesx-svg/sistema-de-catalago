@@ -49,3 +49,71 @@ body,
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
+
+/*
+ * V66 — modal de produto aberto a partir do catálogo.
+ * O bundle V65 usa classes Tailwind adicionadas depois da compilação original;
+ * em algumas telas o max-height não era aplicado e o flex centralizava uma
+ * janela maior que o viewport, escondendo o topo, o botão fechar e a rolagem.
+ * O controlador product-modal-v66.js marca os três níveis abaixo.
+ */
+[data-asteryon-product-modal-root="true"] {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483646 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  min-height: 100vh !important;
+  padding: 12px !important;
+  overflow: hidden !important;
+  overscroll-behavior: contain !important;
+}
+
+[data-asteryon-product-modal-panel="true"] {
+  position: relative !important;
+  width: min(100%, 72rem) !important;
+  max-width: 72rem !important;
+  max-height: calc(100dvh - 24px) !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+  overflow-x: hidden !important;
+  overflow-y: scroll !important;
+  overscroll-behavior: contain !important;
+  scrollbar-gutter: stable !important;
+  scroll-behavior: auto !important;
+}
+
+[data-asteryon-product-modal-header="true"] {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 60 !important;
+  background: inherit !important;
+  padding-top: 4px !important;
+  padding-bottom: 8px !important;
+}
+
+button[aria-label="Fechar produto"] {
+  position: relative !important;
+  z-index: 70 !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  flex: 0 0 auto !important;
+}
+
+@media (max-width: 640px) {
+  [data-asteryon-product-modal-root="true"] {
+    padding: 0 !important;
+  }
+
+  [data-asteryon-product-modal-panel="true"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 100dvh !important;
+    min-height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+}
