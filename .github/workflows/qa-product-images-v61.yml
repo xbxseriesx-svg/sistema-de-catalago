@@ -1,17 +1,32 @@
-name: QA imagens V61
+name: QA catálogo V62 — Supabase + Worker
 
 on:
+  workflow_dispatch:
   push:
     branches:
-      - fix/product-image-storage-v61
-  workflow_dispatch:
+      - main
+      - refactor/supabase-v62-import-progress
+    paths:
+      - 'worker/**'
+      - 'public/**'
+      - 'wrangler.jsonc'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'VERSION'
+      - 'scripts/**'
+      - '.github/workflows/**'
 
 permissions:
   contents: read
 
+concurrency:
+  group: catalogo-v62-qa-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   qa:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,11 +40,5 @@ jobs:
       - name: Instalar dependências
         run: npm ci --ignore-scripts
 
-      - name: Validar TypeScript e Worker
-        run: npm run build
-
-      - name: Dry-run Cloudflare
-        run: npx wrangler deploy --dry-run --outdir .wrangler-dry-run
-
-      - name: QA estático existente
-        run: node scripts/qa-static.mjs
+      - name: Validar catálogo, Supabase e Worker
+        run: npm test
