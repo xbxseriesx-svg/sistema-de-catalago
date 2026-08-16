@@ -6,21 +6,25 @@ const html = await readFile('public/index.html', 'utf8');
 const bundlePath = html.match(/src="\/(assets\/index-[^"]+\.js)"/)?.[1];
 assert.ok(bundlePath, 'o HTML precisa apontar para o bundle JavaScript versionado');
 
-const [css, bundle, marketingHotfix, worker, pkg, imageImporter] = await Promise.all([
+const [css, bundle, marketingHotfix, baseWorker, workerV62, pkg, imageImporter, importProgress] = await Promise.all([
   readFile('public/editor-overflow-fix.css', 'utf8'),
   readFile(`public/${bundlePath}`, 'utf8'),
   readFile('public/marketing-canvas-hotfix.js', 'utf8'),
   readFile('worker/index.ts', 'utf8'),
+  readFile('worker/index-v62.ts', 'utf8'),
   readFile('package.json', 'utf8'),
   readFile('public/importar-imagens.html', 'utf8'),
+  readFile('public/import-progress-v62.js', 'utf8'),
 ]);
 
 assert.match(html, /lang="pt-BR"/);
+assert.match(html, /ASTERYON Editor V62/);
 assert.match(html, /editor-overflow-fix\.css/);
+assert.match(html, /import-progress-v62\.js/);
 assert.match(css, /min-height:\s*0/);
 assert.match(css, /overflow-y:\s*auto/);
 assert.match(css, /scrollbar-gutter:\s*stable/);
-assert.doesNotMatch(bundle, /Cloudflare D1|D1 conectado|D1 sincronizado/);
+assert.doesNotMatch(bundle, /Cloudflare D1|D1 conectado|D1 sincronizado|Conectando ao ASTERYON D1/);
 assert.match(bundle, /Supabase Postgres/);
 assert.match(bundle, /Supabase conectado/);
 assert.match(bundle, /descricao do departamento/);
@@ -29,26 +33,35 @@ assert.match(bundle, /nome da categoria/);
 assert.match(bundle, /sourceColumns/);
 assert.match(bundle, /Sem categoria/);
 assert.match(bundle, /href:"\/importar-imagens\.html"/);
-assert.match(bundle, /Planilha importa os dados dos produtos\. Imagens abre o importador V61 em lote/);
+assert.match(bundle, /Planilha importa os dados dos produtos\. Imagens abre o importador V62 em lote/);
+assert.match(bundle, /asteryon:import-progress/);
 assert.match(imageImporter, /Selecionar pasta de imagens/);
 assert.match(imageImporter, /webkitdirectory/);
 assert.match(imageImporter, /Converter e importar imagens encontradas/);
+assert.match(imageImporter, /Supabase Storage/);
+assert.match(imageImporter, /import-progress-v62\.js/);
+assert.match(importProgress, /Arquivos em processamento/);
+assert.match(importProgress, /asteryon:import-progress/);
 assert.match(html, /marketing-canvas-hotfix\.js/);
 assert.match(marketingHotfix, /data-marketing-hotfix/);
 assert.match(marketingHotfix, /data-marketing-drag-handle/);
 assert.match(marketingHotfix, /data-marketing-resize/);
 assert.match(marketingHotfix, /\/api\/admin\/marketing/);
 assert.match(marketingHotfix, /Excluir todo o marketing/);
-assert.match(worker, /tableAll\(env, 'products'/);
-assert.match(worker, /seenCodes/);
-assert.match(worker, /select=theme,banner,video_banner,carousel,settings/);
-assert.match(worker, /marketingLayout/);
-assert.doesNotMatch(worker, /departamento_id: 'dep_atacado'/);
+assert.match(baseWorker, /tableAll\(env, 'products'/);
+assert.match(baseWorker, /seenCodes/);
+assert.match(baseWorker, /select=theme,banner,video_banner,carousel,settings/);
+assert.match(baseWorker, /marketingLayout/);
+assert.doesNotMatch(baseWorker, /departamento_id: 'dep_atacado'/);
+assert.match(workerV62, /database: 'Supabase Postgres'/);
+assert.match(workerV62, /storage: 'Supabase Storage'/);
+assert.match(workerV62, /d1: false/);
 const packageJson = JSON.parse(pkg);
-assert.equal(packageJson.version, '2.1.60');
+assert.equal(packageJson.version, '2.1.62');
 assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/patch-importer-v60.mjs');
 
 execFileSync(process.execPath, ['--check', `public/${bundlePath}`], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/marketing-canvas-hotfix.js'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'public/import-progress-v62.js'], { stdio: 'pipe' });
 
-console.log('QA estático da V60/V61: OK');
+console.log('QA estático da V62: OK');
