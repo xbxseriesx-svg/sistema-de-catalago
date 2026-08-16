@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASTERYON — Importar Imagens de Produtos</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #080b10; color: #edf3ff; min-height: 100vh; }
+    main { width: min(1120px, calc(100% - 32px)); margin: 32px auto 64px; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    h2 { margin: 0 0 14px; font-size: 17px; }
+    p { color: #9aa8bd; line-height: 1.55; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+    .back { color: #bcd0ff; text-decoration: none; border: 1px solid #293243; border-radius: 8px; padding: 9px 12px; }
+    .card { background: #0e131b; border: 1px solid #242d3b; border-radius: 12px; padding: 18px; margin-top: 14px; }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .stat { background: #0a0f16; border: 1px solid #202a38; border-radius: 9px; padding: 12px; }
+    .stat strong { display: block; font-size: 21px; margin-top: 5px; }
+    .muted { color: #8290a6; font-size: 12px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    button, .file-button { appearance: none; border: 1px solid #33415a; color: white; background: #172033; border-radius: 8px; padding: 10px 14px; cursor: pointer; font-weight: 650; font-size: 13px; }
+    button.primary, .file-button.primary { background: #2868e8; border-color: #3c7af0; }
+    button.danger { background: #39181c; border-color: #7a2933; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    input[type=file] { display: none; }
+    .progress { height: 10px; background: #080c12; border: 1px solid #202938; border-radius: 999px; overflow: hidden; margin-top: 14px; }
+    .progress > div { height: 100%; width: 0%; background: #3478f6; transition: width .15s linear; }
+    .status { margin-top: 10px; font-size: 13px; color: #b7c4d7; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border-bottom: 1px solid #202936; padding: 9px 7px; text-align: left; vertical-align: top; }
+    th { color: #8998ae; font-weight: 600; position: sticky; top: 0; background: #0e131b; }
+    .table-wrap { max-height: 360px; overflow: auto; border: 1px solid #202936; border-radius: 9px; }
+    .ok { color: #5dd99b; }
+    .warn { color: #f3c96b; }
+    .error { color: #ff7d88; }
+    .pill { display: inline-flex; border: 1px solid #324055; border-radius: 999px; padding: 3px 7px; color: #aebcd0; }
+    .notice { border-left: 3px solid #3478f6; padding-left: 12px; }
+    @media (max-width: 760px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .topbar { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="topbar">
+      <div>
+        <h1>Importar imagens dos produtos</h1>
+        <div class="muted">V61 — fluxo isolado, sem alterar códigos ou demais dados dos produtos</div>
+      </div>
+      <a class="back" href="/">← Voltar ao editor</a>
+    </div>
+
+    <section class="card notice">
+      <strong>Regra de vínculo</strong>
+      <p>O nome do arquivo deve ser o código do produto. Exemplo: <b>318.PNG</b> será vinculado ao produto de código <b>318</b>. As imagens são convertidas localmente no navegador para WebP antes do envio, reduzindo espaço e evitando incompatibilidade.</p>
+    </section>
+
+    <section class="card">
+      <h2>1. Catálogo</h2>
+      <div class="grid">
+        <div class="stat"><span class="muted">Produtos carregados</span><strong id="productCount">—</strong></div>
+        <div class="stat"><span class="muted">Arquivos selecionados</span><strong id="fileCount">0</strong></div>
+        <div class="stat"><span class="muted">Encontrados por código</span><strong id="matchedCount">0</strong></div>
+        <div class="stat"><span class="muted">Sem produto correspondente</span><strong id="unmatchedCount">0</strong></div>
+      </div>
+      <div id="catalogStatus" class="status">Carregando catálogo...</div>
+    </section>
+
+    <section class="card">
+      <h2>2. Selecionar as imagens</h2>
+      <div class="actions">
+        <label class="file-button primary" for="folderInput">Selecionar pasta de imagens</label>
+        <input id="folderInput" type="file" multiple webkitdirectory accept="image/*,.jpg,.jpeg,.jfif,.png,.webp,.gif,.bmp,.avif,.svg,.heic,.heif,.tif,.tiff" />
+        <label class="file-button" for="filesInput">Selecionar arquivos</label>
+        <input id="filesInput" type="file" multiple accept="image/*,.jpg,.jpeg,.jfif,.png,.webp,.gif,.bmp,.avif,.svg,.heic,.heif,.tif,.tiff" />
+        <button id="clearButton" type="button">Limpar seleção</button>
+      </div>
+      <p class="muted">O importador processa poucos arquivos por vez. Os 3 GB não são carregados de uma vez na memória.</p>
+    </section>
+
+    <section class="card">
+      <h2>3. Converter e importar</h2>
+      <div class="actions">
+        <button id="importButton" class="primary" type="button" disabled>Converter e importar imagens encontradas</button>
+        <button id="stopButton" class="danger" type="button" disabled>Parar</button>
+        <span class="pill">WebP • máx. 1400 px • alvo ≤ 300 KB</span>
+      </div>
+      <div class="progress"><div id="progressBar"></div></div>
+      <div id="progressStatus" class="status">Aguardando seleção.</div>
+      <div class="grid" style="margin-top:14px">
+        <div class="stat"><span class="muted">Importadas</span><strong id="successCount">0</strong></div>
+        <div class="stat"><span class="muted">Falhas</span><strong id="failedCount">0</strong></div>
+        <div class="stat"><span class="muted">Tamanho original processado</span><strong id="sourceSize">0 MB</strong></div>
+        <div class="stat"><span class="muted">Tamanho WebP enviado</span><strong id="outputSize">0 MB</strong></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Resultado</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Arquivo</th><th>Código</th><th>Produto</th><th>Status</th><th>Tamanho</th></tr></thead>
+          <tbody id="resultBody"><tr><td colspan="5" class="muted">Nenhum arquivo processado.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="/importar-imagens-v61.js" defer></script>
+</body>
+</html>
