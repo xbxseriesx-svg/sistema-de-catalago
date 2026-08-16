@@ -38,7 +38,9 @@ assert.match(worker, /seenCodes/);
 assert.match(worker, /select=theme,banner,video_banner,carousel,settings/);
 assert.match(worker, /marketingLayout/);
 assert.doesNotMatch(worker, /departamento_id: 'dep_atacado'/);
-assert.equal(JSON.parse(pkg).version, '2.1.60');
+const packageJson = JSON.parse(pkg);
+assert.equal(packageJson.version, '2.1.60');
+assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/patch-importer-v60.mjs');
 
 execFileSync(process.execPath, ['--check', `public/${bundlePath}`], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/marketing-canvas-hotfix.js'], { stdio: 'pipe' });
