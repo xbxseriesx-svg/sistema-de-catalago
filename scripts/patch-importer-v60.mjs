@@ -89,6 +89,36 @@ if (!cr.includes('asteryon:import-progress')) {
   source = source.slice(0, crStart).concat(cr, source.slice(crEnd));
 }
 
+// V63: catálogo do editor deve vir exclusivamente do Supabase. O bundle antigo
+// inicializava o provider com 13 produtos, marcas e hierarquia de demonstração.
+// Se a API administrativa falhasse, esses dados fictícios permaneciam na tela.
+const seededProvider = 'function JH({children:e}){const[t,a]=q.useState(ZH),[r,n]=q.useState(GH),[i,o]=q.useState($H),[s,d]=q.useState(WH),[h,u]=q.useState(KH),[p,f]=q.useState(jN),';
+const liveProvider = 'function JH({children:e}){const[t,a]=q.useState([]),[r,n]=q.useState([]),[i,o]=q.useState([]),[s,d]=q.useState([]),[h,u]=q.useState([]),[p,f]=q.useState(jN),';
+if (source.includes(seededProvider)) {
+  source = source.replace(seededProvider, liveProvider);
+} else if (!source.includes(liveProvider)) {
+  throw new Error('CatalogProvider incompatível com a correção V63 de dados fictícios.');
+}
+
+// Em produção tenta primeiro o catálogo administrativo. Se a sessão estiver
+// expirando durante o carregamento, usa o endpoint público do mesmo Supabase em
+// vez de exibir qualquer fallback local/fictício.
+replaceLiteral(
+  'const m=await Qe.getCatalog(!1),S=YH(m.catalog);',
+  'let m;try{m=await Qe.getCatalog(!1)}catch{m=await Qe.getCatalog(!0)}const S=YH(m.catalog);',
+);
+replaceLiteral('Falha ao carregar catálogo do D1', 'Falha ao carregar catálogo do Supabase');
+
+// O catálogo antigo limitava seis telas a apenas Atacado/Distribuição. Agora
+// todos os departamentos ativos retornados pelo Supabase são válidos.
+const departmentRestriction = /&&\["Atacado","Distribuição"\]\.includes\(([A-Za-z_$][\w$]*)\.name\)/g;
+source = source.replace(departmentRestriction, '');
+if (source.includes('["Atacado","Distribuição"].includes(')) {
+  throw new Error('Ainda existe restrição fixa de departamento após o patch V63.');
+}
+replaceLiteral('Selecione Atacado ou Distribuição.', 'Selecione o departamento superior.');
+replaceLiteral('U(M.departamentoId)||M.departamentoName||"Atacado"', 'U(M.departamentoId)||M.departamentoName||""');
+
 // Limpeza de textos legados: D1 não é mais o banco do sistema. Não fazemos
 // substituição global porque nomes técnicos de compatibilidade legada ainda são
 // necessários para ler mídias antigas enquanto elas são migradas para Storage.
@@ -119,8 +149,8 @@ const supabaseTextReplacements = [
 for (const [from, to] of supabaseTextReplacements) replaceLiteral(from, to);
 
 if (source === original) {
-  console.log('Patches V62 do catálogo já aplicados.');
+  console.log('Patches V63 do catálogo já aplicados.');
 } else {
   await writeFile(assetPath, source);
-  console.log('Patches V62 do catálogo aplicados.');
+  console.log('Patches V63 do catálogo aplicados.');
 }
