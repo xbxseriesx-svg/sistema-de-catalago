@@ -1,11 +1,10 @@
-name: QA catálogo V63 — Supabase + Worker
+name: QA catálogo V64 — Supabase + Worker
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
-      - fix/catalog-live-v63
       - fix/editor-menu-v64
     paths:
       - 'worker/**'
@@ -21,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: catalogo-v63-qa-${{ github.ref }}
+  group: catalogo-v64-qa-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -40,9 +39,6 @@ jobs:
 
       - name: Instalar dependências
         run: npm ci --ignore-scripts
-
-      - name: Diagnosticar menu do editor
-        run: node scripts/inspect-editor-menu-v64.mjs
 
       - name: Validar catálogo, Supabase e Worker
         run: npm test
