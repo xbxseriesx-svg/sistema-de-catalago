@@ -16,6 +16,7 @@
   },
   "vars": {
     "SUPABASE_URL": "https://bjcfknhiwjxznxydvmzt.supabase.co",
-    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_EVjhdMZ9qFCampvty7_9Bg_Dj9AF67N"
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_EVjhdMZ9qFCampvty7_9Bg_Dj9AF67N",
+    "GOOGLE_CSE_CX": "e0caed1c94d5a4047"
   }
 }
