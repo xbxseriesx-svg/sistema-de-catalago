@@ -1,4 +1,4 @@
-# ASTERYON Catálogo — V67
+# ASTERYON Catálogo — V68
 
 Versão oficial do catálogo ASTERYON com dados e mídias no **Supabase** e aplicação publicada na **Cloudflare** a partir do repositório GitHub.
 
@@ -17,7 +17,49 @@ Versão oficial do catálogo ASTERYON com dados e mídias no **Supabase** e apli
 - Worker: `sistema-de-catalago`
 - Supabase Project ID: `bjcfknhiwjxznxydvmzt`
 - Entry point: `worker/index-v62.ts`
-- Versão da aplicação: `2.1.67`
+- Versão da aplicação: `2.1.68`
+
+## Identidade visual Distribuidora Laurencini — V68
+
+A V68 padroniza todos os modelos de template com a identidade cromática da **Distribuidora Laurencini**, sem alterar a estrutura, posição ou comportamento dos componentes.
+
+### Paleta oficial
+
+- Azul institucional: `#214C8F`
+- Azul profundo: `#123F7D`
+- Azul de apoio: `#1E5EAA`
+- Vermelho institucional: `#D13130`
+- Vermelho profundo: `#A7252A`
+- Fundo claro: `#F4F8FC`
+- Borda clara: `#DCE6F2`
+- Texto principal: `#172033`
+- Texto secundário: `#66758A`
+- Branco: `#FFFFFF`
+
+### Modelos padronizados
+
+A normalização é aplicada aos sete modelos prontos do editor:
+
+- Varejo Contínuo
+- Atacado B2B
+- Distribuidora Institucional
+- Catálogo de Marcas B2B
+- Distribuidora União • Figma B2B
+- Catálogo Hierárquico B2B
+- Vitrine Atacado Pro
+
+Além dos modelos nativos, qualquer modelo já salvo na biblioteca do Supabase é convertido para a paleta Laurencini quando é carregado e novamente validado quando é aplicado ao canvas. Isso evita que modelos antigos mantenham verde, laranja, roxo ou cores genéricas.
+
+### Regras de marca
+
+- Azul é a cor estrutural para navegação, cabeçalhos, títulos, preços e grandes áreas institucionais.
+- Vermelho é priorizado em chamadas comerciais, promoções e botões de produto.
+- Tons claros derivados da marca substituem fundos verdes, roxos, laranjas ou cinzas antigos.
+- Branco e cinzas frios são preservados para contraste e legibilidade.
+- Gradientes de hero usam `#123F7D → #214C8F`.
+- Gradientes promocionais usam `#A7252A → #D13130`.
+- Elementos novos inseridos pelo editor já nascem com a identidade Laurencini.
+- O Modelo Oficial também é convertido integralmente para a mesma paleta durante o build.
 
 ## Catálogo e dados reais
 
@@ -34,9 +76,9 @@ Versão oficial do catálogo ASTERYON com dados e mídias no **Supabase** e apli
 - O modal de produto possui altura limitada ao viewport, rolagem interna, cabeçalho/fechar acessível, retorno ao topo ao trocar por similar e fechamento por `Esc`.
 - O botão Menu é um elemento editável do canvas e pode ser movido, redimensionado, estilizado, duplicado ou excluído.
 
-## Responsividade automática — V67
+## Responsividade automática — V67+
 
-A V67 usa **um único layout**. Não existem cópias separadas de páginas para desktop, tablet e celular.
+A aplicação usa **um único layout**. Não existem cópias separadas de páginas para desktop, tablet e celular.
 
 ### Breakpoints do renderer público
 
@@ -51,7 +93,7 @@ O renderer público escolhe automaticamente as coordenadas salvas em `responsive
 - Monitoramento de `window.resize`, `orientationchange` e `visualViewport`.
 - Reaplicação de estado por `requestAnimationFrame`, evitando atualizações redundantes.
 - Detecção de orientação retrato/paisagem e de dispositivos com toque.
-- Página pública escala para **baixo e para cima**, aproveitando a largura disponível também em desktops maiores.
+- Página pública escala para baixo e para cima, aproveitando a largura disponível também em desktops maiores.
 - Imagens, vídeos e canvas usam limites fluidos e não ultrapassam o container.
 - Proteções globais contra overflow horizontal.
 - Tipografia pública fluida com `clamp()`.
@@ -119,7 +161,7 @@ npm ci
 npm test
 ```
 
-O QA da V67 valida TypeScript, Worker, Supabase, autenticação, importação Excel, campos da planilha, marketing, Modelo Oficial, catálogo real, modais V65/V66 e a camada responsiva V67. A auditoria de responsividade percorre os arquivos textuais de produção em `public`, `scripts` e `worker`, validando viewport, orientação, toque, grids, overflow, modais e drawers.
+O QA da V68 valida TypeScript, Worker, Supabase, autenticação, importação Excel, campos da planilha, marketing, Modelo Oficial, catálogo real, modais V65/V66, responsividade V67+ e a identidade Laurencini V68. O teste de marca confirma os sete templates, a biblioteca Supabase, os elementos novos e as cores oficiais.
 
 ## Recuperação
 
