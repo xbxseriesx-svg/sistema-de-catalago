@@ -1,4 +1,4 @@
-name: QA catálogo V65 — Supabase + Worker
+name: QA catálogo V66 — Supabase + Worker
 
 on:
   workflow_dispatch:
@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - feature/catalog-modal-v65
+      - fix/product-modal-scroll-v66
     paths:
       - 'worker/**'
       - 'public/**'
@@ -20,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: catalogo-v65-qa-${{ github.ref }}
+  group: catalogo-v66-qa-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -40,5 +41,5 @@ jobs:
       - name: Instalar dependências
         run: npm ci --ignore-scripts
 
-      - name: Validar catálogo, Supabase e Worker
+      - name: Validar catálogo, modal de produto, Supabase e Worker
         run: npm test
