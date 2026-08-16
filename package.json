@@ -1,13 +1,13 @@
 {
   "name": "sistema-de-catalago-cloudflare-supabase",
-  "version": "2.1.60",
+  "version": "2.1.62",
   "private": true,
   "type": "module",
   "scripts": {
     "prepare:bundle": "node scripts/patch-importer-v60.mjs",
     "build": "npm run prepare:bundle && tsc --noEmit",
     "check": "tsc --noEmit",
-    "test": "npm run prepare:bundle && tsc --noEmit && wrangler deploy --dry-run --outdir .wrangler-dry-run && node scripts/qa-worker-auth.mjs && node scripts/qa-worker-import.mjs && node scripts/qa-importer-columns.mjs && node scripts/qa-worker-marketing.mjs && node scripts/qa-modelo-oficial.mjs && node scripts/qa-static.mjs",
+    "test": "npm run prepare:bundle && tsc --noEmit && wrangler deploy --dry-run --outdir .wrangler-dry-run && node scripts/qa-worker-auth.mjs && node scripts/qa-worker-import.mjs && node scripts/qa-importer-columns.mjs && node scripts/qa-worker-marketing.mjs && node scripts/qa-modelo-oficial.mjs && node scripts/qa-static.mjs && node scripts/qa-supabase-v62.mjs",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "deploy:dry": "wrangler deploy --dry-run"
