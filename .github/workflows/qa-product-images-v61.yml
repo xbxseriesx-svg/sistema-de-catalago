@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - fix/editor-menu-v64
       - feature/catalog-modal-v65
     paths:
       - 'worker/**'
@@ -40,9 +39,6 @@ jobs:
 
       - name: Instalar dependências
         run: npm ci --ignore-scripts
-
-      - name: Diagnosticar catálogo e ações
-        run: node scripts/inspect-catalog-v65.mjs
 
       - name: Validar catálogo, Supabase e Worker
         run: npm test
