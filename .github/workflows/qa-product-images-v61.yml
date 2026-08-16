@@ -1,4 +1,4 @@
-name: QA catálogo V80 — Vínculos + Ofertas + Marketing + Supabase + Worker
+name: QA catálogo V81 — auditoria integral
 
 on:
   workflow_dispatch:
@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - audit-v80
+      - audit-v81-full-system
       - feature/template-preview-v69
     paths:
       - 'worker/**'
@@ -21,7 +22,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: catalogo-v80-qa-${{ github.ref }}
+  group: catalogo-v81-qa-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -41,5 +42,5 @@ jobs:
       - name: Instalar dependências
         run: npm ci --ignore-scripts
 
-      - name: Validar Vínculos, Ofertas, Marketing, catálogo, previews, Supabase e Worker
+      - name: Executar auditoria integral e regressões
         run: npm test
