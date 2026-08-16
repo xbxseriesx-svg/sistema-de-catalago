@@ -4,9 +4,11 @@ import { readFile } from 'node:fs/promises';
 const css = await readFile('public/editor-overflow-fix.css', 'utf8');
 const controller = await readFile('public/product-modal-v66.js', 'utf8');
 const html = await readFile('public/index.html', 'utf8');
+const version = Number((await readFile('VERSION', 'utf8')).trim());
 
-assert.match(html, /ASTERYON Editor V66/, 'Título precisa indicar V66.');
-assert.match(html, /editor-overflow-fix\.css\?v=66/, 'CSS V66 precisa usar cache-busting.');
+assert.ok(Number.isFinite(version) && version >= 66, 'Versão precisa preservar a correção V66 ou superior.');
+assert.match(html, new RegExp(`ASTERYON Editor V${version}`), 'Título precisa acompanhar VERSION.');
+assert.match(html, new RegExp(`editor-overflow-fix\\.css\\?v=${version}`), 'CSS de overflow precisa usar cache-busting da versão atual.');
 assert.match(html, /product-modal-v66\.js/, 'Controlador V66 não está carregado.');
 
 assert.match(css, /data-asteryon-product-modal-root/, 'Raiz do modal V66 não está protegida.');
@@ -22,4 +24,4 @@ assert.match(controller, /document\.body\.style\.overflow = 'hidden'/, 'Fundo n�
 assert.match(controller, /panel\.scrollTop = 0/, 'Troca por produto similar não retorna ao topo.');
 assert.match(controller, /event\.key !== 'Escape'/, 'Fechamento por Escape não está protegido.');
 
-console.log('QA Produto V66 OK: viewport, scrollbar, cabeçalho/fechar fixos e reset de scroll nos similares.');
+console.log(`QA Produto V66+ OK na V${version}: viewport, scrollbar, cabeçalho/fechar fixos e reset de scroll nos similares.`);
