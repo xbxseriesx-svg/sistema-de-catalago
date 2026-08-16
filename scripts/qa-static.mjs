@@ -6,12 +6,13 @@ const html = await readFile('public/index.html', 'utf8');
 const bundlePath = html.match(/src="\/(assets\/index-[^"]+\.js)"/)?.[1];
 assert.ok(bundlePath, 'o HTML precisa apontar para o bundle JavaScript versionado');
 
-const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, baseWorker, workerV62, pkg, imageImporter, importProgress, productModalV66, previewV69, previewCssV69, versionText] = await Promise.all([
+const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, systemRuntimeV80, baseWorker, workerV62, pkg, imageImporter, importProgress, productModalV66, previewV69, previewCssV69, versionText] = await Promise.all([
   readFile('public/editor-overflow-fix.css', 'utf8'),
   readFile('public/responsive-v67.css', 'utf8'),
   readFile('public/responsive-v67.js', 'utf8'),
   readFile(`public/${bundlePath}`, 'utf8'),
   readFile('public/marketing-canvas-hotfix.js', 'utf8'),
+  readFile('public/system-runtime-v80.js', 'utf8'),
   readFile('worker/index.ts', 'utf8'),
   readFile('worker/index-v62.ts', 'utf8'),
   readFile('package.json', 'utf8'),
@@ -24,10 +25,10 @@ const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, baseWorker, wo
 ]);
 
 const version = Number(versionText.trim());
-assert.equal(version, 70, 'QA estático desta branch exige V70.');
+assert.equal(version, 80, 'QA estático desta branch exige V80.');
 assert.match(html, /lang="pt-BR"/);
 assert.match(html, /viewport-fit=cover/);
-assert.match(html, /ASTERYON Editor V70/);
+assert.match(html, /ASTERYON Editor V80/);
 assert.match(html, /editor-overflow-fix\.css\?v=70/);
 assert.match(html, /responsive-v67\.css\?v=70/);
 assert.match(html, /responsive-v67\.js\?v=70/);
@@ -35,6 +36,8 @@ assert.match(html, /template-preview-v69\.css\?v=70/);
 assert.match(html, /template-preview-v69\.js\?v=70/);
 assert.match(html, /product-modal-v66\.js/);
 assert.match(html, /import-progress-v62\.js/);
+assert.match(html, /system-runtime-v80\.js\?v=80/);
+assert.doesNotMatch(html, /marketing-panel-scope-v79\.js/);
 assert.match(css, /min-height:\s*0/);
 assert.match(css, /overflow-y:\s*auto/);
 assert.match(css, /scrollbar-gutter:\s*stable/);
@@ -82,6 +85,9 @@ assert.match(marketingHotfix, /data-marketing-drag-handle/);
 assert.match(marketingHotfix, /data-marketing-resize/);
 assert.match(marketingHotfix, /\/api\/admin\/marketing/);
 assert.match(marketingHotfix, /Excluir todo o marketing/);
+assert.match(systemRuntimeV80, /data-asteryon-v80-links-context/);
+assert.match(systemRuntimeV80, /isolateNestedPanel/);
+assert.match(systemRuntimeV80, /hideDuplicateImporter/);
 assert.match(baseWorker, /tableAll\(env, 'products'/);
 assert.match(baseWorker, /seenCodes/);
 assert.match(baseWorker, /select=theme,banner,video_banner,carousel,settings/);
@@ -100,17 +106,20 @@ assert.match(previewCssV69, /ltp-products/);
 assert.match(previewCssV69, /ltp-brand-grid/);
 assert.match(previewCssV69, /@media \(max-width:720px\)/);
 const packageJson = JSON.parse(pkg);
-assert.equal(packageJson.version, '2.1.70');
+assert.equal(packageJson.version, '2.1.80');
 assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/patch-importer-v60.mjs && node scripts/patch-editor-menu-v64.mjs && node scripts/patch-catalog-modal-v65.mjs && node scripts/patch-responsive-v67.mjs && node scripts/patch-brand-laurencini-v68.mjs');
 assert.match(packageJson.scripts.test, /qa-template-preview-v69\.mjs/);
+assert.match(packageJson.scripts.test, /qa-system-v80\.mjs/);
 
 execFileSync(process.execPath, ['--check', `public/${bundlePath}`], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/marketing-canvas-hotfix.js'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'public/system-runtime-v80.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/import-progress-v62.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/product-modal-v66.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/responsive-v67.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/template-preview-v69.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/patch-brand-laurencini-v68.mjs'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/qa-template-preview-v69.mjs'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'scripts/qa-system-v80.mjs'], { stdio: 'pipe' });
 
-console.log('QA estático da V70: OK');
+console.log('QA estático da V80: OK');
