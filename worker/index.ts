@@ -27,7 +27,7 @@ function normalizeDepartment(value: unknown) {
   const key = slug(value);
   if (['atacado', 'atacadista', 'wholesale'].includes(key)) return 'Atacado';
   if (['distribuicao', 'distribuidor', 'distribution'].includes(key)) return 'Distribuição';
-  return '';
+  return clean(value);
 }
 
 function activeStatus(value: unknown, fallback = 'active') {
@@ -239,7 +239,7 @@ async function catalogPayload(env: Env, publicOnly: boolean) {
 }
 
 async function publicRoute(req: Request, env: Env, path: string) {
-  if (path === '/api/health') return ok({ service: 'sistema-de-catalago', database: 'Supabase Postgres', d1: false, r2: false, release: 'v58', editor: '2.1.58' });
+  if (path === '/api/health') return ok({ service: 'sistema-de-catalago', database: 'Supabase Postgres', d1: false, r2: false, release: 'v59', editor: '2.1.59' });
   if (path === '/api/public/catalog' && req.method === 'GET') return ok({ catalog: await catalogPayload(env, true) });
   if (path === '/api/public/brands' && req.method === 'GET') return ok({ brands: await brandsPayload(env) });
   if (path === '/api/public/marketing' && req.method === 'GET') {
@@ -381,18 +381,32 @@ async function adminRoute(req: Request, env: Env, path: string) {
     const departments = new Map<string, any>();
     for (const node of hierarchy || []) if (node.type === 'departamento') departments.set(normalizeDepartment(node.name), node);
 
+    const missingDepartments = new Map<string, any>();
+    for (const p of incoming) {
+      const department = normalizeDepartment(p?.departamentoName ?? p?.department ?? p?.departamento);
+      const key = slug(department);
+      if (department && !departments.has(department) && !missingDepartments.has(key)) {
+        missingDepartments.set(key, { id: uid('hier'), company_id: COMPANY_ID, type: 'departamento', name: department, slug: key, parent_id: null, sort_order: 100, active: true, data: {} });
+      }
+    }
+    if (missingDepartments.size) {
+      await table(env, 'hierarchy_nodes', 'on_conflict=company_id,type,slug,parent_id', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify([...missingDepartments.values()]) });
+      hierarchy = await table(env, 'hierarchy_nodes', `company_id=eq.${COMPANY_ID}&select=id,type,name,slug,parent_id,sort_order,active`);
+      for (const node of hierarchy || []) if (node.type === 'departamento') departments.set(normalizeDepartment(node.name), node);
+    }
+
     const valid: Array<{ index: number; p: any; code: string; name: string; previous: any; previousData: any; department: string; section: string; category: string }> = [];
     for (let index = 0; index < incoming.length; index++) {
       const p = incoming[index] || {}, code = clean(p.code ?? p.codigo), previous: any = byCode.get(code), previousData = previous?.data || {};
       const name = clean(p.name ?? p.shortDescription ?? p.description ?? p.descricao) || clean(previous?.name ?? previousData.name);
       const department = normalizeDepartment(p.departamentoName ?? p.department ?? p.departamento ?? previousData.departamentoName);
       const section = clean(p.secaoName ?? p.section ?? p.secao ?? previousData.secaoName);
-      const category = clean(p.categoriaName ?? p.category ?? p.categoria ?? previousData.categoriaName);
+      const category = clean(p.categoriaName ?? p.category ?? p.categoria ?? previousData.categoriaName) || 'Sem categoria';
       if (seenCodes.has(code)) { ignored++; if (errors.length < 30) errors.push(`Linha ${index + 2}: código ${code || 'vazio'} repetido no arquivo`); continue; }
       if (code) seenCodes.add(code);
       if (!code || !name || !department || !section || !category) {
         ignored++;
-        if (errors.length < 30) errors.push(`Linha ${index + 2}: ${!code ? 'Código; ' : ''}${!name ? 'Descrição; ' : ''}${!department ? 'Departamento deve ser Atacado ou Distribuição; ' : ''}${!section ? 'Seção; ' : ''}${!category ? 'Categoria; ' : ''}`.replace(/; $/, ''));
+        if (errors.length < 30) errors.push(`Linha ${index + 2}: ${!code ? 'Código; ' : ''}${!name ? 'Descrição; ' : ''}${!department ? 'Departamento; ' : ''}${!section ? 'Seção; ' : ''}`.replace(/; $/, ''));
         continue;
       }
       if (!departments.get(department)) { ignored++; if (errors.length < 30) errors.push(`Linha ${index + 2}: departamento ${department} não configurado`); continue; }
@@ -540,7 +554,7 @@ async function adminRoute(req: Request, env: Env, path: string) {
     if (auth.user!.role !== 'SDM') return fail('Somente o SDM pode administrar os modelos globais', 403, 'SDM_ONLY');
     const input = await body(req), templates = Array.isArray(input.templates) ? input.templates.slice(0, 30) : [];
     const rows = templates.filter((t: any) => clean(t.systemKey) && Array.isArray(t.nodes)).map((t: any) => ({ id: uid('tpl'), company_id: COMPANY_ID, system_key: clean(t.systemKey), name: clean(t.name) || 'Modelo', description: clean(t.description), category: clean(t.category) || 'geral', tags: t.tags || [], accent: clean(t.accent), nodes: t.nodes, active: true, data: { isSystem: true } }));
-    if (rows.length) await table(env, 'templates', 'on_conflict=company_id,system_key', { method: 'POST', headers: { prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(rows) });
+    if (rows.length) await table(env, 'templates', 'on_conflict=company_id,system_key', { method: 'POST', headers: { prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(rows) });
     return ok({ requested: templates.length });
   }
   const templateItem = path.match(/^\/api\/admin\/templates\/([^/]+)$/);

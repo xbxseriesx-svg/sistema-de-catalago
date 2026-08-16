@@ -22,6 +22,11 @@ assert.match(css, /scrollbar-gutter:\s*stable/);
 assert.doesNotMatch(bundle, /Cloudflare D1|D1 conectado|D1 sincronizado/);
 assert.match(bundle, /Supabase Postgres/);
 assert.match(bundle, /Supabase conectado/);
+assert.match(bundle, /descricao do departamento/);
+assert.match(bundle, /descricao da secao/);
+assert.match(bundle, /nome da categoria/);
+assert.match(bundle, /sourceColumns/);
+assert.match(bundle, /Sem categoria/);
 assert.match(html, /marketing-canvas-hotfix\.js/);
 assert.match(marketingHotfix, /data-marketing-hotfix/);
 assert.match(marketingHotfix, /data-marketing-drag-handle/);
@@ -33,9 +38,9 @@ assert.match(worker, /seenCodes/);
 assert.match(worker, /select=theme,banner,video_banner,carousel,settings/);
 assert.match(worker, /marketingLayout/);
 assert.doesNotMatch(worker, /departamento_id: 'dep_atacado'/);
-assert.equal(JSON.parse(pkg).version, '2.1.58');
+assert.equal(JSON.parse(pkg).version, '2.1.59');
 
 execFileSync(process.execPath, ['--check', `public/${bundlePath}`], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/marketing-canvas-hotfix.js'], { stdio: 'pipe' });
 
-console.log('QA estático da V58: OK');
+console.log('QA estático da V59: OK');

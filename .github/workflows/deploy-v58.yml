@@ -1,4 +1,4 @@
-name: Deploy catálogo V58 — Cloudflare + Supabase
+name: Deploy catálogo V59 — Cloudflare + Supabase
 
 on:
   workflow_dispatch:
@@ -18,7 +18,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: catalogo-v58-cloudflare-production
+  group: catalogo-v59-cloudflare-production
   cancel-in-progress: false
 
 jobs:
@@ -50,7 +50,10 @@ jobs:
       - name: Instalar dependências
         run: npm ci --no-audit --no-fund
 
-      - name: Validar V58, Worker e importação
+      - name: Aplicar correção compacta do importador V59
+        run: node scripts/patch-importer-v59.mjs
+
+      - name: Validar V59, Worker, modelo e importação
         run: npm test
 
       - name: Preparar segredos do primeiro deploy
@@ -66,10 +69,10 @@ jobs:
           writeFileSync('.secrets.json', JSON.stringify(secrets));
           NODE
 
-      - name: Publicar V58
+      - name: Publicar V59
         run: npx wrangler deploy --secrets-file .secrets.json
 
-      - name: Verificar produção V58
+      - name: Verificar produção V59
         shell: bash
         run: |
           node --input-type=module <<'NODE'
