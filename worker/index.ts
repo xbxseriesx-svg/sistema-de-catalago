@@ -134,9 +134,7 @@ async function tableByValues(env: Env, name: string, baseQuery: string, column: 
   return rows;
 }
 
-async function currentUser(req: Request, env: Env) {
-  const access = cookie(req, ACCESS_COOKIE);
-  if (!access) return null;
+async function currentUserFromAccess(access: string, env: Env) {
   try {
     const authUser = await supabase(env, '/auth/v1/user', {}, access);
     const memberships = await table(env, 'company_memberships', `user_id=eq.${encodeURIComponent(authUser.id)}&active=eq.true&select=company_id,role&limit=1`, {}, access);
@@ -153,6 +151,11 @@ async function currentUser(req: Request, env: Env) {
   } catch {
     return null;
   }
+}
+
+async function currentUser(req: Request, env: Env) {
+  const access = cookie(req, ACCESS_COOKIE);
+  return access ? currentUserFromAccess(access, env) : null;
 }
 
 async function requireUser(req: Request, env: Env, roles: Role[] = ['VIEWER', 'EDITOR', 'ADMIN']) {
@@ -196,12 +199,16 @@ async function authRoute(req: Request, env: Env, path: string) {
     const response = await fetch(`${env.SUPABASE_URL}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: env.SUPABASE_PUBLISHABLE_KEY, 'content-type': 'application/json' }, body: JSON.stringify({ email: clean(input.email).toLowerCase(), password: clean(input.password) }) });
     if (!response.ok) return fail('E-mail ou senha inválidos', 401, 'BAD_CREDENTIALS');
     const session = await response.json() as any;
-    const fakeHeaders = new Headers(req.headers);
-    fakeHeaders.set('cookie', `${ACCESS_COOKIE}=${session.access_token}`);
-    const fakeReq = new Request(req, { headers: fakeHeaders });
-    const user = await currentUser(fakeReq, env);
+    if (!clean(session.access_token) || !clean(session.refresh_token)) return fail('Resposta de autenticação inválida', 502, 'INVALID_AUTH_SESSION');
+    const user = await currentUserFromAccess(session.access_token, env);
     if (!user) return fail('Usuário sem acesso ativo à empresa', 403, 'NO_MEMBERSHIP');
-    await audit(env, user, 'login', 'user', user.id, {}, session.access_token);
+    try {
+      await audit(env, user, 'login', 'user', user.id, {}, session.access_token);
+    } catch (error) {
+      // O registro de auditoria é importante, mas uma indisponibilidade pontual
+      // dessa tabela não pode invalidar uma sessão que o Auth já confirmou.
+      console.error('Falha ao registrar auditoria de login', error);
+    }
     return new Response(JSON.stringify({ ok: true, user: { id: user.id, companyId: user.company_id, email: user.email, name: user.name, role: user.role } }), { headers: sessionHeaders(session.access_token, session.refresh_token, session.expires_in) });
   }
   if (path === '/api/auth/logout' && req.method === 'POST') return new Response(JSON.stringify({ ok: true }), { headers: clearHeaders() });
