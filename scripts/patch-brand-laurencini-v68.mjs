@@ -76,9 +76,27 @@ patchExact(
   'botão de produto padrão',
 );
 
-if (source === original) {
+if (source !== original) await writeFile(assetPath, source);
+
+// O Modelo Oficial usa as mesmas chaves históricas (navy/orange), mas agora elas
+// apontam para azul/vermelho da marca para preservar a API interna do construtor.
+const officialPath = 'scripts/modelo-oficial.mjs';
+const officialOriginal = await readFile(officialPath, 'utf8');
+let official = officialOriginal;
+const oldPalette = `const COLORS = Object.freeze({\n  navy: '#183153',\n  navyDeep: '#10253F',\n  navySoft: '#294D73',\n  orange: '#E27D33',\n  orangeSoft: '#FFF0E4',\n  ink: '#172033',\n  muted: '#64748B',\n  line: '#DDE5EE',\n  surface: '#FFFFFF',\n  canvas: '#F5F7FA',\n  paleBlue: '#EAF1F8',\n});`;
+const newPalette = `const COLORS = Object.freeze({\n  navy: '#214C8F',\n  navyDeep: '#123F7D',\n  navySoft: '#1E5EAA',\n  orange: '#D13130',\n  orangeSoft: '#FCEBEC',\n  ink: '#172033',\n  muted: '#66758A',\n  line: '#DCE6F2',\n  surface: '#FFFFFF',\n  canvas: '#F4F8FC',\n  paleBlue: '#EAF2FA',\n});`;
+if (official.includes(oldPalette)) official = official.replace(oldPalette, newPalette);
+else if (!official.includes(newPalette)) throw new Error('V68: paleta do Modelo Oficial incompatível.');
+official = official
+  .replaceAll('#EEF2F7', '#F4F8FC')
+  .replaceAll('#F5F7FA', '#F4F8FC')
+  .replaceAll('#EAF1F8', '#EAF2FA')
+  .replaceAll('#B9C8D8', '#DCE6F2')
+  .replaceAll('rgba(16,37,63,', 'rgba(18,63,125,');
+if (official !== officialOriginal) await writeFile(officialPath, official);
+
+if (source === original && official === officialOriginal) {
   console.log('Patch Laurencini V68 já aplicado.');
 } else {
-  await writeFile(assetPath, source);
-  console.log('Patch Laurencini V68 aplicado: 7 templates, biblioteca salva e elementos novos padronizados.');
+  console.log('Patch Laurencini V68 aplicado: 7 templates, biblioteca salva, Modelo Oficial e elementos novos padronizados.');
 }
