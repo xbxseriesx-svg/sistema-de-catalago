@@ -6,7 +6,7 @@ const html = await readFile('public/index.html', 'utf8');
 const bundlePath = html.match(/src="\/(assets\/index-[^"?]+\.js)(?:\?v=\d+)?"/)?.[1];
 assert.ok(bundlePath, 'o HTML precisa apontar para o bundle JavaScript versionado');
 
-const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, systemRuntimeV80, systemRuntimeV81, baseWorker, workerV81, workerV62, pkg, imageImporter, importProgress, productModalV66, previewV69, previewCssV69, versionText] = await Promise.all([
+const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, systemRuntimeV80, systemRuntimeV81, baseWorker, workerV81, workerV62, pkg, imageImporter, importProgress, productModalV66, previewV69, previewCssV69, versionText, prepareV81] = await Promise.all([
   readFile('public/editor-overflow-fix.css', 'utf8'),
   readFile('public/responsive-v67.css', 'utf8'),
   readFile('public/responsive-v67.js', 'utf8'),
@@ -24,6 +24,7 @@ const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, systemRuntimeV
   readFile('public/template-preview-v69.js', 'utf8'),
   readFile('public/template-preview-v69.css', 'utf8'),
   readFile('VERSION', 'utf8'),
+  readFile('scripts/prepare-bundle-v81.mjs', 'utf8'),
 ]);
 
 const version = Number(versionText.trim());
@@ -121,9 +122,11 @@ assert.doesNotMatch(previewV69, /\/api\/admin\//);
 assert.match(previewCssV69, /ltp-products/);
 assert.match(previewCssV69, /ltp-brand-grid/);
 assert.match(previewCssV69, /@media \(max-width:720px\)/);
+assert.match(prepareV81, /ASTER_V81_CORE_PATCH/);
+assert.match(prepareV81, /Bundle V81 já materializado/);
 const packageJson = JSON.parse(pkg);
 assert.equal(packageJson.version, '2.1.80');
-assert.match(packageJson.scripts['prepare:bundle'], /patch-system-v81\.mjs/);
+assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/prepare-bundle-v81.mjs');
 assert.match(packageJson.scripts.test, /qa-template-preview-v69\.mjs/);
 assert.match(packageJson.scripts.test, /qa-system-v80\.mjs/);
 
@@ -136,6 +139,7 @@ execFileSync(process.execPath, ['--check', 'public/product-modal-v66.js'], { std
 execFileSync(process.execPath, ['--check', 'public/responsive-v67.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/template-preview-v69.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/patch-brand-laurencini-v68.mjs'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'scripts/prepare-bundle-v81.mjs'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/patch-system-v81.mjs'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/qa-template-preview-v69.mjs'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/qa-system-v80.mjs'], { stdio: 'pipe' });
