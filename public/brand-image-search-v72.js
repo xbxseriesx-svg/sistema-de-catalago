@@ -2,7 +2,7 @@
   'use strict';
 
   const MODAL_ID = 'asteryon-brand-image-search-modal-v70';
-  const BUTTON_ATTR = 'data-asteryon-google-images-v73';
+  const BUTTON_ATTR = 'data-asteryon-google-images-v74';
   const nativeFetch = window.fetch.bind(window);
   let currentBrand = { id: '', name: '' };
 
@@ -44,7 +44,7 @@
       alert('Aguarde a pesquisa da marca carregar e tente novamente.');
       return;
     }
-    const url = `/google-image-picker-v73.html?brandId=${encodeURIComponent(brandId)}&brandName=${encodeURIComponent(brandName || '')}`;
+    const url = `/google-image-picker-v73.html?v=74&brandId=${encodeURIComponent(brandId)}&brandName=${encodeURIComponent(brandName || '')}`;
     const popup = window.open(url, 'asteryonGoogleImagePicker', popupFeatures());
     if (!popup) alert('O navegador bloqueou o pop-up. Libere pop-ups para este endereço e tente novamente.');
     else popup.focus();
@@ -59,9 +59,9 @@
 
     const button = document.createElement('button');
     button.type = 'button';
-    button.setAttribute(BUTTON_ATTR, 'v73');
+    button.setAttribute(BUTTON_ATTR, 'v74');
     button.textContent = 'Google Imagens';
-    button.title = 'Abrir pop-up para escolher uma imagem existente e anexar à marca';
+    button.title = 'Abrir pop-up com resultados oficiais do Google Imagens';
     Object.assign(button.style, {
       display: 'inline-flex',
       alignItems: 'center',
