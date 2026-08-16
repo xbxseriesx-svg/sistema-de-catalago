@@ -88,7 +88,7 @@ function clearHeaders() {
 async function supabase(env: Env, path: string, init: RequestInit = {}, userToken?: string) {
   const headers = new Headers(init.headers);
   const adminKey = clean(env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY);
-  if (!adminKey) throw new Error('SUPABASE_SECRET_KEY não configurada');
+  if (!userToken && !adminKey) throw new Error('SUPABASE_SECRET_KEY não configurada');
   headers.set('apikey', userToken ? env.SUPABASE_PUBLISHABLE_KEY : adminKey);
   if (userToken) {
     headers.set('authorization', `Bearer ${userToken}`);
@@ -108,8 +108,8 @@ async function supabase(env: Env, path: string, init: RequestInit = {}, userToke
   return text ? JSON.parse(text) : null;
 }
 
-async function table(env: Env, name: string, query = '', init: RequestInit = {}) {
-  return supabase(env, `/rest/v1/${name}${query ? `?${query}` : ''}`, init);
+async function table(env: Env, name: string, query = '', init: RequestInit = {}, userToken?: string) {
+  return supabase(env, `/rest/v1/${name}${query ? `?${query}` : ''}`, init, userToken);
 }
 
 async function tableAll(env: Env, name: string, query = '', pageSize = 500, maxRows = 10000) {
@@ -139,10 +139,10 @@ async function currentUser(req: Request, env: Env) {
   if (!access) return null;
   try {
     const authUser = await supabase(env, '/auth/v1/user', {}, access);
-    const memberships = await table(env, 'company_memberships', `user_id=eq.${encodeURIComponent(authUser.id)}&active=eq.true&select=company_id,role&limit=1`);
+    const memberships = await table(env, 'company_memberships', `user_id=eq.${encodeURIComponent(authUser.id)}&active=eq.true&select=company_id,role&limit=1`, {}, access);
     const membership = memberships?.[0];
     if (!membership) return null;
-    const profiles = await table(env, 'profiles', `user_id=eq.${encodeURIComponent(authUser.id)}&select=display_name,email&limit=1`);
+    const profiles = await table(env, 'profiles', `user_id=eq.${encodeURIComponent(authUser.id)}&select=display_name,email&limit=1`, {}, access);
     return {
       id: authUser.id,
       company_id: membership.company_id,
@@ -162,18 +162,19 @@ async function requireUser(req: Request, env: Env, roles: Role[] = ['VIEWER', 'E
   return { user, error: null };
 }
 
-async function audit(env: Env, user: any, action: string, entityType: string, entityId: string | null, details: unknown = {}) {
+async function audit(env: Env, user: any, action: string, entityType: string, entityId: string | null, details: unknown = {}, userToken?: string) {
   await table(env, 'audit_logs', '', {
     method: 'POST',
     headers: { prefer: 'return=minimal' },
     body: JSON.stringify({ company_id: user?.company_id || COMPANY_ID, user_id: user?.id || null, action, entity_type: entityType, entity_id: entityId, details }),
-  });
+  }, userToken);
 }
 
 async function authRoute(req: Request, env: Env, path: string) {
   if (path === '/api/auth/status' && req.method === 'GET') {
-    const owners = await table(env, 'company_memberships', 'role=eq.owner&active=eq.true&select=user_id&limit=1');
     const user = await currentUser(req, env);
+    const adminKey = clean(env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY);
+    const owners = adminKey ? await table(env, 'company_memberships', 'role=eq.owner&active=eq.true&select=user_id&limit=1') : [{ user_id: 'configured' }];
     return ok({ needsBootstrap: !owners?.length, user: user ? { id: user.id, companyId: user.company_id, email: user.email, name: user.name, role: user.role } : null });
   }
   if (path === '/api/auth/bootstrap' && req.method === 'POST') {
@@ -200,7 +201,7 @@ async function authRoute(req: Request, env: Env, path: string) {
     const fakeReq = new Request(req, { headers: fakeHeaders });
     const user = await currentUser(fakeReq, env);
     if (!user) return fail('Usuário sem acesso ativo à empresa', 403, 'NO_MEMBERSHIP');
-    await audit(env, user, 'login', 'user', user.id);
+    await audit(env, user, 'login', 'user', user.id, {}, session.access_token);
     return new Response(JSON.stringify({ ok: true, user: { id: user.id, companyId: user.company_id, email: user.email, name: user.name, role: user.role } }), { headers: sessionHeaders(session.access_token, session.refresh_token, session.expires_in) });
   }
   if (path === '/api/auth/logout' && req.method === 'POST') return new Response(JSON.stringify({ ok: true }), { headers: clearHeaders() });
