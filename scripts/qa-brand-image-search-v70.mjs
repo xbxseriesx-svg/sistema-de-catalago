@@ -17,8 +17,8 @@ const [index, uiV70, uiV72, pickerHtml, pickerJs, workerV81, workerV71, workerV7
 ]);
 
 assert.ok(Number(version) >= 70, 'A pesquisa de imagens das marcas exige V70 ou superior.');
-assert.match(index, /brand-image-search-v70\.js\?v=76/, 'Editor não carrega a interface base da pesquisa com cache V76.');
-assert.match(index, /brand-image-search-v72\.js\?v=77/, 'Editor não carrega o isolamento de marcas com cache V77.');
+assert.match(index, /brand-image-search-v70\.js\?v=81/, 'Editor não carrega a interface base da pesquisa com cache da release V81.');
+assert.match(index, /brand-image-search-v72\.js\?v=81/, 'Editor não carrega o isolamento de marcas com cache da release V81.');
 assert.match(wrangler, /"main":\s*"worker\/index-v81\.ts"/, 'Wrangler precisa apontar para a entrada auditada V81.');
 assert.match(workerV81, /import worker from '\.\/index-v71'/, 'V81 precisa preservar a cadeia V71/V72/V70.');
 assert.match(workerV71, /import worker from '\.\/index-v72'/, 'Entrada V71 não encaminha para V72.');
