@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "sistema-de-catalago",
-  "main": "worker/index-v61.ts",
+  "main": "worker/index-v62.ts",
   "compatibility_date": "2026-08-14",
   "workers_dev": true,
   "preview_urls": true,
