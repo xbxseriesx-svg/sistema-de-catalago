@@ -2,7 +2,8 @@
   'use strict';
 
   const MODAL_ID = 'asteryon-brand-image-search-modal-v70';
-  const BUTTON_ATTR = 'data-asteryon-google-images-v74';
+  const GOOGLE_BUTTON_ATTR = 'data-asteryon-google-images-v75';
+  const MANUAL_BUTTON_ATTR = 'data-asteryon-manual-logo-v75';
   const nativeFetch = window.fetch.bind(window);
   let currentBrand = { id: '', name: '' };
 
@@ -39,52 +40,71 @@
     return `popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`;
   }
 
-  function openPicker(brandId, brandName) {
+  function openPicker(brandId, brandName, mode = 'google') {
     if (!brandId) {
-      alert('Aguarde a pesquisa da marca carregar e tente novamente.');
+      alert('Aguarde a marca carregar e tente novamente.');
       return;
     }
-    const url = `/google-image-picker-v73.html?v=74&brandId=${encodeURIComponent(brandId)}&brandName=${encodeURIComponent(brandName || '')}`;
+    const url = `/google-image-picker-v73.html?v=75&mode=${encodeURIComponent(mode)}&brandId=${encodeURIComponent(brandId)}&brandName=${encodeURIComponent(brandName || '')}`;
     const popup = window.open(url, 'asteryonGoogleImagePicker', popupFeatures());
     if (!popup) alert('O navegador bloqueou o pop-up. Libere pop-ups para este endereço e tente novamente.');
     else popup.focus();
   }
 
-  function patchModal(modal) {
-    if (!modal || modal.querySelector(`[${BUTTON_ATTR}]`)) return;
-    const head = modal.querySelector('.abiv70-head');
-    const title = modal.querySelector('.abiv70-title span');
-    const close = modal.querySelector('.abiv70-close');
-    if (!head || !close) return;
-
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.setAttribute(BUTTON_ATTR, 'v74');
-    button.textContent = 'Google Imagens';
-    button.title = 'Abrir pop-up com resultados oficiais do Google Imagens';
+  function styleButton(button, primary = false) {
     Object.assign(button.style, {
       display: 'inline-flex',
       alignItems: 'center',
       justifyContent: 'center',
       height: '34px',
       padding: '0 12px',
-      border: '1px solid #3f3f46',
+      border: `1px solid ${primary ? '#7c3aed' : '#3f3f46'}`,
       borderRadius: '8px',
-      background: '#18181b',
+      background: primary ? '#7c3aed' : '#18181b',
       color: '#fafafa',
       fontSize: '11px',
       fontWeight: '700',
       cursor: 'pointer',
       whiteSpace: 'nowrap',
     });
+  }
 
-    button.addEventListener('click', () => {
-      const brandName = String(title?.textContent || currentBrand.name || '').trim();
-      currentBrand.name = brandName || currentBrand.name;
-      openPicker(currentBrand.id, currentBrand.name);
-    });
+  function patchModal(modal) {
+    if (!modal) return;
+    const head = modal.querySelector('.abiv70-head');
+    const title = modal.querySelector('.abiv70-title span');
+    const close = modal.querySelector('.abiv70-close');
+    if (!head || !close) return;
 
-    head.insertBefore(button, close);
+    if (!modal.querySelector(`[${MANUAL_BUTTON_ATTR}]`)) {
+      const manualButton = document.createElement('button');
+      manualButton.type = 'button';
+      manualButton.setAttribute(MANUAL_BUTTON_ATTR, 'v75');
+      manualButton.textContent = 'Logo manual';
+      manualButton.title = 'Escolher uma logo do computador, converter para WEBP e vincular à marca';
+      styleButton(manualButton, true);
+      manualButton.addEventListener('click', () => {
+        const selectedBrandName = String(title?.textContent || currentBrand.name || '').trim();
+        currentBrand.name = selectedBrandName || currentBrand.name;
+        openPicker(currentBrand.id, currentBrand.name, 'manual');
+      });
+      head.insertBefore(manualButton, close);
+    }
+
+    if (!modal.querySelector(`[${GOOGLE_BUTTON_ATTR}]`)) {
+      const googleButton = document.createElement('button');
+      googleButton.type = 'button';
+      googleButton.setAttribute(GOOGLE_BUTTON_ATTR, 'v75');
+      googleButton.textContent = 'Google Imagens';
+      googleButton.title = 'Abrir pop-up com resultados oficiais do Google Imagens';
+      styleButton(googleButton, false);
+      googleButton.addEventListener('click', () => {
+        const selectedBrandName = String(title?.textContent || currentBrand.name || '').trim();
+        currentBrand.name = selectedBrandName || currentBrand.name;
+        openPicker(currentBrand.id, currentBrand.name, 'google');
+      });
+      head.insertBefore(googleButton, close);
+    }
   }
 
   function refreshLogo(detail) {
