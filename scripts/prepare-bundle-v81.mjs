@@ -4,8 +4,12 @@ import process from 'node:process';
 
 const bundlePath = 'public/assets/index-V60Excel.js';
 const marker = 'ASTER_V81_CORE_PATCH';
-const bundle = await readFile(bundlePath, 'utf8');
 
+// O Modelo Oficial é fonte auxiliar independente do bundle e precisa permanecer
+// normalizado mesmo quando o bundle V81 já está materializado.
+execFileSync(process.execPath, ['scripts/patch-modelo-oficial-v81.mjs'], { stdio: 'inherit' });
+
+const bundle = await readFile(bundlePath, 'utf8');
 if (bundle.includes(marker)) {
   console.log('Bundle V81 já materializado: cadeia legada V63/V64/V65/V67/V68/V81 não será reaplicada.');
   process.exit(0);
