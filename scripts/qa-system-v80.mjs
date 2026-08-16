@@ -45,15 +45,17 @@ must(marketingCanvas, '/api/admin/marketing', 'canvas persiste posição via Wor
 must(marketingCanvas, 'resize', 'objeto Marketing redimensionável');
 must(marketingCanvas, 'pointermove', 'objeto Marketing movível');
 
-must(worker, "pathname === '/api/admin/marketing'", 'rota admin Marketing');
-must(worker, "payload.marketing", 'Worker aceita envelope marketing do frontend');
-must(worker, "pathname === '/api/admin/catalog/offers'", 'rota admin Ofertas');
-must(worker, '/api/admin/catalog/settings', 'rota configurações do catálogo');
-must(worker, '/snapshots', 'rotas de snapshots');
-must(worker, '/publish', 'rota de publicação');
-must(worker, '/rollback', 'rota de rollback');
+must(worker, "path === '/api/admin/marketing'", 'rota admin Marketing');
+must(worker, 'input.marketing || input', 'Worker aceita envelope marketing do frontend');
+must(worker, "path === '/api/admin/catalog/offers'", 'rota admin Ofertas');
+must(worker, "path === '/api/admin/catalog/settings'", 'rota configurações do catálogo');
+must(worker, 'const snapshots = path.match', 'rotas de snapshots');
+must(worker, 'const publish = path.match', 'rota de publicação');
+must(worker, 'const rollback = path.match', 'rota de rollback');
 must(worker, 'marketing_settings', 'persistência Marketing Supabase');
 must(worker, 'offer_products', 'vínculos oferta-produto Supabase');
+must(worker, 'page_snapshots', 'persistência de snapshots Supabase');
+must(worker, 'page_publications', 'persistência de publicações Supabase');
 
 if (!String(pkg.version).startsWith('2.1.80')) {
   throw new Error(`QA V80: package version esperada 2.1.80, recebida ${pkg.version}`);
