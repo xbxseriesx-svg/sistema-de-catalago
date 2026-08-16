@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, stat } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const [preview, css, index, logo, worker, pkg, version] = await Promise.all([
+const [preview, css, index, logoWrapper, logoFile, worker, pkg, version] = await Promise.all([
   readFile('public/template-preview-v69.js', 'utf8'),
   readFile('public/template-preview-v69.css', 'utf8'),
   readFile('public/index.html', 'utf8'),
   readFile('public/laurencini-logo-v69.svg', 'utf8'),
+  stat('public/laurencini-logo-v69.webp'),
   readFile('worker/index.ts', 'utf8'),
   readFile('package.json', 'utf8').then(JSON.parse),
   readFile('VERSION', 'utf8').then((value) => value.trim()),
@@ -24,9 +25,9 @@ assert.match(preview, /Pré-visualizar modelo completo/);
 assert.match(preview, /Aplicar este modelo/);
 assert.match(preview, /aplicar modelo/, 'Aplicar a partir do preview precisa reutilizar o fluxo existente do card.');
 assert.match(preview, /laurencini-logo-v69\.svg/);
-assert.match(logo, /Distribuidora Laurencini/);
-assert.match(logo, /#214C8F/);
-assert.match(logo, /#D13130/);
+assert.match(logoWrapper, /Distribuidora Laurencini/);
+assert.match(logoWrapper, /laurencini-logo-v69\.webp/);
+assert.ok(logoFile.size > 5000, 'A logo original compactada precisa existir como arquivo de imagem real.');
 
 for (const name of [
   'Varejo Contínuo',
@@ -55,4 +56,4 @@ assert.match(css, /overflow:auto/);
 
 execFileSync(process.execPath, ['--check', 'public/template-preview-v69.js'], { stdio: 'pipe' });
 
-console.log('QA Preview V69 OK: 8 templates, logo Laurencini, catálogo real Supabase e fluxo existente preservado.');
+console.log('QA Preview V69 OK: 8 templates, logo original Laurencini, catálogo real Supabase e fluxo existente preservado.');
