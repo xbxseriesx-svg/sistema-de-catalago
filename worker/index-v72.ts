@@ -6,6 +6,7 @@ type Env = {
   SUPABASE_PUBLISHABLE_KEY: string;
   SUPABASE_SECRET_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
+  REMOTE_IMAGE_HMAC_SECRET?: string;
   SDM_BOOTSTRAP_TOKEN?: string;
   GOOGLE_CSE_API_KEY?: string;
   GOOGLE_CSE_CX?: string;
@@ -79,8 +80,8 @@ function hex(bytes: ArrayBuffer) {
 }
 
 async function hmacKey(env: Env) {
-  const secret = adminKey(env);
-  if (!secret) throw new Error('Chave administrativa não configurada');
+  const secret = clean(env.REMOTE_IMAGE_HMAC_SECRET);
+  if (!secret) throw new Error('REMOTE_IMAGE_HMAC_SECRET não configurado');
   return crypto.subtle.importKey('raw', textEncoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
 }
 

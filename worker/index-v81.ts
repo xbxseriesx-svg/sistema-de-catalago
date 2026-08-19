@@ -6,13 +6,22 @@ type Env = {
   SUPABASE_PUBLISHABLE_KEY: string;
   SUPABASE_SECRET_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
+  REMOTE_IMAGE_HMAC_SECRET?: string;
   SDM_BOOTSTRAP_TOKEN?: string;
   GOOGLE_CSE_API_KEY?: string;
   GOOGLE_CSE_CX?: string;
 };
 
+type RefreshedSession = {
+  request: Request;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+};
+
 const COMPANY_ID = 'cmp_asteryon';
 const ACCESS_COOKIE = '__Host-asteryon_access';
+const REFRESH_COOKIE = '__Host-asteryon_refresh';
 
 const clean = (value: unknown) => String(value ?? '').trim();
 const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), {
@@ -46,6 +55,58 @@ function cookie(req: Request, name: string) {
     return null;
   }
   return null;
+}
+
+function requestWithSession(req: Request, accessToken: string, refreshToken: string) {
+  const headers = new Headers(req.headers);
+  const existing = (headers.get('cookie') || '')
+    .split(';')
+    .map(item => item.trim())
+    .filter(Boolean)
+    .filter(item => {
+      const key = item.split('=', 1)[0];
+      return key !== ACCESS_COOKIE && key !== REFRESH_COOKIE;
+    });
+  existing.push(`${ACCESS_COOKIE}=${encodeURIComponent(accessToken)}`);
+  existing.push(`${REFRESH_COOKIE}=${encodeURIComponent(refreshToken)}`);
+  headers.set('cookie', existing.join('; '));
+  return new Request(req, { headers });
+}
+
+function attachRefreshedSession(response: Response, session: RefreshedSession | null) {
+  if (!session) return response;
+  const headers = new Headers(response.headers);
+  headers.append('set-cookie', `${ACCESS_COOKIE}=${encodeURIComponent(session.accessToken)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${session.expiresIn}`);
+  headers.append('set-cookie', `${REFRESH_COOKIE}=${encodeURIComponent(session.refreshToken)}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=2592000`);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+async function refreshSession(req: Request, env: Env): Promise<RefreshedSession | null> {
+  const refreshToken = cookie(req, REFRESH_COOKIE);
+  if (!refreshToken) return null;
+
+  const response = await fetch(`${env.SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+    method: 'POST',
+    headers: {
+      apikey: env.SUPABASE_PUBLISHABLE_KEY,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  if (!response.ok) return null;
+
+  const session = await response.json() as any;
+  const accessToken = clean(session?.access_token);
+  const nextRefreshToken = clean(session?.refresh_token);
+  const expiresIn = Math.max(60, Number(session?.expires_in) || 3600);
+  if (!accessToken || !nextRefreshToken) return null;
+
+  return {
+    request: requestWithSession(req, accessToken, nextRefreshToken),
+    accessToken,
+    refreshToken: nextRefreshToken,
+    expiresIn,
+  };
 }
 
 function secret(env: Env) {
@@ -156,36 +217,53 @@ export default {
     try {
       const url = new URL(req.url);
       const path = url.pathname;
+      let effectiveReq = req;
+      let refreshed: RefreshedSession | null = null;
+
+      const finish = (response: Response) => secure(attachRefreshedSession(response, refreshed));
 
       if (path === '/api/health') {
-        return secure(ok({ service: 'sistema-de-catalago', version: 'V81', database: 'Supabase Postgres', storage: 'Supabase Storage', d1: false }));
+        return finish(ok({ service: 'sistema-de-catalago', version: 'V81', database: 'Supabase Postgres', storage: 'Supabase Storage', d1: false }));
       }
 
       if (path.startsWith('/api/admin/')) {
-        const membership = await companyMembership(req, env);
-        if (!membership) return secure(fail('Sessão sem acesso ativo a esta empresa', 403, 'COMPANY_FORBIDDEN'));
-        if (!(await scopedWriteExists(path, req.method, env))) return secure(fail('Registro não encontrado nesta empresa', 404, 'NOT_FOUND'));
+        let membership = await companyMembership(effectiveReq, env);
+        if (!membership && cookie(req, REFRESH_COOKIE)) {
+          refreshed = await refreshSession(req, env);
+          if (refreshed) {
+            effectiveReq = refreshed.request;
+            membership = await companyMembership(effectiveReq, env);
+          }
+        }
+        if (!membership) return finish(fail('Sessão sem acesso ativo a esta empresa', 403, 'COMPANY_FORBIDDEN'));
+        if (!(await scopedWriteExists(path, effectiveReq.method, env))) return finish(fail('Registro não encontrado nesta empresa', 404, 'NOT_FOUND'));
+      } else if (path === '/api/auth/status' && cookie(req, REFRESH_COOKIE)) {
+        const membership = await companyMembership(effectiveReq, env);
+        if (!membership) {
+          refreshed = await refreshSession(req, env);
+          if (refreshed) effectiveReq = refreshed.request;
+        }
       }
 
-      if (path === '/api/public/brands' && req.method === 'GET') {
-        return secure(ok({ brands: await canonicalBrands(env, true) }));
+      if (path === '/api/public/brands' && effectiveReq.method === 'GET') {
+        return finish(ok({ brands: await canonicalBrands(env, true) }));
       }
 
-      if (path === '/api/admin/brands' && req.method === 'GET') {
-        return secure(ok({ brands: await canonicalBrands(env, false) }));
+      if (path === '/api/admin/brands' && effectiveReq.method === 'GET') {
+        return finish(ok({ brands: await canonicalBrands(env, false) }));
       }
 
-      if (path === '/api/public/catalog' && req.method === 'GET') {
-        const base = await worker.fetch(req, env as any);
-        return secure(await enrichCatalogResponse(base, env, true));
+      if (path === '/api/public/catalog' && effectiveReq.method === 'GET') {
+        const base = await worker.fetch(effectiveReq, env as any);
+        return finish(await enrichCatalogResponse(base, env, true));
       }
 
-      if (path === '/api/admin/catalog' && req.method === 'GET') {
-        const base = await worker.fetch(req, env as any);
-        return secure(await enrichCatalogResponse(base, env, false));
+      if (path === '/api/admin/catalog' && effectiveReq.method === 'GET') {
+        const base = await worker.fetch(effectiveReq, env as any);
+        return finish(await enrichCatalogResponse(base, env, false));
       }
 
-      return secure(await worker.fetch(req, env as any));
+      return finish(await worker.fetch(effectiveReq, env as any));
     } catch (error) {
       console.error('V81 Worker error', error);
       return secure(fail('Falha interna ao executar a operação', 500, 'INTERNAL'));
