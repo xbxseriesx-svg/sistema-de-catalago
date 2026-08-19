@@ -28,7 +28,7 @@ const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, systemRuntimeV
 ]);
 
 const version = Number(versionText.trim());
-assert.equal(version, 81, 'Release oficial precisa estar em V81.');
+assert.ok(Number.isInteger(version) && version >= 81, 'Release lógica deve ser numérica e preservar compatibilidade V81+.');
 assert.match(html, /lang="pt-BR"/);
 assert.match(html, /viewport-fit=cover/);
 assert.match(html, /ASTERYON Editor V81/);
@@ -65,7 +65,7 @@ assert.match(bundle, /window\.addEventListener\("orientationchange",r\)/, 'Rende
 assert.match(bundle, /window\.visualViewport\?\.addEventListener\("resize",r\)/, 'Renderer público não monitora visualViewport.');
 assert.match(bundle, /const n=xt\(e,a\),i=t\/Math\.max\(1,n\.width\)/, 'Renderer público não aproveita toda a largura disponível.');
 assert.match(bundle, /LAURENCINI_BRAND/, 'Bundle não contém a normalização de marca V68+.');
-assert.match(bundle, /ASTER_V81_CORE_PATCH/, 'Bundle precisa materializar a auditoria funcional V81.');
+assert.match(bundle, /ASTER_V81_CORE_PATCH/, 'Bundle precisa preservar a camada física funcional V81.');
 assert.match(bundle, /function V81Rules\(/, 'Tela de Regras V81 não foi materializada.');
 assert.match(bundle, /function V81CarouselEditor\(/, 'Editor de Carrossel V81 não foi materializado.');
 assert.match(bundle, /Apenas Marcas/, 'Carrossel não oferece modalidade Apenas Marcas.');
@@ -106,7 +106,7 @@ assert.match(baseWorker, /select=theme,banner,video_banner,carousel,settings/);
 assert.match(baseWorker, /marketingLayout/);
 assert.match(baseWorker, /path === '\/api\/public\/catalog'/);
 assert.doesNotMatch(baseWorker, /departamento_id: 'dep_atacado'/);
-assert.match(workerV81, /version: 'V81'/);
+assert.match(workerV81, new RegExp(`version:\\s*['"]V${version}['"]`), 'health deve acompanhar VERSION');
 assert.match(workerV81, /company_id=eq\.\$\{COMPANY_ID\}/);
 assert.match(workerV81, /canonicalBrands/);
 assert.match(workerV81, /liveOffer/);
@@ -125,7 +125,7 @@ assert.match(previewCssV69, /@media \(max-width:720px\)/);
 assert.match(prepareV81, /ASTER_V81_CORE_PATCH/);
 assert.match(prepareV81, /Bundle V81 já materializado/);
 const packageJson = JSON.parse(pkg);
-assert.equal(packageJson.version, '2.1.81');
+assert.equal(packageJson.version, `2.1.${version}`, 'package.json deve acompanhar VERSION');
 assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/prepare-bundle-v81.mjs');
 assert.match(packageJson.scripts.test, /qa-template-preview-v69\.mjs/);
 assert.match(packageJson.scripts.test, /qa-system-v80\.mjs/);
@@ -144,4 +144,4 @@ execFileSync(process.execPath, ['--check', 'scripts/patch-system-v81.mjs'], { st
 execFileSync(process.execPath, ['--check', 'scripts/qa-template-preview-v69.mjs'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/qa-system-v80.mjs'], { stdio: 'pipe' });
 
-console.log('QA estático da release V81: OK');
+console.log(`QA estático da camada física V81 / release V${version}: OK`);
