@@ -18,6 +18,18 @@ on:
       - 'VERSION'
       - 'scripts/**'
       - '.github/workflows/**'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'worker/**'
+      - 'public/**'
+      - 'wrangler.jsonc'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'VERSION'
+      - 'scripts/**'
+      - '.github/workflows/**'
 
 permissions:
   contents: read
