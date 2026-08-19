@@ -128,7 +128,10 @@
       for (let depth = 0; node instanceof Element && depth < 5; depth += 1, node = node.parentElement) {
         const headingCount = node.querySelectorAll('h1,h2,h3,h4,h5,h6,[role="heading"]').length;
         const clickableCount = node.querySelectorAll(CANDIDATE_SELECTOR).length;
-        if (clickableCount > 0 && headingCount <= 2) best = node;
+        if (clickableCount > 0 && headingCount <= 2) {
+          best = node;
+          break;
+        }
         if (headingCount > 2) break;
       }
       if (best) roots.push(best);
