@@ -3,9 +3,10 @@ import { readFile, readdir } from 'node:fs/promises';
 const read = (path) => readFile(path, 'utf8');
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 
-const [bundle, index, imagePage, progress, wrangler, workerV81, workerV71, workerV72, workerV70, workerV62, version, pkg] = await Promise.all([
+const [bundle, index, runtimeLoaderV87, imagePage, progress, wrangler, workerV81, workerV71, workerV72, workerV70, workerV62, version, pkg] = await Promise.all([
   read('public/assets/index-V60Excel.js'),
   read('public/index.html'),
+  read('public/runtime-loader-v87.js'),
   read('public/importar-imagens.html'),
   read('public/import-progress-v62.js'),
   read('wrangler.jsonc'),
@@ -37,7 +38,10 @@ assert(workerV70.includes("import baseWorker from './index-v62'"), 'Worker V70 p
 assert(workerV62.includes("database: 'Supabase Postgres'"), 'Base V62 não declara Supabase Postgres.');
 assert(workerV62.includes('d1: false'), 'Base V62 precisa declarar d1=false.');
 assert(workerV62.includes("storage: 'Supabase Storage'"), 'Base V62 não declara Supabase Storage.');
-assert(index.includes('/import-progress-v62.js'), 'Editor não carrega o progresso de importação.');
+assert(index.includes('/runtime-loader-v87.js?v=87'), 'Editor precisa ativar o loader contextual V87.');
+assert(runtimeLoaderV87.includes('/import-progress-v62.js?v=81'), 'Loader V87 não preserva o progresso de importação.');
+assert(runtimeLoaderV87.includes('/import-progress-fetch-v62.js?v=81'), 'Loader V87 não preserva o acompanhamento de importação por fetch.');
+assert(runtimeLoaderV87.includes('ADMIN_IMPORT'), 'Importação precisa permanecer disponível sob carregamento contextual no editor.');
 assert(index.includes(`ASTERYON Editor V${versionNumber}`), 'Título do editor não acompanha VERSION.');
 assert(imagePage.includes('/import-progress-v62.js'), 'Importador de imagens não carrega o progresso.');
 assert(imagePage.includes('Supabase Storage'), 'Importador de imagens ainda não identifica o Storage correto.');
@@ -66,4 +70,4 @@ for (const name of workflowFiles) {
   assert(!/wrangler\s+deploy(?!\s+--dry-run)/.test(content), `${name} ainda tenta fazer deploy direto pela Action.`);
 }
 
-console.log(`QA Supabase V70+V81 OK na V${versionNumber}: V81 -> V71 -> V72 -> V70/V62, Supabase e versões validados.`);
+console.log(`QA Supabase V70+V81 OK na V${versionNumber}: V81 -> V71 -> V72 -> V70/V62, Supabase, loader V87 e versões validados.`);

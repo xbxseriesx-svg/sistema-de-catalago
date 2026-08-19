@@ -13,6 +13,8 @@ const mustNot = (content, pattern, label) => {
 };
 
 const index = read('public/index.html');
+const runtimeLoaderV87 = read('public/runtime-loader-v87.js');
+const editorRuntimeV87 = read('public/editor-runtime-v87.js');
 const runtime = read('public/system-runtime-v80.js');
 const runtime81 = read('public/system-runtime-v81.js');
 const marketingCanvas = read('public/marketing-canvas-hotfix.js');
@@ -22,10 +24,11 @@ const pkg = JSON.parse(read('package.json'));
 const version = Number(read('VERSION').trim());
 
 must(index, 'ASTERYON Editor V81', 'título oficial V81');
-must(index, '/system-runtime-v80.js?v=81', 'runtime legado V80 carregado com cache da release V81');
-must(index, '/system-runtime-v81.js?v=81', 'runtime V81 carregado no index');
+must(index, '/runtime-loader-v87.js?v=87', 'loader contextual V87 carregado no index');
+must(runtimeLoaderV87, '/system-runtime-v80.js?v=81&perf=87', 'runtime legado V80 gerido pelo loader V87');
+must(runtimeLoaderV87, '/system-runtime-v81.js?v=81&perf=87', 'runtime V81 gerido pelo loader V87');
 mustNot(index, '/marketing-panel-scope-v79.js', 'V79 antigo não deve continuar ativo');
-must(index, '/marketing-canvas-hotfix.js?v=81', 'objeto de Marketing no canvas carregado');
+must(runtimeLoaderV87, '/marketing-canvas-hotfix.js?v=81&perf=87', 'objeto de Marketing preservado no carregamento contextual');
 
 must(runtime, "['Produtos', 'Importar', 'Estrutura', 'Marcas', 'Ofertas', 'Marketing']", 'seis áreas de Gestão/Vínculos protegidas');
 must(runtime, 'adicionar vitrine editavel', 'detecção da vitrine externa');
@@ -50,11 +53,17 @@ must(marketingCanvas, '/api/admin/marketing', 'canvas persiste posição via Wor
 must(marketingCanvas, 'resize', 'objeto Marketing redimensionável');
 must(marketingCanvas, 'pointermove', 'objeto Marketing movível');
 
-// Regressões de performance V86: o editor não pode serializar a árvore completa
-// em cada atualização de posição/tamanho nem varrer o DOM por mudanças de classe.
-must(index, '/assets/index-V60Excel.js?v=81&perf=86', 'cache do bundle V86 renovado');
-must(index, '/system-runtime-v80.js?v=81&perf=86', 'cache do runtime V80/V86 renovado');
-must(index, '/system-runtime-v81.js?v=81&perf=86', 'cache do runtime V81/V86 renovado');
+// V86 permanece materializado no bundle; a V87 passa a orquestrar os runtimes
+// auxiliares por contexto para reduzir o custo da abertura inicial do editor.
+must(index, '/assets/index-V60Excel.js?v=81&perf=87', 'cache do bundle renovado na V87');
+must(runtimeLoaderV87, '/system-runtime-v80.js?v=81&perf=87', 'cache do runtime V80 renovado na V87');
+must(runtimeLoaderV87, '/system-runtime-v81.js?v=81&perf=87', 'cache do runtime V81 renovado na V87');
+must(runtimeLoaderV87, 'requestIdleCallback', 'runtimes secundários aguardam janela ociosa');
+must(runtimeLoaderV87, 'ADMIN_BRANDS', 'recursos de Marcas usam carregamento contextual');
+must(runtimeLoaderV87, 'ADMIN_IMPORT', 'recursos de Importação usam carregamento contextual');
+must(editorRuntimeV87, 'AUTOSAVE_MS = 850', 'barreira de publicação respeita o debounce do autosave');
+must(editorRuntimeV87, 'flushBeforePublish', 'publicação aguarda preparação do rascunho');
+must(editorRuntimeV87, "replace(/brand/i, 'Marca')", 'rótulo técnico brand é corrigido somente na interface');
 must(bundle, 'ASTER_V86_EDITOR_PERFORMANCE', 'hotfix V86 materializado no bundle');
 mustNot(bundle, 's===null||JSON.stringify(t.nodes)===f.current', 'serialização eager do autosave removida do ciclo de render');
 must(bundle, 'window.setTimeout(()=>{if(JSON.stringify(r.current.nodes)===f.current)return;g(r.current.nodes)', 'serialização do autosave adiada para o debounce');
@@ -79,6 +88,8 @@ must(worker, 'page_snapshots', 'persistência de snapshots Supabase');
 must(worker, 'page_publications', 'persistência de publicações Supabase');
 
 for (const file of [
+  'public/editor-runtime-v87.js',
+  'public/runtime-loader-v87.js',
   'public/system-runtime-v80.js',
   'public/system-runtime-v81.js',
   'scripts/patch-editor-performance-v86.mjs',
@@ -94,5 +105,5 @@ if (pkg.version !== '2.1.81') {
   throw new Error(`QA V81: package version esperada 2.1.81, recebida ${pkg.version}`);
 }
 
-console.log('QA V81/V86 OK — release, editor responsivo, autosave adiado, observers otimizados, Vínculos, Ofertas, Marketing e persistência verificados.');
+console.log('QA V81/V87 OK — V86 materializada, Marca, publicação sincronizada, loader contextual, Vínculos, Ofertas, Marketing e persistência verificados.');
 process.exit(0);

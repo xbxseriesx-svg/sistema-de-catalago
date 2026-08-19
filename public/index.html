@@ -15,22 +15,30 @@
     <link rel="stylesheet" href="/editor-overflow-fix.css?v=81" />
     <link rel="stylesheet" href="/responsive-v67.css?v=81" />
     <link rel="stylesheet" href="/template-preview-v69.css?v=81" />
-    <script type="module" crossorigin src="/assets/index-V60Excel.js?v=81&perf=86"></script>
-    <script defer src="/marketing-canvas-hotfix.js?v=81"></script>
-    <script defer src="/import-images-tab-fix.js?v=81"></script>
-    <script defer src="/import-progress-v62.js?v=81"></script>
-    <script defer src="/import-progress-fetch-v62.js?v=81"></script>
-    <script defer src="/product-modal-v66.js?v=81"></script>
-    <script defer src="/brand-image-search-v70.js?v=81"></script>
-    <script defer src="/brand-image-search-v72.js?v=81"></script>
-    <script defer src="/responsive-v67.js?v=81"></script>
-    <script defer src="/template-preview-v69.js?v=81"></script>
-    <script defer src="/public-global-search-v78.js?v=81"></script>
-    <script defer src="/public-entity-popups-v81.js?v=81"></script>
-    <script defer src="/public-brand-popup-fix-v83.js?v=85"></script>
-    <script defer src="/public-entity-popup-guard-v81.js?v=81"></script>
-    <script defer src="/system-runtime-v80.js?v=81&perf=86"></script>
-    <script defer src="/system-runtime-v81.js?v=81&perf=86"></script>
+
+    <!-- V87: precisa anteceder o bundle para serializar autosave -> publicação. -->
+    <script src="/editor-runtime-v87.js?v=87"></script>
+    <script type="module" crossorigin src="/assets/index-V60Excel.js?v=81&perf=87"></script>
+    <script defer src="/runtime-loader-v87.js?v=87"></script>
+
+    <!--
+      Manifesto dos recursos geridos pelo loader V87 (não são scripts bloqueantes):
+      marketing-canvas-hotfix.js?v=81&perf=87
+      import-images-tab-fix.js?v=81
+      import-progress-v62.js?v=81
+      import-progress-fetch-v62.js?v=81
+      product-modal-v66.js?v=81
+      brand-image-search-v70.js?v=81&perf=87
+      brand-image-search-v72.js?v=81&perf=87
+      responsive-v67.js?v=81
+      template-preview-v69.js?v=81
+      public-global-search-v78.js?v=81
+      public-entity-popups-v81.js?v=81
+      public-brand-popup-fix-v83.js?v=85
+      public-entity-popup-guard-v81.js?v=81
+      system-runtime-v80.js?v=81&perf=87
+      system-runtime-v81.js?v=81&perf=87
+    -->
   </head>
   <body>
     <div id="root"></div>
