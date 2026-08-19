@@ -223,7 +223,7 @@ export default {
       const finish = (response: Response) => secure(attachRefreshedSession(response, refreshed));
 
       if (path === '/api/health') {
-        return finish(ok({ service: 'sistema-de-catalago', version: 'V81', database: 'Supabase Postgres', storage: 'Supabase Storage', d1: false }));
+        return finish(ok({ service: 'sistema-de-catalago', version: 'V89', database: 'Supabase Postgres', storage: 'Supabase Storage', d1: false }));
       }
 
       if (path.startsWith('/api/admin/')) {
