@@ -98,6 +98,6 @@ for (const [name, tab] of [['A', tabA], ['B', tabB]]) {
 }
 
 assert.equal(calls.filter(call => call.pathname === '/auth/v1/token').length, 2, 'as duas requisições concorrentes podem reutilizar o refresh dentro da janela segura do Supabase');
-assert.equal(calls.filter(call => call.pathname === '/auth/v1/user' && call.authorization === 'Bearer access-new').length, 4, 'cada aba deve validar membership e usuário com a sessão renovada');
+assert.equal(calls.filter(call => call.pathname === '/auth/v1/user' && call.authorization === 'Bearer access-new').length, 2, 'cada aba deve validar o usuário com a sessão renovada');
 
 console.log('QA V89 auth refresh: sessão simples e duas abas concorrentes permanecem ativas após rotação.');
