@@ -1,10 +1,12 @@
 (() => {
   'use strict';
 
-  if (window.__ASTERYON_RUNTIME_LOADER_V87__) return;
-  window.__ASTERYON_RUNTIME_LOADER_V87__ = true;
+  if (window.__ASTERYON_RUNTIME_LOADER_V88__) return;
+  window.__ASTERYON_RUNTIME_LOADER_V88__ = true;
 
+  const MARKER = 'ASTER_V88_CONTEXT_LOADER';
   const loaded = new Map();
+
   const normalize = (value) => String(value ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -36,13 +38,14 @@
       const script = document.createElement('script');
       script.src = src;
       script.async = false;
-      script.dataset.asteryonLazyV87 = '1';
+      script.dataset.asteryonLazyV88 = '1';
       script.addEventListener('load', () => resolve(script), { once: true });
       script.addEventListener('error', () => reject(new Error(`Falha ao carregar ${src}`)), { once: true });
       document.head.appendChild(script);
     });
+
     loaded.set(key, promise);
-    promise.catch((error) => console.warn('ASTERYON V87:', error));
+    promise.catch((error) => console.warn('ASTERYON V88:', error));
     return promise;
   }
 
@@ -51,15 +54,15 @@
     for (const item of items) await loadScript(item);
   };
 
-  function idle(callback, timeout = 1200) {
+  function idle(callback, timeout = 3200) {
     if ('requestIdleCallback' in window) {
       window.requestIdleCallback(() => callback(), { timeout });
       return;
     }
-    window.setTimeout(callback, Math.min(timeout, 450));
+    window.setTimeout(callback, timeout);
   }
 
-  const COMMON = ['/responsive-v67.js?v=81'];
+  const COMMON = ['/responsive-v67.js?v=81&perf=88'];
   const PUBLIC = [
     '/product-modal-v66.js?v=81',
     '/public-global-search-v78.js?v=81',
@@ -67,18 +70,11 @@
     '/public-brand-popup-fix-v83.js?v=85',
     '/public-entity-popup-guard-v81.js?v=81',
   ];
-  const ADMIN_CORE = [
-    '/system-runtime-v81.js?v=81&perf=87',
-  ];
-  const ADMIN_IDLE = [
-    '/system-runtime-v80.js?v=81&perf=87',
-    '/marketing-canvas-hotfix.js?v=81&perf=87',
-    '/product-modal-v66.js?v=81',
-    '/template-preview-v69.js?v=81',
-  ];
+  const ADMIN_CORE = ['/system-runtime-v81.js?v=81&perf=88'];
+  const ADMIN_MANAGEMENT = ['/system-runtime-v80.js?v=81&perf=88'];
   const ADMIN_BRANDS = [
-    '/brand-image-search-v70.js?v=81&perf=87',
-    '/brand-image-search-v72.js?v=81&perf=87',
+    '/brand-image-search-v70.js?v=81&perf=88',
+    '/brand-image-search-v72.js?v=81&perf=88',
   ];
   const ADMIN_IMPORT = [
     '/import-images-tab-fix.js?v=81',
@@ -86,18 +82,43 @@
     '/import-progress-fetch-v62.js?v=81',
   ];
 
+  const loadMarketing = () => loadScript('/marketing-canvas-hotfix.js?v=81&perf=88');
+  const loadTemplatePreview = () => loadScript('/template-preview-v69.js?v=81&perf=88');
+  const loadProductModal = () => loadScript('/product-modal-v66.js?v=81');
+
+  const isManagementText = (text) => [
+    'gestao do catalogo',
+    'vinculos',
+    'produtos',
+    'importar',
+    'estrutura',
+    'marcas',
+    'ofertas',
+    'marketing',
+  ].some((label) => text === label || text.includes(label));
+
   function warmForLabel(label) {
     const text = normalize(label);
     if (!text) return;
+
+    if (isManagementText(text)) loadAll(ADMIN_MANAGEMENT);
+
     if (text === 'marcas' || text.includes('nova marca') || text.includes('pesquisar marca')) {
       loadSeries(ADMIN_BRANDS);
     }
+
     if (text === 'importar' || text.includes('importar imagens') || text.includes('planilha')) {
       loadSeries(ADMIN_IMPORT);
     }
-    if (text === 'marketing') loadScript('/marketing-canvas-hotfix.js?v=81&perf=87');
+
+    if (text.includes('marketing')) loadMarketing();
+
     if (text.includes('modelo') || text.includes('template') || text.includes('pre-visual')) {
-      loadScript('/template-preview-v69.js?v=81');
+      loadTemplatePreview();
+    }
+
+    if (text.includes('informacoes do produto') || text.includes('abrir produto') || text === 'produto') {
+      loadProductModal();
     }
   }
 
@@ -109,13 +130,26 @@
       if (!target) return;
       warmForLabel(`${target.textContent || ''} ${target.getAttribute('aria-label') || ''} ${target.getAttribute('placeholder') || ''}`);
     };
+
     document.addEventListener('pointerover', warm, true);
     document.addEventListener('pointerdown', warm, true);
     document.addEventListener('focusin', warm, true);
   }
 
+  function warmVisibleManagementOnce() {
+    const required = new Set(['produtos', 'importar', 'estrutura', 'marcas', 'ofertas', 'marketing']);
+    const visibleLabels = new Set(
+      [...document.querySelectorAll('button')]
+        .filter((button) => button.getClientRects().length > 0)
+        .map((button) => normalize(button.textContent))
+        .filter((text) => required.has(text)),
+    );
+    if (visibleLabels.size >= 4) loadAll(ADMIN_MANAGEMENT);
+  }
+
   async function boot() {
     await loadAll(COMMON);
+
     if (!location.pathname.startsWith('/admin')) {
       await loadAll(PUBLIC);
       return;
@@ -123,9 +157,18 @@
 
     bindAdminIntent();
     await loadAll(ADMIN_CORE);
-    idle(() => loadAll(ADMIN_IDLE), 1400);
+
+    // V88: nenhum runtime pesado de gestão/template/produto é injetado só por
+    // abrir o editor. Marketing recebe apenas uma tentativa tardia e sua própria
+    // rotina V88 garante uma única leitura enquanto estiver inativo.
+    idle(() => {
+      warmVisibleManagementOnce();
+      void loadMarketing();
+    }, 3500);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
   else boot();
+
+  void MARKER;
 })();
