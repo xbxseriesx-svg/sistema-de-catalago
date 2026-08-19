@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 const bundle = await readFile('public/assets/index-V60Excel.js', 'utf8');
 const search = await readFile('public/public-global-search-v78.js', 'utf8');
 const runtime = await readFile('public/system-runtime-v81.js', 'utf8');
+const entityPopups = await readFile('public/public-entity-popups-v81.js', 'utf8');
 const index = await readFile('public/index.html', 'utf8');
 
 assert.match(bundle, /ASTER_V81_CORE_PATCH/, 'Patch V81 não materializado.');
@@ -44,8 +45,8 @@ assert.match(bundle, /Remover/);
 assert.match(bundle, /Confirmar seleção/);
 assert.match(bundle, /selectedBrandIds/);
 assert.match(bundle, /selectedProductIds/);
-assert.match(bundle, /href:"\/produto\/"\+encodeURIComponent\(y\)/, 'Produto selecionado no carrossel precisa abrir sua página/detalhes.');
-assert.match(bundle, /href:"\/marca\/"\+encodeURIComponent\(s\.slug\|\|s\.id\|\|""\)/, 'Logo da marca precisa ser navegável sem texto adicional no slide.');
+assert.match(bundle, /href:"\/produto\/"\+encodeURIComponent\(y\)/, 'Produto selecionado no carrossel precisa ter destino público interceptável pelo popup.');
+assert.match(bundle, /href:"\/marca\/"\+encodeURIComponent\(s\.slug\|\|s\.id\|\|""\)/, 'Logo da marca precisa ter destino público interceptável pelo popup.');
 
 assert.match(search, /Consulta geral do catálogo/);
 assert.match(search, /product\.code|product\.codigo/);
@@ -57,8 +58,21 @@ assert.match(search, /exactCode \? 500/);
 assert.match(search, /SEARCH_BUTTON_LABELS/);
 assert.match(search, /consulta/);
 
+assert.match(index, /public-entity-popups-v81\.js\?v=81/, 'Runtime de popup público precisa estar carregado.');
+assert.match(entityPopups, /function openBrand\(key\)/, 'Popup de marca ausente.');
+assert.match(entityPopups, /function openProduct\(key\)/, 'Popup de produto ausente.');
+assert.match(entityPopups, /parts\[0\] === 'marca'/, 'Links de marca precisam ser interceptados.');
+assert.match(entityPopups, /parts\[0\] === 'produto'/, 'Links de produto precisam ser interceptados.');
+assert.match(entityPopups, /event\.preventDefault\(\)/, 'Popup precisa impedir navegação da página.');
+assert.match(entityPopups, /data-aep81-product/, 'Popup de marca precisa listar produtos clicáveis.');
+assert.match(entityPopups, /data-aep81-brand/, 'Popup de produto precisa permitir abrir a marca.');
+assert.match(entityPopups, /Produtos similares da marca/, 'Popup de produto precisa manter produtos relacionados.');
+assert.match(entityPopups, /role', 'dialog'/, 'Popup precisa ser identificado como diálogo acessível.');
+assert.match(entityPopups, /@media\(max-width:720px\)/, 'Popup precisa ser responsivo no mobile.');
+
 execFileSync(process.execPath, ['--check', 'public/assets/index-V60Excel.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/public-global-search-v78.js'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'public/public-entity-popups-v81.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/system-runtime-v81.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/patch-white-screen-v81.mjs'], { stdio: 'pipe' });
-console.log('QA UI V81: OK — seleção sem tela branca, ações/alinhamento universais, Regras, Carrossel e Consulta geral validados.');
+console.log('QA UI V81: OK — seleção sem tela branca, ações universais, Regras, Carrossel, Consulta e popups Marca/Produto validados.');
