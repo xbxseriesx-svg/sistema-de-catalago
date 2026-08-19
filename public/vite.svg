@@ -1,20 +1,5 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-    <title>Asteryon Visual Editor V3</title>
-    <meta property="og:image" content="https://bolt.new/static/og_default.png" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://bolt.new/static/og_default.png" />
-    <script type="module" crossorigin src="/assets/index-_J4BqdfT.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DKw9VCg7.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
-</html>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ASTERYON">
+  <rect width="64" height="64" rx="14" fill="#123F7D"/>
+  <path d="M32 10 53 51h-9.5l-4.2-9H24.7l-4.2 9H11L32 10Zm0 16.2L28.2 34h7.6L32 26.2Z" fill="#fff"/>
+  <circle cx="48" cy="16" r="5" fill="#D13130"/>
+</svg>
