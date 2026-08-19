@@ -66,6 +66,17 @@ function collectRuntimeErrors(page) {
   return errors;
 }
 
+async function openManagementPanel(page, testInfo) {
+  const heading = page.getByText(/Gest[aã]o do Cat[aá]logo/i).first();
+  if (testInfo.project.name.includes('mobile')) {
+    await expect(heading).toBeHidden({ timeout: 10_000 });
+    const panelButton = page.getByRole('button', { name: /Painel/i }).first();
+    await expect(panelButton).toBeVisible();
+    await panelButton.click();
+  }
+  await expect(heading).toBeVisible({ timeout: 15_000 });
+}
+
 test('página pública abre sem tela branca e sem overflow horizontal', async ({ page }) => {
   await installApiMocks(page);
   const errors = collectRuntimeErrors(page);
@@ -85,7 +96,7 @@ test('editor autenticado renderiza Gestão do Catálogo e abas principais sem er
 
   await page.goto('/admin', { waitUntil: 'networkidle' });
   await expect(page.locator('#root')).toBeVisible();
-  await expect(page.getByText(/Gest[aã]o do Cat[aá]logo/i).first()).toBeVisible({ timeout: 15_000 });
+  await openManagementPanel(page, testInfo);
 
   for (const label of ['Produtos', 'Importar', 'Estrutura', 'Marcas', 'Ofertas', 'Marketing']) {
     await expect(page.getByRole('button', { name: new RegExp(`^${label}$`, 'i') }).first()).toBeVisible();
@@ -103,12 +114,12 @@ test('editor autenticado renderiza Gestão do Catálogo e abas principais sem er
   expect(errors).toEqual([]);
 });
 
-test('editor mantém controles alcançáveis por teclado', async ({ page }) => {
+test('editor mantém controles alcançáveis por teclado', async ({ page }, testInfo) => {
   await installApiMocks(page);
   const errors = collectRuntimeErrors(page);
 
   await page.goto('/admin', { waitUntil: 'networkidle' });
-  await expect(page.getByText(/Gest[aã]o do Cat[aá]logo/i).first()).toBeVisible({ timeout: 15_000 });
+  await openManagementPanel(page, testInfo);
 
   for (let i = 0; i < 12; i += 1) await page.keyboard.press('Tab');
   const focused = await page.evaluate(() => {
