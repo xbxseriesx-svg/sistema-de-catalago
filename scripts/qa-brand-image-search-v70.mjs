@@ -16,9 +16,10 @@ const [index, uiV70, uiV72, pickerHtml, pickerJs, workerV81, workerV71, workerV7
   readFile('VERSION', 'utf8').then((value) => value.trim()),
 ]);
 
-assert.ok(Number(version) >= 70, 'A pesquisa de imagens das marcas exige V70 ou superior.');
-assert.match(index, /brand-image-search-v70\.js\?v=81/, 'Editor não carrega a interface base da pesquisa com cache da release V81.');
-assert.match(index, /brand-image-search-v72\.js\?v=81/, 'Editor não carrega o isolamento de marcas com cache da release V81.');
+const release = Number(version);
+assert.ok(release >= 70, 'A pesquisa de imagens das marcas exige V70 ou superior.');
+assert.match(index, new RegExp(`brand-image-search-v70\\.js\\?v=${release}`), `Editor não carrega a interface base da pesquisa com cache da release V${release}.`);
+assert.match(index, new RegExp(`brand-image-search-v72\\.js\\?v=${release}`), `Editor não carrega o isolamento de marcas com cache da release V${release}.`);
 assert.match(wrangler, /"main":\s*"worker\/index-v81\.ts"/, 'Wrangler precisa apontar para a entrada auditada V81.');
 assert.match(workerV81, /import worker from '\.\/index-v71'/, 'V81 precisa preservar a cadeia V71/V72/V70.');
 assert.match(workerV71, /import worker from '\.\/index-v72'/, 'Entrada V71 não encaminha para V72.');
@@ -82,4 +83,4 @@ execFileSync(process.execPath, ['--check', 'public/brand-image-search-v70.js'], 
 execFileSync(process.execPath, ['--check', 'public/brand-image-search-v72.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/google-image-picker-v73.js'], { stdio: 'pipe' });
 
-console.log('QA pesquisa de imagens V77+V81: OK (brandId isolado + pesquisa web + upload manual + WEBP, sem propagação entre marcas)');
+console.log(`QA pesquisa de imagens V77+V81 na release V${release}: OK (brandId isolado + pesquisa web + upload manual + WEBP, sem propagação entre marcas)`);
