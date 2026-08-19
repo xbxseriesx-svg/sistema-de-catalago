@@ -3,6 +3,7 @@
 
   if (window.__ASTERYON_SYSTEM_RUNTIME_V80__) return;
   window.__ASTERYON_SYSTEM_RUNTIME_V80__ = true;
+  if (!location.pathname.startsWith('/admin')) return;
 
   const HIDDEN = 'data-asteryon-v80-hidden';
   const STYLE_MARK = 'data-asteryon-v80-layout';
@@ -179,7 +180,6 @@
 
   function sync() {
     restore();
-    if (!location.pathname.startsWith('/admin')) return;
 
     const section = findManagementSection();
     const context = findLinksContext(section);
@@ -197,27 +197,44 @@
     isolateNestedPanel(context);
   }
 
-  let frame = 0;
-  const schedule = () => {
-    if (frame) return;
-    frame = requestAnimationFrame(() => {
-      frame = 0;
-      sync();
-    });
+  let timer = 0;
+  let pointerActive = false;
+
+  const schedule = (delay = 90) => {
+    window.clearTimeout(timer);
+    if (pointerActive) return;
+    timer = window.setTimeout(() => {
+      timer = 0;
+      if (!pointerActive) sync();
+    }, delay);
   };
 
-  const observer = new MutationObserver(schedule);
+  // V86: observar somente mudanças estruturais. Alterações de class/aria acontecem
+  // em grande volume durante seleção, drag e resize e causavam varreduras completas
+  // do DOM em praticamente todo frame do editor.
+  const observer = new MutationObserver(() => schedule(120));
   observer.observe(document.documentElement, {
     childList: true,
     subtree: true,
-    attributes: true,
-    attributeFilter: ['class', 'aria-selected', 'aria-pressed'],
   });
 
-  document.addEventListener('click', () => setTimeout(schedule, 0), true);
-  window.addEventListener('resize', schedule, { passive: true });
-  window.addEventListener('popstate', schedule);
+  const endPointerWork = () => {
+    if (!pointerActive) return;
+    pointerActive = false;
+    schedule(0);
+  };
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', schedule, { once: true });
-  else schedule();
+  document.addEventListener('pointerdown', () => {
+    pointerActive = true;
+    window.clearTimeout(timer);
+    timer = 0;
+  }, true);
+  document.addEventListener('pointerup', endPointerWork, true);
+  document.addEventListener('pointercancel', endPointerWork, true);
+  document.addEventListener('click', () => schedule(30), true);
+  window.addEventListener('resize', () => schedule(50), { passive: true });
+  window.addEventListener('popstate', () => schedule(0));
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => schedule(0), { once: true });
+  else schedule(0);
 })();

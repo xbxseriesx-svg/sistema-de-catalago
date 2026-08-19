@@ -5,6 +5,7 @@ import process from 'node:process';
 const bundlePath = 'public/assets/index-V60Excel.js';
 const marker = 'ASTER_V81_CORE_PATCH';
 const whiteScreenMarker = 'ASTER_V81_WHITE_SCREEN_FIX';
+const performanceMarker = 'ASTER_V86_EDITOR_PERFORMANCE';
 
 // O Modelo Oficial é fonte auxiliar independente do bundle e precisa permanecer
 // normalizado mesmo quando o bundle V81 já está materializado.
@@ -38,6 +39,14 @@ bundle = await readFile(bundlePath, 'utf8');
 if (!bundle.includes(whiteScreenMarker)) {
   execFileSync(process.execPath, ['scripts/patch-white-screen-v81.mjs'], { stdio: 'inherit' });
 }
-const finalBundle = await readFile(bundlePath, 'utf8');
-if (!finalBundle.includes(whiteScreenMarker)) throw new Error('Hotfix V81 de tela branca não foi materializado.');
-console.log('Bundle V81 validado com hotfix de seleção/inspector.');
+bundle = await readFile(bundlePath, 'utf8');
+if (!bundle.includes(whiteScreenMarker)) throw new Error('Hotfix V81 de tela branca não foi materializado.');
+
+// V86: o autosave continua com o debounce original de 850 ms, mas deixa de
+// serializar a árvore completa do editor em cada atualização de drag/resize.
+if (!bundle.includes(performanceMarker)) {
+  execFileSync(process.execPath, ['scripts/patch-editor-performance-v86.mjs'], { stdio: 'inherit' });
+}
+bundle = await readFile(bundlePath, 'utf8');
+if (!bundle.includes(performanceMarker)) throw new Error('Hotfix V86 de performance não foi materializado.');
+console.log('Bundle V81 validado com hotfixes de seleção e performance V86.');

@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
 const html = await readFile('public/index.html', 'utf8');
-const bundlePath = html.match(/src="\/(assets\/index-[^"?]+\.js)(?:\?v=\d+)?"/)?.[1];
+const bundlePath = html.match(/src="\/(assets\/index-[^"?]+\.js)(?:\?v=\d+(?:&[^"\s]+)?)?"/)?.[1];
 assert.ok(bundlePath, 'o HTML precisa apontar para o bundle JavaScript versionado');
 
 const [css, responsiveCss, responsiveJs, bundle, marketingHotfix, systemRuntimeV80, systemRuntimeV81, baseWorker, workerV81, workerV62, pkg, imageImporter, importProgress, productModalV66, previewV69, previewCssV69, versionText, prepareV81] = await Promise.all([
