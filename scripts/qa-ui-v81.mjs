@@ -6,6 +6,7 @@ const bundle = await readFile('public/assets/index-V60Excel.js', 'utf8');
 const search = await readFile('public/public-global-search-v78.js', 'utf8');
 const runtime = await readFile('public/system-runtime-v81.js', 'utf8');
 const entityPopups = await readFile('public/public-entity-popups-v81.js', 'utf8');
+const popupGuard = await readFile('public/public-entity-popup-guard-v81.js', 'utf8');
 const index = await readFile('public/index.html', 'utf8');
 
 assert.match(bundle, /ASTER_V81_CORE_PATCH/, 'Patch V81 não materializado.');
@@ -57,8 +58,10 @@ assert.match(search, /category\?\.name/);
 assert.match(search, /exactCode \? 500/);
 assert.match(search, /SEARCH_BUTTON_LABELS/);
 assert.match(search, /consulta/);
+assert.match(search, /asteryon-global-search-v78\[data-open="true"\]/, 'Busca geral precisa expor estado data-open para coexistir com os popups.');
 
 assert.match(index, /public-entity-popups-v81\.js\?v=81/, 'Runtime de popup público precisa estar carregado.');
+assert.match(index, /public-entity-popup-guard-v81\.js\?v=81/, 'Guard de scroll dos popups precisa estar carregado.');
 assert.match(entityPopups, /function openBrand\(key\)/, 'Popup de marca ausente.');
 assert.match(entityPopups, /function openProduct\(key\)/, 'Popup de produto ausente.');
 assert.match(entityPopups, /parts\[0\] === 'marca'/, 'Links de marca precisam ser interceptados.');
@@ -69,10 +72,16 @@ assert.match(entityPopups, /data-aep81-brand/, 'Popup de produto precisa permiti
 assert.match(entityPopups, /Produtos similares da marca/, 'Popup de produto precisa manter produtos relacionados.');
 assert.match(entityPopups, /role', 'dialog'/, 'Popup precisa ser identificado como diálogo acessível.');
 assert.match(entityPopups, /@media\(max-width:720px\)/, 'Popup precisa ser responsivo no mobile.');
+assert.match(popupGuard, /asteryon-entity-popup-v81/, 'Guard precisa observar popup de entidade.');
+assert.match(popupGuard, /asteryon-global-search-v78/, 'Guard precisa observar popup de busca.');
+assert.match(popupGuard, /MutationObserver/, 'Guard precisa reagir à troca de estado dos popups.');
+assert.match(popupGuard, /entity\?\.dataset\.open === 'true'/, 'Guard precisa reconhecer entidade aberta.');
+assert.match(popupGuard, /search\?\.dataset\.open === 'true'/, 'Guard precisa reconhecer busca aberta.');
 
 execFileSync(process.execPath, ['--check', 'public/assets/index-V60Excel.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/public-global-search-v78.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/public-entity-popups-v81.js'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'public/public-entity-popup-guard-v81.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/system-runtime-v81.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/patch-white-screen-v81.mjs'], { stdio: 'pipe' });
 console.log('QA UI V81: OK — seleção sem tela branca, ações universais, Regras, Carrossel, Consulta e popups Marca/Produto validados.');
