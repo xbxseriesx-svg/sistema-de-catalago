@@ -137,12 +137,14 @@
   }
 
   function warmVisibleManagementOnce() {
-    const buttons = [...document.querySelectorAll('button')];
-    const hasManagement = buttons.some((button) => {
-      const text = normalize(button.textContent);
-      return ['produtos', 'importar', 'estrutura', 'marcas', 'ofertas', 'marketing'].includes(text);
-    });
-    if (hasManagement) loadAll(ADMIN_MANAGEMENT);
+    const required = new Set(['produtos', 'importar', 'estrutura', 'marcas', 'ofertas', 'marketing']);
+    const visibleLabels = new Set(
+      [...document.querySelectorAll('button')]
+        .filter((button) => button.getClientRects().length > 0)
+        .map((button) => normalize(button.textContent))
+        .filter((text) => required.has(text)),
+    );
+    if (visibleLabels.size >= 4) loadAll(ADMIN_MANAGEMENT);
   }
 
   async function boot() {
