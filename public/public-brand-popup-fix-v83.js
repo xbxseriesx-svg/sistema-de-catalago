@@ -1,13 +1,10 @@
 (() => {
   'use strict';
 
-  const VERSION = '83';
+  const VERSION = '85';
   const POPUP_ROOT_ID = 'asteryon-entity-popup-v81';
-  const BRAND_ATTR = 'data-aep83-brand';
-
-  if (location.pathname.startsWith('/admin')) return;
-  if (window.__ASTERYON_BRAND_POPUP_FIX_V83__) return;
-  window.__ASTERYON_BRAND_POPUP_FIX_V83__ = true;
+  const BOUND_ATTR = 'data-asteryon-brand-bound-v85';
+  const OVERLAY_ATTR = 'data-asteryon-brand-runtime-v85';
 
   const text = (value) => String(value ?? '').replace(/\s+/g, ' ').trim();
   const normalize = (value) => text(value)
@@ -15,290 +12,320 @@
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
-  const BRAND_DATA_ATTRS = [
-    'data-brand-id',
-    'data-brand',
-    'data-brand-slug',
-    'data-marca-id',
-    'data-marca',
-    'data-marca-slug',
-    BRAND_ATTR,
-  ];
+  function flattenNodes(nodes, output = []) {
+    if (!Array.isArray(nodes)) return output;
+    for (const node of nodes) {
+      if (!node || typeof node !== 'object') continue;
+      output.push(node);
+      if (Array.isArray(node.children)) flattenNodes(node.children, output);
+    }
+    return output;
+  }
 
-  const CANDIDATE_SELECTOR = [
-    'a[href]',
-    'button',
-    '[role="button"]',
-    '[tabindex]',
-    '[data-brand-id]',
-    '[data-brand]',
-    '[data-brand-slug]',
-    '[data-marca-id]',
-    '[data-marca]',
-    '[data-marca-slug]',
-    `[${BRAND_ATTR}]`,
-    '[class*="brand"]',
-    '[class*="Brand"]',
-    '[class*="marca"]',
-    '[class*="Marca"]',
-    '[class*="card"]',
-    '[class*="Card"]',
-    '[class*="cursor-pointer"]',
-  ].join(',');
+  function pageNodes(payload) {
+    const page = payload?.page ?? payload ?? {};
+    return page.nodes
+      || page.publishedNodes
+      || page.published_nodes
+      || payload?.nodes
+      || [];
+  }
 
-  let brandRecords = [];
-  let brandLoadPromise = null;
-  let annotateTimer = 0;
+  function normalizeBrandRecord(brand) {
+    const id = text(brand?.id);
+    const slug = text(brand?.slug);
+    const name = text(brand?.name);
+    const logoUrl = text(brand?.logoUrl || brand?.logo_url || brand?.logo || '');
+    return {
+      ...brand,
+      id,
+      slug,
+      name,
+      logoUrl,
+      keys: new Set([id, slug, name].map(normalize).filter(Boolean)),
+    };
+  }
+
+  function normalizeBrands(payload) {
+    const list = Array.isArray(payload?.brands)
+      ? payload.brands
+      : Array.isArray(payload)
+        ? payload
+        : [];
+    return list
+      .map(normalizeBrandRecord)
+      .filter((brand) => brand.id || brand.slug || brand.name);
+  }
+
+  function brandKeyFromPageNode(node) {
+    if (!node || node.type !== 'brand') return '';
+    const props = node.props || {};
+    return text(
+      props.actionEntityId
+      || props.brandId
+      || props.brand_id
+      || props.actionValue
+      || props.brandSlug
+      || props.brand_slug
+      || props.slug
+      || '',
+    );
+  }
+
+  function resolveBrand(value, brands) {
+    const wanted = normalize(value);
+    if (!wanted) return null;
+    return brands.find((brand) => brand.keys.has(wanted)) || null;
+  }
+
+  function buildBindingPlan(pagePayload, brandsPayload) {
+    const brands = normalizeBrands(brandsPayload);
+    const nodes = flattenNodes(pageNodes(pagePayload));
+    const plan = [];
+
+    for (const node of nodes) {
+      if (node?.type !== 'brand' || !text(node.id)) continue;
+      const key = brandKeyFromPageNode(node);
+      if (!key) continue;
+      const brand = resolveBrand(key, brands);
+      if (!brand) continue;
+      plan.push({ nodeId: text(node.id), brand });
+    }
+    return plan;
+  }
+
+  const testApi = {
+    flattenNodes,
+    pageNodes,
+    normalizeBrands,
+    brandKeyFromPageNode,
+    resolveBrand,
+    buildBindingPlan,
+  };
+
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    globalThis.__ASTERYON_BRAND_POPUP_FIX_TEST__ = testApi;
+    return;
+  }
+
+  if (location.pathname.startsWith('/admin')) return;
+  if (window.__ASTERYON_BRAND_POPUP_FIX_V85__) return;
+  window.__ASTERYON_BRAND_POPUP_FIX_V85__ = true;
+
+  let pagePayload = null;
+  let brandPayload = null;
+  let plan = [];
+  let refreshPromise = null;
+  let bindTimer = 0;
+  let styleInstalled = false;
 
   function popupApi() {
     const api = window.AsteryonEntityPopups;
     return api && typeof api.openBrand === 'function' ? api : null;
   }
 
-  function decodeSafe(value) {
-    try { return decodeURIComponent(value); } catch { return value; }
+  async function fetchJson(url) {
+    const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+    if (!response.ok) throw new Error(`HTTP ${response.status} em ${url}`);
+    const payload = await response.json();
+    if (payload?.ok === false) throw new Error(payload?.error?.message || `Falha em ${url}`);
+    return payload;
   }
 
-  function cleanBrandLabel(value) {
-    let result = text(value);
-    if (!result) return '';
-    result = result
-      .replace(/^(abrir|ver|acessar|visualizar)\s+(a\s+)?marca\s*[:\-–—]?\s*/i, '')
-      .replace(/^marca\s*[:\-–—]?\s*/i, '')
-      .replace(/^logo\s+(da\s+|de\s+)?/i, '')
-      .replace(/\s+(logo|marca)$/i, '')
-      .trim();
-    return result;
-  }
-
-  function brandFromHref(element) {
-    const anchor = element?.closest?.('a[href]');
-    if (!(anchor instanceof HTMLAnchorElement)) return '';
-    try {
-      const url = new URL(anchor.href, location.href);
-      if (url.origin !== location.origin) return '';
-      const parts = url.pathname.split('/').filter(Boolean);
-      if (parts[0] !== 'marca' || parts.length < 2) return '';
-      return decodeSafe(parts.slice(1).join('/'));
-    } catch {
-      return '';
-    }
-  }
-
-  function brandFromDataset(element) {
-    let node = element;
-    for (let depth = 0; node instanceof Element && depth < 8; depth += 1, node = node.parentElement) {
-      for (const attr of BRAND_DATA_ATTRS) {
-        const value = text(node.getAttribute(attr));
-        if (value) return value;
+  function installStyle() {
+    if (styleInstalled) return;
+    styleInstalled = true;
+    const style = document.createElement('style');
+    style.id = 'asteryon-brand-runtime-v85-style';
+    style.textContent = `
+      [${BOUND_ATTR}="1"] { cursor: pointer !important; }
+      [${OVERLAY_ATTR}] {
+        position: absolute;
+        inset: 0;
+        z-index: 6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        box-sizing: border-box;
+        overflow: hidden;
+        pointer-events: none;
+        background: #fff;
+        border-radius: inherit;
       }
-    }
-    return '';
-  }
-
-  function findClickableCandidate(target) {
-    if (!(target instanceof Element)) return null;
-    const direct = target.closest(CANDIDATE_SELECTOR);
-    if (direct) return direct;
-
-    let node = target;
-    for (let depth = 0; node instanceof HTMLElement && depth < 8; depth += 1, node = node.parentElement) {
-      try {
-        if (getComputedStyle(node).cursor === 'pointer') return node;
-      } catch {}
-    }
-    return null;
-  }
-
-  function headingLooksLikeBrandSection(value) {
-    const normalized = normalize(value);
-    return /\bmarcas?\b/.test(normalized)
-      && (!/\bprodutos?\b/.test(normalized) || /marcas?\s+em\s+destaque/.test(normalized));
-  }
-
-  function brandSectionRoots() {
-    const roots = [];
-    const headings = document.querySelectorAll('h1,h2,h3,h4,h5,h6,[role="heading"]');
-
-    for (const heading of headings) {
-      if (!headingLooksLikeBrandSection(heading.textContent || '')) continue;
-
-      let node = heading.parentElement;
-      let best = node;
-      for (let depth = 0; node instanceof Element && depth < 5; depth += 1, node = node.parentElement) {
-        const headingCount = node.querySelectorAll('h1,h2,h3,h4,h5,h6,[role="heading"]').length;
-        const clickableCount = node.querySelectorAll(CANDIDATE_SELECTOR).length;
-        if (clickableCount > 0 && headingCount <= 2) {
-          best = node;
-          break;
-        }
-        if (headingCount > 2) break;
+      [${OVERLAY_ATTR}] img {
+        display: block;
+        width: auto;
+        height: auto;
+        max-width: 88%;
+        max-height: 78%;
+        object-fit: contain;
       }
-      if (best) roots.push(best);
+      [${OVERLAY_ATTR}] span {
+        display: block;
+        max-width: 92%;
+        color: #334155;
+        font: 700 14px/1.25 Inter, system-ui, sans-serif;
+        text-align: center;
+        overflow-wrap: anywhere;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function fallbackName(overlay, brand) {
+    overlay.replaceChildren();
+    const label = document.createElement('span');
+    label.textContent = brand.name || brand.slug || brand.id || 'Marca';
+    overlay.appendChild(label);
+  }
+
+  function renderBrandOverlay(card, brand) {
+    installStyle();
+    let overlay = Array.from(card.children || []).find(
+      (child) => child instanceof Element && child.hasAttribute(OVERLAY_ATTR),
+    );
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.setAttribute(OVERLAY_ATTR, '1');
+      card.appendChild(overlay);
     }
-    return roots;
+
+    const signature = `${brand.id}|${brand.logoUrl}|${brand.name}`;
+    if (overlay.getAttribute('data-signature') === signature) return;
+    overlay.setAttribute('data-signature', signature);
+    overlay.replaceChildren();
+
+    if (brand.logoUrl) {
+      const image = document.createElement('img');
+      image.src = brand.logoUrl;
+      image.alt = brand.name ? `Logo ${brand.name}` : 'Logo da marca';
+      image.loading = 'eager';
+      image.decoding = 'async';
+      image.addEventListener('error', () => fallbackName(overlay, brand), { once: true });
+      overlay.appendChild(image);
+    } else {
+      fallbackName(overlay, brand);
+    }
   }
 
-  function isInsideBrandSection(candidate) {
-    if (!(candidate instanceof Element)) return false;
-    const ownClass = `${candidate.className || ''} ${candidate.id || ''}`;
-    if (/brand|marca/i.test(ownClass) && !/product|produto/i.test(ownClass)) return true;
-    return brandSectionRoots().some((root) => root?.contains(candidate));
+  function domNodeMap() {
+    return new Map(
+      Array.from(document.querySelectorAll('[data-node-id]'))
+        .map((element) => [text(element.getAttribute('data-node-id')), element])
+        .filter(([id]) => id),
+    );
   }
 
-  function setBrands(catalog) {
-    const brands = Array.isArray(catalog?.brands) ? catalog.brands : [];
-    brandRecords = brands
-      .map((brand) => ({
-        id: text(brand?.id),
-        slug: text(brand?.slug),
-        name: text(brand?.name),
-      }))
-      .filter((brand) => brand.id || brand.slug || brand.name)
-      .map((brand) => ({
-        ...brand,
-        keys: new Set([brand.id, brand.slug, brand.name].map(normalize).filter(Boolean)),
-      }));
-    return brandRecords;
+  function bindCard(card, brand) {
+    if (!(card instanceof HTMLElement) || !brand) return;
+    if (card.closest(`#${POPUP_ROOT_ID}`)) return;
+
+    card.setAttribute(BOUND_ATTR, '1');
+    card.setAttribute('data-brand-id', brand.id || brand.slug || brand.name);
+    card.setAttribute('data-brand-card', '1');
+    card.setAttribute('data-aep85-brand', brand.id || brand.slug || brand.name);
+    card.setAttribute('role', 'button');
+    if (!card.hasAttribute('tabindex')) card.tabIndex = 0;
+    card.setAttribute('aria-label', `Abrir marca ${brand.name || brand.slug || brand.id}`);
+    card.setAttribute('title', brand.name || brand.slug || brand.id);
+
+    const position = getComputedStyle(card).position;
+    if (!position || position === 'static') card.style.position = 'relative';
+    renderBrandOverlay(card, brand);
   }
 
-  function primeBrands(force = false) {
-    if (brandLoadPromise && !force) return brandLoadPromise;
-    const api = popupApi();
-    if (!api || typeof api.refresh !== 'function') return Promise.resolve(brandRecords);
+  function bindPublishedBrandNodes() {
+    if (!plan.length) return 0;
+    const nodes = domNodeMap();
+    let bound = 0;
+    for (const item of plan) {
+      const card = nodes.get(item.nodeId);
+      if (!card) continue;
+      bindCard(card, item.brand);
+      bound += 1;
+    }
+    return bound;
+  }
 
-    brandLoadPromise = Promise.resolve(api.refresh())
-      .then((catalog) => setBrands(catalog))
-      .catch(() => brandRecords)
+  function scheduleBind() {
+    clearTimeout(bindTimer);
+    bindTimer = window.setTimeout(bindPublishedBrandNodes, 60);
+  }
+
+  async function refresh(force = false) {
+    if (refreshPromise && !force) return refreshPromise;
+    refreshPromise = Promise.all([
+      fetchJson('/api/public/pages/home'),
+      fetchJson('/api/public/brands'),
+    ])
+      .then(([page, brands]) => {
+        pagePayload = page;
+        brandPayload = brands;
+        plan = buildBindingPlan(pagePayload, brandPayload);
+        scheduleBind();
+        return { page: pagePayload, brands: normalizeBrands(brandPayload), plan };
+      })
+      .catch((error) => {
+        console.error('[Asteryon V85] Falha ao vincular cards de marca:', error);
+        return { page: pagePayload, brands: normalizeBrands(brandPayload), plan };
+      })
       .finally(() => {
-        scheduleAnnotate();
+        refreshPromise = null;
       });
-    return brandLoadPromise;
+    return refreshPromise;
   }
 
-  function resolveBrand(value) {
-    const wanted = normalize(cleanBrandLabel(value));
-    if (!wanted) return null;
-    return brandRecords.find((brand) => brand.keys.has(wanted)) || null;
+  function boundCardFromTarget(target) {
+    return target instanceof Element ? target.closest(`[${BOUND_ATTR}="1"]`) : null;
   }
 
-  function strongVisualValues(candidate, target) {
-    const values = [];
-    const push = (value) => {
-      const cleaned = cleanBrandLabel(value);
-      if (cleaned) values.push(cleaned);
-    };
+  function openBoundCard(card, event) {
+    if (!(card instanceof Element)) return false;
+    const brandId = text(card.getAttribute('data-brand-id'));
+    if (!brandId) return false;
+    const api = popupApi();
+    if (!api) return false;
 
-    push(candidate?.getAttribute?.('aria-label'));
-    push(candidate?.getAttribute?.('title'));
-
-    const clickedImage = target?.closest?.('img[alt]');
-    push(clickedImage?.getAttribute?.('alt'));
-
-    const candidateImage = candidate?.querySelector?.('img[alt]');
-    push(candidateImage?.getAttribute?.('alt'));
-
-    push(candidate?.innerText || candidate?.textContent || '');
-    return [...new Set(values)];
-  }
-
-  function contextualVisualValues(candidate) {
-    return String(candidate?.innerText || candidate?.textContent || '')
-      .split(/\n+/)
-      .map(cleanBrandLabel)
-      .filter(Boolean);
-  }
-
-  function resolveCandidateBrand(candidate, target, allowLines = false) {
-    const explicit = brandFromDataset(target) || brandFromHref(candidate);
-    if (explicit) return resolveBrand(explicit) || { id: explicit, slug: '', name: explicit };
-
-    for (const value of strongVisualValues(candidate, target)) {
-      const found = resolveBrand(value);
-      if (found) return found;
-    }
-
-    if (allowLines) {
-      for (const value of contextualVisualValues(candidate)) {
-        const found = resolveBrand(value);
-        if (found) return found;
-      }
-    }
-    return null;
-  }
-
-  function markCandidate(candidate, brand) {
-    if (!(candidate instanceof Element) || !brand) return;
-    candidate.setAttribute(BRAND_ATTR, brand.id || brand.slug || brand.name);
-  }
-
-  function annotateBrandCards() {
-    if (!brandRecords.length) return;
-
-    const candidates = document.querySelectorAll(CANDIDATE_SELECTOR);
-    for (const candidate of candidates) {
-      if (!(candidate instanceof Element)) continue;
-      if (candidate.closest(`#${POPUP_ROOT_ID}`)) continue;
-      if (candidate.hasAttribute(BRAND_ATTR)) continue;
-
-      const contextual = isInsideBrandSection(candidate);
-      const brand = resolveCandidateBrand(candidate, candidate, contextual);
-      if (brand) markCandidate(candidate, brand);
-    }
-  }
-
-  function scheduleAnnotate() {
-    clearTimeout(annotateTimer);
-    annotateTimer = setTimeout(annotateBrandCards, 80);
+    event?.preventDefault?.();
+    event?.stopPropagation?.();
+    event?.stopImmediatePropagation?.();
+    api.openBrand(brandId);
+    return true;
   }
 
   document.addEventListener('click', (event) => {
-    if (!(event.target instanceof Element)) return;
-    if (event.target.closest(`#${POPUP_ROOT_ID}`)) return;
-
-    const api = popupApi();
-    if (!api) return;
-
-    const candidate = findClickableCandidate(event.target);
-    if (!candidate) return;
-
-    const explicit = brandFromDataset(event.target) || brandFromHref(candidate);
-    const contextual = isInsideBrandSection(candidate);
-    let brand = resolveCandidateBrand(candidate, event.target, contextual);
-
-    if (!brand && explicit) brand = { id: explicit, slug: '', name: explicit };
-    if (!brand) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    event.stopImmediatePropagation?.();
-    markCandidate(candidate, brand);
-    api.openBrand(brand.id || brand.slug || brand.name);
+    const card = boundCardFromTarget(event.target);
+    if (!card || card.closest(`#${POPUP_ROOT_ID}`)) return;
+    openBoundCard(card, event);
   }, true);
 
-  const observer = new MutationObserver(() => scheduleAnnotate());
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    const card = boundCardFromTarget(event.target);
+    if (!card || card.closest(`#${POPUP_ROOT_ID}`)) return;
+    openBoundCard(card, event);
+  }, true);
+
+  const observer = new MutationObserver(() => scheduleBind());
   observer.observe(document.documentElement, { childList: true, subtree: true });
 
+  function boot() {
+    refresh();
+    scheduleBind();
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      primeBrands();
-      scheduleAnnotate();
-    }, { once: true });
+    document.addEventListener('DOMContentLoaded', boot, { once: true });
   } else {
-    primeBrands();
-    scheduleAnnotate();
+    boot();
   }
 
   window.AsteryonBrandPopupFix = {
     version: VERSION,
-    refresh: () => primeBrands(true),
-    annotate: annotateBrandCards,
-    detect: (element) => {
-      if (!(element instanceof Element)) return '';
-      const candidate = findClickableCandidate(element);
-      if (!candidate) return '';
-      const brand = resolveCandidateBrand(candidate, element, isInsideBrandSection(candidate));
-      return brand ? (brand.id || brand.slug || brand.name) : '';
-    },
+    refresh: () => refresh(true),
+    annotate: bindPublishedBrandNodes,
+    plan: () => plan.slice(),
+    test: testApi,
   };
 })();

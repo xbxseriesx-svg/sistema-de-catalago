@@ -62,7 +62,7 @@ assert.match(search, /consulta/);
 assert.match(search, /asteryon-global-search-v78\[data-open="true"\]/, 'Busca geral precisa expor estado data-open para coexistir com os popups.');
 
 assert.match(index, /public-entity-popups-v81\.js\?v=81/, 'Runtime de popup público precisa estar carregado.');
-assert.match(index, /public-brand-popup-fix-v83\.js\?v=84/, 'Detector V83 dos cards de marca precisa estar carregado com cache renovado.');
+assert.match(index, /public-brand-popup-fix-v83\.js\?v=85/, 'Runtime V85 dos cards de marca precisa estar carregado com cache renovado.');
 assert.match(index, /public-entity-popup-guard-v81\.js\?v=81/, 'Guard de scroll dos popups precisa estar carregado.');
 assert.match(entityPopups, /function openBrand\(key\)/, 'Popup de marca ausente.');
 assert.match(entityPopups, /function openProduct\(key\)/, 'Popup de produto ausente.');
@@ -75,15 +75,19 @@ assert.match(entityPopups, /Produtos similares da marca/, 'Popup de produto prec
 assert.match(entityPopups, /role', 'dialog'/, 'Popup precisa ser identificado como diálogo acessível.');
 assert.match(entityPopups, /@media\(max-width:720px\)/, 'Popup precisa ser responsivo no mobile.');
 
-assert.match(brandPopupFix, /catalog\?\.brands/, 'Detector V83 precisa validar o clique contra as marcas reais do catálogo.');
-assert.match(brandPopupFix, /data-brand-id/, 'Detector V83 precisa reconhecer cards com data-brand-id.');
-assert.match(brandPopupFix, /data-marca-id/, 'Detector V83 precisa reconhecer cards com data-marca-id.');
-assert.match(brandPopupFix, /cursor === 'pointer'/, 'Detector V83 precisa reconhecer cards clicáveis sem link.');
-assert.match(brandPopupFix, /headingLooksLikeBrandSection/, 'Detector V83 precisa reconhecer a seção de marcas.');
-assert.match(brandPopupFix, /resolveCandidateBrand/, 'Detector V83 precisa resolver o card contra o cadastro de marcas.');
-assert.match(brandPopupFix, /api\.openBrand\(brand\.id \|\| brand\.slug \|\| brand\.name\)/, 'Clique no card de marca precisa abrir o popup existente.');
-assert.match(brandPopupFix, /event\.stopImmediatePropagation/, 'Detector V83 precisa impedir a navegação concorrente do card.');
-assert.match(brandPopupFix, /MutationObserver/, 'Detector V83 precisa reaplicar marcação após renderizações dinâmicas.');
+assert.match(brandPopupFix, /const VERSION = '85'/, 'Correção determinística de marcas precisa estar na V85.');
+assert.match(brandPopupFix, /fetchJson\('\/api\/public\/pages\/home'\)/, 'V85 precisa ler os nós publicados da home.');
+assert.match(brandPopupFix, /fetchJson\('\/api\/public\/brands'\)/, 'V85 precisa carregar o cadastro real de marcas.');
+assert.match(brandPopupFix, /function brandKeyFromPageNode/, 'V85 precisa obter a marca diretamente do nó publicado.');
+assert.match(brandPopupFix, /props\.actionEntityId/, 'V85 precisa usar o ID de marca gravado no editor, sem adivinhar pelo texto Brand.');
+assert.match(brandPopupFix, /brand\?\.logoUrl \|\| brand\?\.logo_url \|\| brand\?\.logo/, 'V85 precisa aceitar os formatos de URL de logo do catálogo.');
+assert.match(brandPopupFix, /data-brand-id/, 'Card publicado precisa receber ID real da marca.');
+assert.match(brandPopupFix, /data-asteryon-brand-runtime-v85/, 'Card publicado precisa receber a camada visual V85.');
+assert.match(brandPopupFix, /function fallbackName/, 'Marca sem logo precisa mostrar o nome real como fallback.');
+assert.match(brandPopupFix, /api\.openBrand\(brandId\)/, 'Clique no card de marca precisa abrir o popup sem navegar para outra página.');
+assert.match(brandPopupFix, /stopImmediatePropagation/, 'V85 precisa bloquear a navegação concorrente para \/marca\/.');
+assert.match(brandPopupFix, /MutationObserver/, 'V85 precisa reaplicar o vínculo após renderizações dinâmicas.');
+assert.match(brandPopupFix, /__ASTERYON_BRAND_POPUP_FIX_TEST__/, 'V85 precisa manter helpers testáveis em Node.');
 
 assert.match(popupGuard, /asteryon-entity-popup-v81/, 'Guard precisa observar popup de entidade.');
 assert.match(popupGuard, /asteryon-global-search-v78/, 'Guard precisa observar popup de busca.');
@@ -97,5 +101,7 @@ execFileSync(process.execPath, ['--check', 'public/public-entity-popups-v81.js']
 execFileSync(process.execPath, ['--check', 'public/public-brand-popup-fix-v83.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/public-entity-popup-guard-v81.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/system-runtime-v81.js'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'scripts/qa-brand-node-popup-v85.mjs'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['scripts/qa-brand-node-popup-v85.mjs'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/patch-white-screen-v81.mjs'], { stdio: 'pipe' });
-console.log('QA UI V81/V83: OK — seleção sem tela branca, ações universais, Regras, Carrossel, Consulta e popups Marca/Produto validados.');
+console.log('QA UI V81/V85: OK — ações, carrossel, consulta, logos de marcas e popups validados.');
