@@ -37,6 +37,7 @@ const BRAND_BUCKET = 'brand-media';
 const MAX_REMOTE_BYTES = 8 * 1024 * 1024;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const DNS_ENDPOINT = 'https://cloudflare-dns.com/dns-query';
 const textEncoder = new TextEncoder();
 
 const clean = (value: unknown) => String(value ?? '').trim();
@@ -157,16 +158,69 @@ function isAllowedImage(bytes: Uint8Array, mime: string) {
   return false;
 }
 
-function isPrivateIpv4(hostname: string) {
-  const parts = hostname.split('.').map(Number);
-  if (parts.length !== 4 || parts.some(part => !Number.isInteger(part) || part < 0 || part > 255)) return false;
-  return parts[0] === 0
-    || parts[0] === 10
-    || parts[0] === 127
-    || (parts[0] === 169 && parts[1] === 254)
-    || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31)
-    || (parts[0] === 192 && parts[1] === 168)
-    || parts[0] >= 224;
+function ipv4Parts(value: string) {
+  const parts = value.split('.').map(Number);
+  return parts.length === 4 && parts.every(part => Number.isInteger(part) && part >= 0 && part <= 255) ? parts : null;
+}
+
+function isNonPublicIpv4(value: string) {
+  const parts = ipv4Parts(value);
+  if (!parts) return false;
+  const [a, b, c] = parts;
+  return a === 0
+    || a === 10
+    || (a === 100 && b >= 64 && b <= 127)
+    || a === 127
+    || (a === 169 && b === 254)
+    || (a === 172 && b >= 16 && b <= 31)
+    || (a === 192 && b === 0 && c === 0)
+    || (a === 192 && b === 0 && c === 2)
+    || (a === 192 && b === 168)
+    || (a === 198 && (b === 18 || b === 19))
+    || (a === 198 && b === 51 && c === 100)
+    || (a === 203 && b === 0 && c === 113)
+    || a >= 224;
+}
+
+function expandIpv6(value: string) {
+  const raw = value.toLowerCase().split('%')[0];
+  if (!raw.includes(':')) return null;
+  let input = raw;
+  const last = input.slice(input.lastIndexOf(':') + 1);
+  if (last.includes('.')) {
+    const v4 = ipv4Parts(last);
+    if (!v4) return null;
+    const hi = ((v4[0] << 8) | v4[1]).toString(16);
+    const lo = ((v4[2] << 8) | v4[3]).toString(16);
+    input = `${input.slice(0, input.lastIndexOf(':'))}:${hi}:${lo}`;
+  }
+  const halves = input.split('::');
+  if (halves.length > 2) return null;
+  const left = halves[0] ? halves[0].split(':').filter(Boolean) : [];
+  const right = halves[1] ? halves[1].split(':').filter(Boolean) : [];
+  if (halves.length === 1 && left.length !== 8) return null;
+  const missing = 8 - left.length - right.length;
+  if (missing < 0 || (halves.length === 2 && missing < 1)) return null;
+  const groups = halves.length === 2 ? [...left, ...Array(missing).fill('0'), ...right] : left;
+  if (groups.length !== 8 || groups.some(group => !/^[0-9a-f]{1,4}$/.test(group))) return null;
+  return groups.map(group => parseInt(group, 16));
+}
+
+function isNonPublicIpv6(value: string) {
+  const groups = expandIpv6(value);
+  if (!groups) return false;
+  const [g0, g1, g2, g3, g4, g5] = groups;
+  if (groups.every(group => group === 0)) return true;
+  if (groups.slice(0, 7).every(group => group === 0) && groups[7] === 1) return true;
+  if ((g0 & 0xfe00) === 0xfc00) return true; // fc00::/7
+  if ((g0 & 0xffc0) === 0xfe80) return true; // fe80::/10
+  if ((g0 & 0xff00) === 0xff00) return true; // multicast
+  if (g0 === 0x2001 && g1 === 0x0db8) return true; // documentação
+  if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0xffff) {
+    const mapped = `${groups[6] >> 8}.${groups[6] & 255}.${groups[7] >> 8}.${groups[7] & 255}`;
+    return isNonPublicIpv4(mapped);
+  }
+  return false;
 }
 
 function validateRemoteUrl(value: string) {
@@ -174,12 +228,46 @@ function validateRemoteUrl(value: string) {
   try { url = new URL(value); } catch { throw new Error('URL de imagem inválida'); }
   if (url.protocol !== 'https:') throw new Error('A imagem precisa usar HTTPS');
   if (url.username || url.password) throw new Error('URL com credenciais não é permitida');
+  if (url.port && url.port !== '443') throw new Error('Porta remota não permitida');
   const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
   if (!hostname || hostname === 'localhost' || hostname.endsWith('.localhost') || hostname.endsWith('.local') || hostname.endsWith('.internal') || hostname === 'metadata.google.internal') {
     throw new Error('Host de imagem não permitido');
   }
-  if (isPrivateIpv4(hostname) || hostname === '::1' || hostname.startsWith('fc') || hostname.startsWith('fd') || hostname.startsWith('fe80:')) {
-    throw new Error('Endereço de rede privado não permitido');
+  if (isNonPublicIpv4(hostname) || isNonPublicIpv6(hostname)) {
+    throw new Error('Endereço de rede não público não permitido');
+  }
+  return url;
+}
+
+async function dnsAddresses(hostname: string, type: 'A' | 'AAAA') {
+  const url = `${DNS_ENDPOINT}?name=${encodeURIComponent(hostname)}&type=${type}`;
+  const response = await fetch(url, {
+    headers: { accept: 'application/dns-json' },
+    signal: AbortSignal.timeout(3500),
+  });
+  if (!response.ok) throw new Error(`Falha ao validar DNS remoto (${response.status})`);
+  const payload = await response.json() as any;
+  if (Number(payload?.Status) !== 0) return [] as string[];
+  const expectedType = type === 'A' ? 1 : 28;
+  return (Array.isArray(payload?.Answer) ? payload.Answer : [])
+    .filter((answer: any) => Number(answer?.type) === expectedType)
+    .map((answer: any) => clean(answer?.data))
+    .filter(Boolean);
+}
+
+async function validateRemoteTarget(value: string) {
+  const url = validateRemoteUrl(value);
+  const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  if (ipv4Parts(hostname) || hostname.includes(':')) return url;
+
+  const [ipv4, ipv6] = await Promise.all([
+    dnsAddresses(hostname, 'A'),
+    dnsAddresses(hostname, 'AAAA'),
+  ]);
+  const addresses = [...ipv4, ...ipv6];
+  if (!addresses.length) throw new Error('Host remoto sem endereço DNS público válido');
+  if (addresses.some(address => isNonPublicIpv4(address) || isNonPublicIpv6(address))) {
+    throw new Error('DNS remoto resolveu para endereço não público');
   }
   return url;
 }
@@ -338,7 +426,12 @@ async function fetchRemoteImage(req: Request, env: Env) {
   let current = initial;
   let response: Response | null = null;
   for (let redirect = 0; redirect < 4; redirect++) {
-    const target = validateRemoteUrl(current);
+    let target: URL;
+    try {
+      target = await validateRemoteTarget(current);
+    } catch (error) {
+      return fail(error instanceof Error ? error.message : 'Destino remoto bloqueado', 403, 'REMOTE_IMAGE_HOST_BLOCKED');
+    }
     response = await fetch(target.toString(), {
       redirect: 'manual',
       headers: {
