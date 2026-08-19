@@ -62,7 +62,7 @@ assert.match(search, /consulta/);
 assert.match(search, /asteryon-global-search-v78\[data-open="true"\]/, 'Busca geral precisa expor estado data-open para coexistir com os popups.');
 
 assert.match(index, /public-entity-popups-v81\.js\?v=81/, 'Runtime de popup público precisa estar carregado.');
-assert.match(index, /public-brand-popup-fix-v83\.js\?v=83/, 'Detector V83 dos cards de marca precisa estar carregado.');
+assert.match(index, /public-brand-popup-fix-v83\.js\?v=84/, 'Detector V83 dos cards de marca precisa estar carregado com cache renovado.');
 assert.match(index, /public-entity-popup-guard-v81\.js\?v=81/, 'Guard de scroll dos popups precisa estar carregado.');
 assert.match(entityPopups, /function openBrand\(key\)/, 'Popup de marca ausente.');
 assert.match(entityPopups, /function openProduct\(key\)/, 'Popup de produto ausente.');
