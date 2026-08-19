@@ -6,6 +6,7 @@ const bundle = await readFile('public/assets/index-V60Excel.js', 'utf8');
 const search = await readFile('public/public-global-search-v78.js', 'utf8');
 const runtime = await readFile('public/system-runtime-v81.js', 'utf8');
 const entityPopups = await readFile('public/public-entity-popups-v81.js', 'utf8');
+const brandPopupFix = await readFile('public/public-brand-popup-fix-v82.js', 'utf8');
 const popupGuard = await readFile('public/public-entity-popup-guard-v81.js', 'utf8');
 const index = await readFile('public/index.html', 'utf8');
 
@@ -61,6 +62,7 @@ assert.match(search, /consulta/);
 assert.match(search, /asteryon-global-search-v78\[data-open="true"\]/, 'Busca geral precisa expor estado data-open para coexistir com os popups.');
 
 assert.match(index, /public-entity-popups-v81\.js\?v=81/, 'Runtime de popup público precisa estar carregado.');
+assert.match(index, /public-brand-popup-fix-v82\.js\?v=82/, 'Detector V82 dos cards de marca precisa estar carregado.');
 assert.match(index, /public-entity-popup-guard-v81\.js\?v=81/, 'Guard de scroll dos popups precisa estar carregado.');
 assert.match(entityPopups, /function openBrand\(key\)/, 'Popup de marca ausente.');
 assert.match(entityPopups, /function openProduct\(key\)/, 'Popup de produto ausente.');
@@ -72,6 +74,15 @@ assert.match(entityPopups, /data-aep81-brand/, 'Popup de produto precisa permiti
 assert.match(entityPopups, /Produtos similares da marca/, 'Popup de produto precisa manter produtos relacionados.');
 assert.match(entityPopups, /role', 'dialog'/, 'Popup precisa ser identificado como diálogo acessível.');
 assert.match(entityPopups, /@media\(max-width:720px\)/, 'Popup precisa ser responsivo no mobile.');
+
+assert.match(brandPopupFix, /data-brand-id/, 'Detector V82 precisa reconhecer cards com data-brand-id.');
+assert.match(brandPopupFix, /data-marca-id/, 'Detector V82 precisa reconhecer cards com data-marca-id.');
+assert.match(brandPopupFix, /cursor === 'pointer'/, 'Detector V82 precisa reconhecer cards clicáveis sem link.');
+assert.match(brandPopupFix, /headingLooksLikeBrandSection/, 'Detector V82 precisa reconhecer a seção Marcas em destaque.');
+assert.match(brandPopupFix, /marcas\?\\s\+em\\s\+destaque/, 'Detector V82 precisa cobrir Marcas em destaque.');
+assert.match(brandPopupFix, /api\.openBrand\(brandKey\)/, 'Clique no card de marca precisa abrir o popup existente.');
+assert.match(brandPopupFix, /event\.stopImmediatePropagation/, 'Detector V82 precisa impedir a navegação concorrente do card.');
+
 assert.match(popupGuard, /asteryon-entity-popup-v81/, 'Guard precisa observar popup de entidade.');
 assert.match(popupGuard, /asteryon-global-search-v78/, 'Guard precisa observar popup de busca.');
 assert.match(popupGuard, /MutationObserver/, 'Guard precisa reagir à troca de estado dos popups.');
@@ -81,7 +92,8 @@ assert.match(popupGuard, /search\?\.dataset\.open === 'true'/, 'Guard precisa re
 execFileSync(process.execPath, ['--check', 'public/assets/index-V60Excel.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/public-global-search-v78.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/public-entity-popups-v81.js'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'public/public-brand-popup-fix-v82.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/public-entity-popup-guard-v81.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/system-runtime-v81.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/patch-white-screen-v81.mjs'], { stdio: 'pipe' });
-console.log('QA UI V81: OK — seleção sem tela branca, ações universais, Regras, Carrossel, Consulta e popups Marca/Produto validados.');
+console.log('QA UI V81/V82: OK — seleção sem tela branca, ações universais, Regras, Carrossel, Consulta e popups Marca/Produto validados.');
