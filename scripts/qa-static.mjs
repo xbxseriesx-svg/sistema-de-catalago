@@ -31,7 +31,7 @@ const version = Number(versionText.trim());
 assert.ok(Number.isInteger(version) && version >= 81, 'Release lógica deve ser numérica e preservar compatibilidade V81+.');
 assert.match(html, /lang="pt-BR"/);
 assert.match(html, /viewport-fit=cover/);
-assert.match(html, /ASTERYON Editor V81/);
+assert.match(html, new RegExp(`ASTERYON Editor V${version}`), 'Título do editor deve acompanhar VERSION.');
 assert.match(html, /index-V60Excel\.js\?v=81/);
 assert.match(html, /editor-overflow-fix\.css\?v=81/);
 assert.match(html, /responsive-v67\.css\?v=81/);
