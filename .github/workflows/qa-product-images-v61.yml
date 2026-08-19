@@ -8,6 +8,7 @@ on:
       - audit-v80
       - audit-v81-full-system
       - feature/template-preview-v69
+      - fix/brand-node-logo-popup-v85
     paths:
       - 'worker/**'
       - 'public/**'
