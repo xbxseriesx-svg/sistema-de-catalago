@@ -74,11 +74,13 @@ export default {
       const authResponse = await handleCoreAuth(effectiveReq, env, path);
       if (authResponse) return finish(authResponse);
 
-      const publicResponse = await firstResponse([
-        () => handleMediaRoute(effectiveReq, env, path),
-        () => handlePublicCatalogRoute(effectiveReq, env, path),
-      ]);
-      if (publicResponse) return finish(publicResponse);
+      if (path.startsWith('/api/public/')) {
+        const publicResponse = await firstResponse([
+          () => handleMediaRoute(effectiveReq, env, path),
+          () => handlePublicCatalogRoute(effectiveReq, env, path),
+        ]);
+        if (publicResponse) return finish(publicResponse);
+      }
 
       if (path.startsWith('/api/admin/')) {
         let membership = await companyMembership(effectiveReq, env);
