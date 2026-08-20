@@ -13,6 +13,11 @@ const previewApplyMarker = 'ASTER_V92_PREVIEW_APPLY_BRIDGE';
 // normalizado mesmo quando o bundle V81 já está materializado.
 execFileSync(process.execPath, ['scripts/patch-modelo-oficial-v81.mjs'], { stdio: 'inherit' });
 
+// V93: o relatório do Grupo 3 precisa fornecer ao pré-gate independente do Grupo 4
+// a evidência separada de logos de marca. O patch é idempotente e valida os pontos
+// exatos antes de alterar a fonte corrente do Preview preenchido.
+execFileSync(process.execPath, ['scripts/patch-preview-editor-v93-team4-report.mjs'], { stdio: 'inherit' });
+
 let bundle = await readFile(bundlePath, 'utf8');
 if (!bundle.includes(marker)) {
   const patches = [
