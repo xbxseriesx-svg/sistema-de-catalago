@@ -183,6 +183,7 @@ async function updateNode(req: Request, env: Env, companyId: string, user: UserC
   const current = nodes.find(node => node.id === id);
   if (!current) return fail('Item da hierarquia não encontrado', 404, 'NOT_FOUND');
 
+  const previousName = current.name;
   const name = clean(input.name);
   if (!name) return fail('Informe o nome', 400, 'NAME_REQUIRED');
   const parent = current.parent_id ? nodes.find(node => node.id === current.parent_id) || null : null;
@@ -192,7 +193,7 @@ async function updateNode(req: Request, env: Env, companyId: string, user: UserC
   const patch = {
     name,
     slug: nextSlug,
-    active: input.status !== 'inactive',
+    active: input.status === undefined ? current.active : input.status !== 'inactive',
     sort_order: Number.isFinite(Number(input.sortOrder)) ? Number(input.sortOrder) : current.sort_order,
   };
   await mutate(
@@ -204,8 +205,9 @@ async function updateNode(req: Request, env: Env, companyId: string, user: UserC
   );
   current.name = name;
   current.slug = nextSlug;
+  current.active = patch.active;
   await updateDescendantSlugs(env, companyId, nodes, id, nextSlug);
-  await audit(env, companyId, user.id, 'hierarchy.update', id, { level: current.type, name, previousName: current.name, slug: nextSlug });
+  await audit(env, companyId, user.id, 'hierarchy.update', id, { level: current.type, name, previousName, slug: nextSlug });
   return ok({ id });
 }
 
