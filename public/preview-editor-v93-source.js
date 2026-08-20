@@ -12,8 +12,8 @@
   const REPORT_KEY = 'asteryon_preview_editor_parity_v91';
   const NODES_KEY = 'asteryon_preview_editor_nodes_v91';
   const CURRENT_TEMPLATES = new Set([
-    'varejo contínuo','atacado b2b','distribuidora institucional','catálogo de marcas b2b',
-    'distribuidora união • figma b2b','catálogo hierárquico b2b','vitrine atacado pro','modelo oficial',
+    'varejo continuo','atacado b2b','distribuidora institucional','catalogo de marcas b2b',
+    'distribuidora uniao • figma b2b','catalogo hierarquico b2b','vitrine atacado pro','modelo oficial',
   ]);
 
   const clean = S.clean;
@@ -356,8 +356,10 @@
   function refreshTemplateCards() {
     const title = [...document.querySelectorAll('h3')].find(item => normalize(item.textContent) === 'modelos prontos');
     if (!title) return;
-    const root = title.closest('div')?.parentElement || title.parentElement;
-    for (const article of root?.querySelectorAll('article') || []) {
+    let root = title.parentElement;
+    while (root && root !== document.body && root.querySelectorAll('article').length === 0) root = root.parentElement;
+    if (!root || root === document.body) return;
+    for (const article of root.querySelectorAll('article')) {
       const heading = article.querySelector('h4');
       const name = normalize(heading?.textContent);
       if (!CURRENT_TEMPLATES.has(name)) continue;
