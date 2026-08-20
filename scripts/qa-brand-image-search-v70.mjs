@@ -2,17 +2,33 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const [index, uiV70, uiV72, pickerHtml, pickerJs, workerV81, workerV71, workerV72, workerV70, wrangler, version] = await Promise.all([
+const [
+  index,
+  uiV70,
+  uiV72,
+  pickerHtml,
+  pickerJs,
+  enterpriseBrandImages,
+  workerV81,
+  workerV71,
+  workerV72,
+  workerV70,
+  wrangler,
+  rollbackWrangler,
+  version,
+] = await Promise.all([
   readFile('public/index.html', 'utf8'),
   readFile('public/brand-image-search-v70.js', 'utf8'),
   readFile('public/brand-image-search-v72.js', 'utf8'),
   readFile('public/google-image-picker-v73.html', 'utf8'),
   readFile('public/google-image-picker-v73.js', 'utf8'),
+  readFile('worker/app/services/brand-images.ts', 'utf8'),
   readFile('worker/index-v81.ts', 'utf8'),
   readFile('worker/index-v71.ts', 'utf8'),
   readFile('worker/index-v72.ts', 'utf8'),
   readFile('worker/index-v70.ts', 'utf8'),
   readFile('wrangler.jsonc', 'utf8'),
+  readFile('wrangler.legacy-rollback.jsonc', 'utf8'),
   readFile('VERSION', 'utf8').then((value) => value.trim()),
 ]);
 
@@ -20,9 +36,26 @@ const release = Number(version);
 assert.ok(release >= 70, 'A pesquisa de imagens das marcas exige V70 ou superior.');
 assert.match(index, new RegExp(`brand-image-search-v70\\.js\\?v=${release}`), `Editor não carrega a interface base da pesquisa com cache da release V${release}.`);
 assert.match(index, new RegExp(`brand-image-search-v72\\.js\\?v=${release}`), `Editor não carrega o isolamento de marcas com cache da release V${release}.`);
-assert.match(wrangler, /"main":\s*"worker\/index-v81\.ts"/, 'Wrangler precisa apontar para a entrada auditada V81.');
-assert.match(workerV81, /import worker from '\.\/index-v71'/, 'V81 precisa preservar a cadeia V71/V72/V70.');
-assert.match(workerV71, /import worker from '\.\/index-v72'/, 'Entrada V71 não encaminha para V72.');
+assert.match(wrangler, /"main":\s*"worker\/app\/index\.ts"/, 'Wrangler oficial precisa apontar para o Worker Enterprise modular.');
+assert.match(rollbackWrangler, /"main":\s*"worker\/index-v81\.ts"/, 'Rollback explícito precisa preservar V81.');
+
+// Contrato oficial Enterprise de pesquisa/importação de logos.
+assert.match(enterpriseBrandImages, /googleImageSearch/);
+assert.match(enterpriseBrandImages, /customsearch\.googleapis\.com\/customsearch\/v1/);
+assert.match(enterpriseBrandImages, /duckduckgoImageSearch/);
+assert.match(enterpriseBrandImages, /wikimediaImageSearch/);
+assert.match(enterpriseBrandImages, /\/api\/admin\/brand-images\/search/);
+assert.match(enterpriseBrandImages, /\/api\/admin\/brand-images\/fetch/);
+assert.match(enterpriseBrandImages, /\/api\/admin\/brand-images\/upload/);
+assert.match(enterpriseBrandImages, /BRAND_BUCKET\s*=\s*'brand-media'/);
+assert.match(enterpriseBrandImages, /sha256/);
+assert.match(enterpriseBrandImages, /validateRemoteTarget/);
+assert.match(enterpriseBrandImages, /REMOTE_IMAGE_HMAC_SECRET/);
+
+// A cadeia histórica continua verificável somente como rollback durante a transição do frontend.
+assert.match(workerV81, /import worker from '\.\/index-v71'/, 'Rollback V81 precisa preservar a cadeia V71/V72/V70.');
+assert.match(workerV71, /import worker from '\.\/index-v72'/, 'Entrada V71 de rollback não encaminha para V72.');
+
 assert.match(uiV70, /data-asteryon-brand-image-search/);
 assert.match(uiV70, /Pesquisar imagem da marca/);
 assert.match(uiV70, /\/api\/admin\/brands/);
@@ -83,4 +116,4 @@ execFileSync(process.execPath, ['--check', 'public/brand-image-search-v70.js'], 
 execFileSync(process.execPath, ['--check', 'public/brand-image-search-v72.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/google-image-picker-v73.js'], { stdio: 'pipe' });
 
-console.log(`QA pesquisa de imagens V77+V81 na release V${release}: OK (brandId isolado + pesquisa web + upload manual + WEBP, sem propagação entre marcas)`);
+console.log(`QA pesquisa de imagens Enterprise na release V${release}: OK (serviço modular oficial + rollback V81/V72/V70 + UI isolada por brandId)`);
