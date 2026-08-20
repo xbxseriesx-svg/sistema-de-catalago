@@ -26,7 +26,8 @@ for (const stale of [
 assert.ok(bundle.includes('Dados do Supabase dentro do editor ASTERYON'));
 
 // Templates: todo modelo aplicado passa pela normalização recursiva AR, que
-// remove travas e flags atômicas antes de substituir os nós no editor.
+// remove travas/flags atômicas; só depois ocorre o vínculo de produtos e o
+// REPLACE_NODES recebe a árvore já normalizada.
 assert.ok(
   bundle.includes('function AR(e){return e.map(t=>({...t,locked:!1,props:{...t.props||{},atomicTemplate:!1,atomic:!1}'),
   'normalizador de templates deve destravar nós recursivamente',
@@ -36,8 +37,12 @@ assert.ok(
   'destravamento deve alcançar filhos recursivamente',
 );
 assert.ok(
-  bundle.includes('nodes:AR(laurenciniNodes(T))'),
-  'templates prontos devem ser normalizados antes de REPLACE_NODES',
+  bundle.includes('const j=oJ(AR(laurenciniNodes(T)),a.products,a.brandName);'),
+  'modelo deve ser destravado antes do vínculo com os produtos',
+);
+assert.ok(
+  bundle.includes('t({type:"REPLACE_NODES",nodes:j})'),
+  'REPLACE_NODES deve receber a árvore já destravada e vinculada',
 );
 
 for (const name of [
