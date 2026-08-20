@@ -8,9 +8,12 @@ export default defineConfig({
   retries: 1,
   reporter: [['list']],
   use: {
-    // O frontend trata localhost/127.0.0.1 como modo local. Usar um subdomínio
-    // .localhost mantém o loopback, mas exercita o mesmo fluxo cloud da produção.
-    baseURL: 'http://asteryon.localhost:8787',
+    // O frontend trata localhost/127.0.0.1 como modo local. O hostname asteryon.test
+    // ativa o fluxo cloud e é mapeado pelo próprio Chromium para 127.0.0.1, sem DNS.
+    baseURL: 'http://asteryon.test:8787',
+    launchOptions: {
+      args: ['--host-resolver-rules=MAP asteryon.test 127.0.0.1,EXCLUDE localhost'],
+    },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
