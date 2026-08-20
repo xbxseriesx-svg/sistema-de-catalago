@@ -30,6 +30,9 @@ function installApiMocks(page) {
             { id: 'dep1', type: 'departamento', name: 'Atacado', slug: 'atacado', parentId: null, status: 'active' },
             { id: 'sec1', type: 'secao', name: 'Higiene', slug: 'higiene', parentId: 'dep1', status: 'active' },
             { id: 'cat1', type: 'categoria', name: 'Sabonetes', slug: 'sabonetes', parentId: 'sec1', status: 'active' },
+            { id: 'dep2', type: 'departamento', name: 'Food Service QA', slug: 'food-service-qa', parentId: null, status: 'active' },
+            { id: 'sec2', type: 'secao', name: 'Cozinha QA', slug: 'cozinha-qa', parentId: 'dep2', status: 'active' },
+            { id: 'cat2', type: 'categoria', name: 'Molhos QA', slug: 'molhos-qa', parentId: 'sec2', status: 'active' },
           ],
           promotions: [],
           settings: {},
@@ -61,7 +64,7 @@ function collectRuntimeErrors(page) {
   const errors = [];
   page.on('pageerror', error => errors.push(`pageerror: ${error.message}`));
   page.on('console', message => {
-    if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+    if (message.type() === 'error') errors.push(`console: ${message.text()}`));
   });
   return errors;
 }
@@ -111,6 +114,29 @@ test('editor autenticado renderiza Gestão do Catálogo e abas principais sem er
     expect(overflow).toBeLessThanOrEqual(2);
   }
 
+  expect(errors).toEqual([]);
+});
+
+test('produto permite selecionar departamento criado dinamicamente', async ({ page }, testInfo) => {
+  await installApiMocks(page);
+  const errors = collectRuntimeErrors(page);
+
+  await page.goto('/admin', { waitUntil: 'networkidle' });
+  await openManagementPanel(page, testInfo);
+
+  const productTab = page.getByRole('button', { name: /^Produtos$/i }).first();
+  await expect(productTab).toBeVisible();
+  await productTab.click();
+
+  const departmentField = page.locator('label').filter({ hasText: 'Departamento *' }).first();
+  await expect(departmentField).toBeVisible();
+  const departmentSelect = departmentField.locator('select');
+  await expect(departmentSelect.locator('option', { hasText: 'Food Service QA' })).toHaveCount(1);
+  await departmentSelect.selectOption({ label: 'Food Service QA' });
+  await expect(departmentSelect).toHaveValue('Food Service QA');
+
+  const sectionField = page.locator('label').filter({ hasText: 'Seção *' }).first().locator('select');
+  await expect(sectionField.locator('option', { hasText: 'Cozinha QA' })).toHaveCount(1);
   expect(errors).toEqual([]);
 });
 
