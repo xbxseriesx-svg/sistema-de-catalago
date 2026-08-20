@@ -1,4 +1,5 @@
 import type { Env } from './env';
+import { postgrestLiteral } from './domain';
 import { clean } from './http';
 
 export function adminKey(env: Env) {
@@ -68,6 +69,27 @@ export async function tableAll(
     if (page.length < pageSize) return rows;
   }
   throw new Error(`A consulta de ${name} excedeu o limite seguro de ${maxRows} registros`);
+}
+
+export async function tableByValues(
+  env: Env,
+  name: string,
+  baseQuery: string,
+  column: string,
+  values: string[],
+) {
+  const rows: any[] = [];
+  for (let index = 0; index < values.length; index += 150) {
+    const list = values.slice(index, index + 150).map(postgrestLiteral).join(',');
+    const page = await table(
+      env,
+      name,
+      `${baseQuery}${baseQuery ? '&' : ''}${column}=in.(${list})`,
+    );
+    if (!Array.isArray(page)) throw new Error(`Resposta inválida ao consultar ${name}`);
+    rows.push(...page);
+  }
+  return rows;
 }
 
 export async function adminFetch(env: Env, path: string, init: RequestInit = {}) {
