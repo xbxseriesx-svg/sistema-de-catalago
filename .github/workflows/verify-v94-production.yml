@@ -1,0 +1,65 @@
+name: Verificar V94 em produção
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/verify-v94-production.yml
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Aguardar V94 na Cloudflare e validar assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://sistema-de-catalago.xbxseriesx.workers.dev'
+          ok=0
+          for i in $(seq 1 40); do
+            health="$(curl -fsS --max-time 15 "$BASE/api/health" || true)"
+            admin="$(curl -fsS --max-time 15 "$BASE/admin" || true)"
+            runtime="$(curl -fsS --max-time 15 "$BASE/preview-editor-v91-runtime.js?v=94" || true)"
+            source="$(curl -fsS --max-time 15 "$BASE/preview-editor-v93-source.js?v=94" || true)"
+            if grep -q '"version":"V94"' <<<"$health" \
+              && grep -q 'ASTERYON Editor V94' <<<"$admin" \
+              && grep -q 'preview-editor-v91-runtime.js?v=94' <<<"$admin" \
+              && grep -q 'preview-editor-v93-source.js?v=94' <<<"$admin" \
+              && grep -q 'ASTER_V94_EDITOR_PERFORMANCE' <<<"$runtime" \
+              && grep -q 'ASTER_V93_FILLED_PREVIEW_SOURCE' <<<"$source"; then
+              ok=1
+              break
+            fi
+            echo "Tentativa $i: V94 ainda não confirmada. Health=$health"
+            sleep 10
+          done
+          test "$ok" = 1
+          mkdir -p docs
+          {
+            echo 'ASTERYON Catálogo — V94 produção verificada'
+            echo
+            echo "Verificado em UTC: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo 'Endpoint: https://sistema-de-catalago.xbxseriesx.workers.dev'
+            echo "Health: $health"
+            echo 'Admin: ASTERYON Editor V94'
+            echo 'Runtime: preview-editor-v91-runtime.js?v=94 — ASTER_V94_EDITOR_PERFORMANCE confirmado'
+            echo 'Fonte: preview-editor-v93-source.js?v=94 — ASTER_V93_FILLED_PREVIEW_SOURCE confirmado'
+            echo 'Resultado: PRODUÇÃO V94 CONFIRMADA'
+          } > docs/production-v94-live-verified.txt
+      - name: Registrar evidência e remover verificador temporário
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/production-v94-live-verified.txt
+          git rm .github/workflows/verify-v94-production.yml
+          git commit -m 'docs: confirmar V94 em produção [skip ci]'
+          git push origin HEAD:main
