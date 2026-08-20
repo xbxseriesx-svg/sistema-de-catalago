@@ -1,0 +1,57 @@
+name: TEMP sync V92 release
+
+on:
+  push:
+    branches:
+      - audit/v92-team4-preview-parity-20260820
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/v92-team4-preview-parity-20260820
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Sincronizar package-lock e README V92
+        run: |
+          npm version 2.1.92 --no-git-tag-version --allow-same-version
+          node <<'NODE'
+          const fs = require('fs');
+          const path = 'README.md';
+          let text = fs.readFileSync(path, 'utf8');
+          text = text.replace('# ASTERYON Catálogo — V91', '# ASTERYON Catálogo — V92');
+          text = text.replace('- Versão da aplicação: `2.1.91`', '- Versão da aplicação: `2.1.92`');
+          text = text.replace('## Release atual — V91', '## Release atual — V92');
+          text = text.replace('A V91 é a release lógica atual.', 'A V92 é a release lógica atual.');
+          text = text.replace(
+            'A V91 preserva o hardening de segurança consolidado na V89 e a resolução de templates da V90, acrescentando a regra de paridade entre **Preview Final preenchido** e **Editor inicial**, sincronização de logos vinculados às marcas, edição de fundos/gradientes, validação independente antes da publicação e cache-busting coerente com a release V91.',
+            'A V92 preserva o hardening de segurança consolidado na V89 e as camadas V90/V91, corrige a captura integral de cards de marcas sem logo no fluxo **Preview Final preenchido → Editor**, força cache-busting V92 e adiciona a **Equipe 4** como auditor independente da Equipe 3 antes da aplicação e depois da renderização no editor.'
+          );
+          const anchor = 'As fontes funcionais de versão que devem permanecer coerentes são `VERSION`, `package.json`, `package-lock.json`, `/api/health`, `public/index.html`, o runtime loader e este README.\n';
+          const section = `\n### Gate das 4 equipes — V92\n\n- **Equipe 1:** reproduz a falha e corrige a causa raiz no código.\n- **Equipe 2:** revisa a correção linha a linha e procura efeitos colaterais.\n- **Equipe 3:** executa validação de equivalência Preview Final → árvore editável → Editor renderizado.\n- **Equipe 4:** audita independentemente as evidências da Equipe 3 e pode bloquear aplicação e publicação.\n- Regra de release: somente **Equipe 3 APROVADA + Equipe 4 APROVADA** permitem liberar o modelo.\n- O E2E obrigatório da V92 percorre o botão real **Pré-visualizar modelo completo → Aplicar este modelo**, incluindo marca sem logo e o texto **Marca do catálogo**, caso que provocava o alerta de equivalência na V91.\n`;
+          if (!text.includes('### Gate das 4 equipes — V92')) text = text.replace(anchor, anchor + section);
+          text = text.replace(
+            'O QA atual da V91 preserva as regressões históricas de V61–V90 e acrescenta validações da paridade Preview Final → Editor, sincronização de logos de marcas, cache V91, autenticação/refresh, segurança de imagens remotas, baseline Supabase, E2E desktop/mobile, isolamento anônimo entre tenants e coerência de versionamento.',
+            'O QA atual da V92 preserva as regressões históricas de V61–V91 e acrescenta o gate independente da Equipe 4, o E2E do fluxo real **Pré-visualizar modelo completo → Aplicar este modelo**, cobertura para marcas sem logo, paridade Preview Final → Editor, cache V92, autenticação/refresh, segurança de imagens remotas, baseline Supabase, E2E desktop/mobile, isolamento anônimo entre tenants e coerência de versionamento.'
+          );
+          fs.writeFileSync(path, text);
+          NODE
+      - name: Gravar metadados sincronizados
+        run: |
+          if git diff --quiet -- package.json package-lock.json README.md; then
+            echo "Metadados V92 já sincronizados."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json README.md
+          git commit -m "chore: sync V92 release metadata [skip ci]"
+          git push origin HEAD:audit/v92-team4-preview-parity-20260820
