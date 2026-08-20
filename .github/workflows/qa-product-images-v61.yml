@@ -1,4 +1,4 @@
-name: QA catálogo V91 — auditoria integral
+name: QA catálogo V92 — 4 equipes
 
 on:
   workflow_dispatch:
@@ -43,11 +43,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: catalogo-v91-qa-${{ github.ref }}
+  group: catalogo-v92-4teams-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   qa:
+    name: Equipes 1 e 2 — auditoria integral
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -67,6 +68,7 @@ jobs:
         run: npm test
 
   e2e:
+    name: Equipe 3 — E2E geral desktop/mobile
     needs: qa
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -91,14 +93,53 @@ jobs:
           npm install --no-save --package-lock=false @playwright/test@1.62.0
           npx playwright install --with-deps chromium
 
-      - name: Executar E2E de UI em Chromium
+      - name: Executar E2E geral da Equipe 3
         run: npx playwright test --config=playwright.config.mjs
 
-      - name: Publicar evidências em caso de falha
+      - name: Publicar evidências da Equipe 3 em caso de falha
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-v91
+          name: playwright-report-v92-team3
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
+  team4:
+    name: Equipe 4 — auditoria independente da Equipe 3
+    needs: [qa, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout do mesmo commit aprovado pela Equipe 3
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependências do projeto
+        run: npm ci --ignore-scripts
+
+      - name: Preparar exatamente o bundle publicado
+        run: npm run prepare:bundle
+
+      - name: Instalar Chromium para auditoria independente
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.62.0
+          npx playwright install --with-deps chromium
+
+      - name: Reproduzir caminho real Preview Final → Aplicar este modelo → Editor
+        run: npx playwright test tests/e2e/preview-editor-team4-v92.spec.mjs --config=playwright.config.mjs
+
+      - name: Publicar evidências da Equipe 4 em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-v92-team4
           path: |
             playwright-report/
             test-results/
