@@ -200,8 +200,6 @@ test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháve
   await expect(preview.getByText(original, { exact: true })).toBeVisible();
   await preview.getByRole('button', { name: 'Aplicar este modelo' }).click();
   await expect(preview).toBeHidden({ timeout: 12_000 });
-  await expect(page.locator('[data-node-id]').filter({ hasText: original }).first()).toBeVisible({ timeout: 12_000 });
-  await expect(page.locator('[data-node-id]').filter({ hasText: 'Produto QA 1' }).first()).toBeVisible({ timeout: 12_000 });
 
   const blank = page.getByRole('button', { name: /Começar com página em branco/i });
   await blank.scrollIntoViewIfNeeded();
@@ -210,6 +208,8 @@ test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháve
   expect(overflow).toBeLessThanOrEqual(2);
 
   await closeOpenSidebarWithBackdrop(page, testInfo);
+  await expect(page.locator('[data-node-id]').filter({ hasText: original }).first()).toBeVisible({ timeout: 12_000 });
+  await expect(page.locator('[data-node-id]').filter({ hasText: 'Produto QA 1' }).first()).toBeVisible({ timeout: 12_000 });
   const heroText = page.getByText(original, { exact: true }).first();
   await expect(heroText).toBeVisible({ timeout: 10_000 });
   await heroText.click({ force: true });
