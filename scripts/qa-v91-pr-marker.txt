@@ -1,0 +1,1 @@
+QA temporário: validar Preview Final preenchido = Editor inicial editável na V91.
