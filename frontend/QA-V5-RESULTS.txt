@@ -1,0 +1,17 @@
+ASTERYON Canvas Studio — Consolidação V5 / Supabase
+Data: 2026-08-14
+Base: asterion-canvas-studio-main(1).zip
+Referência funcional solicitada: ee9420f97299b6b95586389f3a2aae9f1afd5962
+
+[PASS] QA estrutural V5
+[PASS] Parser TypeScript/TSX em src
+[PASS] Desktop fonte única + Tablet/Mobile independentes
+[PASS] Aplicar ajuste aos três modos
+[PASS] Presets 1366x768, 1440x900, 1080p, 2K e 4K
+[PASS] Autosave 850 ms + Ctrl+S + salvar manual
+[PASS] Snapshot/publicação/rollback
+[PASS] Rota pública responsiva /catalogo
+[PASS] Banner/Hero/Carrossel com contain
+[PASS] Upload de mídia Supabase Storage
+
+Observação Enterprise 2026-08-20: esta fonte foi recuperada como base editável. A persistência direta via Supabase ainda será migrada para as APIs do Worker Enterprise antes de qualquer ativação em produção.

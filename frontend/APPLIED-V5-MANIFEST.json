@@ -1,0 +1,11 @@
+{
+  "release": "3.0.0-v5",
+  "date": "2026-08-14",
+  "base": "asterion-canvas-studio-main(1).zip",
+  "reference_commit": "ee9420f97299b6b95586389f3a2aae9f1afd5962",
+  "backend": "Supabase Postgres + Storage",
+  "hosting_target": "Cloudflare",
+  "d1": false,
+  "r2": false,
+  "features": ["desktop-single-source-of-truth","tablet-mobile-independent","apply-three-modes","resolution-presets","marketing-preview","media-contain","autosave-850ms","ctrl-s","snapshot","publish","rollback","public-responsive","promotion-actions","supabase-auth","supabase-storage-upload"]
+}
