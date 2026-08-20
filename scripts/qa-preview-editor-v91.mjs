@@ -2,14 +2,15 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const [html, core, capture, runtime] = await Promise.all([
+const [html, core, capture, runtime, guard] = await Promise.all([
   readFile('public/index.html', 'utf8'),
   readFile('public/preview-editor-v91-core.js', 'utf8'),
   readFile('public/preview-editor-v91-capture.js', 'utf8'),
   readFile('public/preview-editor-v91-runtime.js', 'utf8'),
+  readFile('public/preview-editor-v91-guard.js', 'utf8'),
 ]);
 
-for (const file of ['preview-editor-v91-core.js', 'preview-editor-v91-capture.js', 'preview-editor-v91-runtime.js']) {
+for (const file of ['preview-editor-v91-core.js', 'preview-editor-v91-capture.js', 'preview-editor-v91-runtime.js', 'preview-editor-v91-guard.js']) {
   assert.match(html, new RegExp(`${file.replaceAll('.', '\\.')}\\?v=89`), `${file} precisa estar no HTML publicado.`);
   assert.ok(html.indexOf(`/${file}`) < html.indexOf('/assets/index-V60Excel.js'), `${file} precisa carregar antes do bundle para compartilhar a mesma árvore do template.`);
   execFileSync(process.execPath, ['--check', `public/${file}`], { stdio: 'pipe' });
@@ -44,5 +45,9 @@ assert.match(runtime, /startsWith\('marca'\)/, 'Alteração de marca no inspetor
 assert.match(runtime, /Fundo \/ gradiente/, 'Fundo e gradiente precisam permanecer editáveis no modelo copiado.');
 assert.match(runtime, /Publicação bloqueada pelo Grupo 3/, 'Modelo divergente não pode ser publicado como se estivesse aprovado.');
 assert.match(runtime, /failRule:\s*'qualquer diferença retorna ao Grupo 1'/, 'A regra de retorno aos grupos deve estar codificada.');
+
+assert.match(guard, /brandOverrides\.set\(id,\s*override\)/, 'Card e logo precisam compartilhar a troca de marca vinculada.');
+assert.match(guard, /brandLogoAuto:\s*true/, 'A sincronização deve manter o nó de imagem identificado como logo automático da marca.');
+assert.match(guard, /actionEntityId:\s*override\.brandId/, 'Card e logo precisam persistir o novo ID de marca.');
 
 console.log('QA V91: Preview Final preenchido = Editor inicial editável, com logos vinculados, cores e trava do Grupo 3: OK');
