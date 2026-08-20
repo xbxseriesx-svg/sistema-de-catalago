@@ -25,7 +25,7 @@ assert.match(bridge, /headerEditable:\s*true/,
   'Cabeçalho precisa ser explicitamente editável.');
 assert.match(bridge, /colorsEditable:\s*true/,
   'Cores do cabeçalho precisam permanecer editáveis.');
-assert.match(bridge, /input\[type=\\"color\\"\]/,
+assert.match(bridge, /input\[type=["']color["']\]/,
   'Controles nativos de cor precisam ser liberados no editor.');
 
 assert.match(bridge, /asteryonBrandsMarqueeV90/,
