@@ -9,10 +9,15 @@
   let startedAt = 0;
   let timer = 0;
 
-  function flatten(nodes) {
+  function visualItems(nodes) {
     const list = [];
-    const walk = item => { if (!item) return; list.push(item); (item.children || []).forEach(walk); };
-    (nodes || []).forEach(walk);
+    const walk = (item, movingCarousel = false) => {
+      if (!item) return;
+      const moving = movingCarousel || (item.props?.carousel === true && item.props?.carouselAnimated === true);
+      list.push({ item, movingCarousel: moving });
+      (item.children || []).forEach(child => walk(child, moving));
+    };
+    (nodes || []).forEach(item => walk(item, false));
     return list;
   }
 
@@ -20,14 +25,22 @@
     return Array.isArray(S.capturedNodes) ? S.capturedNodes : window.__ASTERYON_PREVIEW_EDITOR_NODES_V91__;
   }
 
-  function rectError(expected, actual) {
-    const limitX = Math.max(10, expected.width * .045);
-    const limitY = Math.max(10, expected.height * .045);
+  function rectError(expected, actual, item, movingCarousel = false) {
+    const carouselTrack = movingCarousel && item.props?.carousel === true && item.props?.carouselAnimated === true;
+    const expectedWidth = carouselTrack ? Number(item.width || expected.width) : Number(expected.width || 0);
+    const expectedHeight = carouselTrack ? Number(item.height || expected.height) : Number(expected.height || 0);
+    const limitX = Math.max(10, Number(expected.width || expectedWidth) * .045);
+    const limitY = Math.max(10, Number(expected.height || expectedHeight) * .045);
+    const dx = Math.abs(actual.x - Number(expected.x || 0));
+    const dy = Math.abs(actual.y - Number(expected.y || 0));
+    const dw = Math.abs(actual.width - expectedWidth);
+    const dh = Math.abs(actual.height - expectedHeight);
     return {
-      dx: Math.abs(actual.x - expected.x), dy: Math.abs(actual.y - expected.y),
-      dw: Math.abs(actual.width - expected.width), dh: Math.abs(actual.height - expected.height),
-      ok: Math.abs(actual.x - expected.x) <= limitX && Math.abs(actual.y - expected.y) <= limitY
-        && Math.abs(actual.width - expected.width) <= limitX && Math.abs(actual.height - expected.height) <= limitY,
+      dx, dy, dw, dh,
+      movingCarousel,
+      expectedWidth,
+      expectedHeight,
+      ok: (movingCarousel || dx <= limitX) && dy <= limitY && dw <= limitX && dh <= limitY,
     };
   }
 
@@ -48,12 +61,13 @@
     const pageRect = pageWrapper.getBoundingClientRect();
     if (pageRect.width < 20) return;
     const scale = pageRect.width / Math.max(1, Number(page.width || 1440));
-    const items = flatten(nodes).filter(item => item.type !== 'page' && item.props?.previewSourceRect && !item.props?.duplicateForLoop);
-    if (items.length < 10) return;
+    const entries = visualItems(nodes).filter(({ item }) => item.type !== 'page' && item.props?.previewSourceRect && !item.props?.duplicateForLoop);
+    if (entries.length < 10) return;
 
     const missing = [];
     const drift = [];
-    for (const item of items) {
+    let animatedCarouselNodesAudited = 0;
+    for (const { item, movingCarousel } of entries) {
       const wrapper = document.querySelector(`[data-node-id="${CSS.escape(item.id)}"]`);
       if (!(wrapper instanceof HTMLElement)) { missing.push(item.id); continue; }
       const rect = wrapper.getBoundingClientRect();
@@ -63,10 +77,12 @@
         width: rect.width / scale,
         height: rect.height / scale,
       };
-      const check = rectError(item.props.previewSourceRect, actual);
+      if (movingCarousel) animatedCarouselNodesAudited += 1;
+      const check = rectError(item.props.previewSourceRect, actual, item, movingCarousel);
       if (!check.ok) drift.push({ id: item.id, name: item.name, type: item.type, expected: item.props.previewSourceRect, actual, ...check });
     }
 
+    const items = entries.map(({ item }) => item);
     const textNodes = items.filter(item => ['text','button'].includes(item.type) && item.props?.text);
     const canvasText = S.normalize([...document.querySelectorAll('[data-node-id]')].map(item => item.textContent || '').join(' | '));
     const missingTexts = [...new Set(textNodes.map(item => S.normalize(item.props.text)).filter(Boolean))].filter(text => !canvasText.includes(text));
@@ -85,6 +101,8 @@
       missingNodes: missing, missingTexts, missingHeroTexts,
       geometryDriftCount: drift.length, allowedGeometryDrift: allowedDrift,
       productGeometryDriftCount: productDrift.length,
+      animatedCarouselNodesAudited,
+      animatedCarouselRule: 'faixa animada pode variar em X; Y, largura, altura, conteúdo e largura 2x do loop permanecem obrigatórios',
       geometryDrift: drift.slice(0, 25),
       rule: 'Editor V93 deve manter posição, tamanho, proporção, textos e produtos da Prévia preenchida.',
     };
@@ -99,8 +117,10 @@
       window.__ASTERYON_PREVIEW_EDITOR_PARITY_V91__ = S.report;
     }
     window.dispatchEvent(new CustomEvent('asteryon:preview-editor-visual-parity-v93', { detail: report }));
-    if (!ok) showBanner(report);
-    else document.getElementById('asteryon-v93-visual-error')?.remove();
+    if (!ok) {
+      console.error('ASTERYON V93 — divergência visual', report);
+      showBanner(report);
+    } else document.getElementById('asteryon-v93-visual-error')?.remove();
     clearInterval(timer);
   }
 
