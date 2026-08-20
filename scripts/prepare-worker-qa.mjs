@@ -1,7 +1,8 @@
 import { copyFile, mkdir, readdir, stat } from 'node:fs/promises';
-import { basename, join } from 'node:path';
+import { basename, join, normalize } from 'node:path';
 
 const root = '.wrangler-dry-run';
+const directIndex = normalize(join(root, 'index.js'));
 
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -18,7 +19,7 @@ await mkdir(root, { recursive: true });
 const files = await walk(root);
 const candidates = [];
 for (const path of files) {
-  if (!/\.js$/i.test(path) || basename(path) === 'index.js') continue;
+  if (!/\.js$/i.test(path) || normalize(path) === directIndex) continue;
   candidates.push({ path, size: (await stat(path)).size });
 }
 
@@ -28,9 +29,13 @@ candidates.sort((a, b) => {
   return bPreferred - aPreferred || b.size - a.size;
 });
 
-if (!candidates.length) {
+if (candidates.length) {
+  await copyFile(candidates[0].path, directIndex);
+  console.log(`Bundle QA legado preparado: ${candidates[0].path} -> ${directIndex}`);
+} else if (files.some((path) => normalize(path) === directIndex)) {
+  const info = await stat(directIndex);
+  if (!info.size) throw new Error(`Bundle Wrangler vazio em ${directIndex}.`);
+  console.log(`Bundle QA moderno já disponível diretamente em ${directIndex}.`);
+} else {
   throw new Error(`Nenhum bundle JavaScript encontrado em ${root}. Arquivos: ${files.join(', ')}`);
 }
-
-await copyFile(candidates[0].path, join(root, 'index.js'));
-console.log(`Bundle QA preparado: ${candidates[0].path} -> ${root}/index.js`);
