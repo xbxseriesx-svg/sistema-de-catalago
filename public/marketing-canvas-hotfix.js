@@ -145,6 +145,7 @@
     };
 
     const move = pointer => {
+      if (pointer.cancelable) pointer.preventDefault();
       pendingPointer = pointer;
       if (dragRaf) return;
       dragRaf = requestAnimationFrame(() => {
@@ -156,6 +157,7 @@
     };
 
     const up = async (pointer) => {
+      if (pointer?.cancelable) pointer.preventDefault();
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
       window.removeEventListener('pointercancel', up);
@@ -165,11 +167,12 @@
       else if (pointer) applyPointer(pointer);
       pendingPointer = null;
       document.body.style.cursor = '';
+      try { event.currentTarget?.releasePointerCapture?.(event.pointerId); } catch { /* captura opcional */ }
       try { await save(); } catch (error) { alert(`Falha ao salvar posição: ${error.message}`); }
     };
 
     document.body.style.cursor = direction === 'move' ? 'move' : `${direction}-resize`;
-    window.addEventListener('pointermove', move, { passive: true });
+    window.addEventListener('pointermove', move, { passive: false });
     window.addEventListener('pointerup', up, { once: true });
     window.addEventListener('pointercancel', up, { once: true });
   };
