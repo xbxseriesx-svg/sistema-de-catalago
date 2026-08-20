@@ -14,8 +14,11 @@
     <link rel="stylesheet" href="/responsive-v67.css?v=89" />
     <link rel="stylesheet" href="/template-preview-v69.css?v=89" />
 
-    <!-- Hotfix de modelos V90 sobre a release lógica V89: Preview -> Aplicar -> Editor compartilham o estado aplicado. -->
+    <!-- V90 preserva compatibilidade; V91 torna o Preview Final preenchido a fonte da árvore editável. -->
     <script src="/resolved-template-v90.js?v=89"></script>
+    <script src="/preview-editor-v91-core.js?v=89"></script>
+    <script src="/preview-editor-v91-capture.js?v=89"></script>
+    <script src="/preview-editor-v91-runtime.js?v=89"></script>
 
     <!-- V87 continua antes do bundle para serializar autosave -> publicação. -->
     <script src="/editor-runtime-v87.js?v=89"></script>
@@ -25,6 +28,9 @@
     <!--
       Manifesto V89 dos recursos geridos pelo loader contextual (não bloqueantes):
       resolved-template-v90.js?v=89
+      preview-editor-v91-core.js?v=89
+      preview-editor-v91-capture.js?v=89
+      preview-editor-v91-runtime.js?v=89
       marketing-canvas-hotfix.js?v=89&perf=88
       import-images-tab-fix.js?v=89
       import-progress-v62.js?v=89
