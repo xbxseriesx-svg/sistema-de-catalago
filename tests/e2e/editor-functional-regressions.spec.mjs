@@ -18,6 +18,26 @@ const pageNode = {
   }],
 };
 
+const qaImage = label => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="260"><rect width="240" height="260" fill="#eef4fb"/><text x="120" y="135" text-anchor="middle" font-family="Arial" font-size="24" fill="#214C8F">${label}</text></svg>`)}`;
+const qaBrands = [
+  { id: 'brand-qa', name: 'Marca QA', slug: 'marca-qa', status: 'active', logoUrl: qaImage('MARCA QA') },
+  { id: 'brand-qa-2', name: 'Marca QA Dois', slug: 'marca-qa-dois', status: 'active', logoUrl: qaImage('MARCA 2') },
+];
+const qaProducts = Array.from({ length: 8 }, (_, index) => ({
+  id: `p${index + 1}`,
+  code: `00012${index + 1}`,
+  name: `Produto QA ${index + 1}`,
+  shortDescription: `Produto QA ${index + 1}`,
+  status: 'ativo',
+  departamentoId: 'dep-qa',
+  secaoId: 'sec-qa',
+  categoriaId: 'cat-qa',
+  brandId: index % 2 ? 'brand-qa-2' : 'brand-qa',
+  brandName: index % 2 ? 'Marca QA Dois' : 'Marca QA',
+  packaging: 'CX 12',
+  image: qaImage(`P${index + 1}`),
+}));
+
 async function installMocks(page) {
   let currentMarketing = structuredClone(marketing);
   let currentNodes = [structuredClone(pageNode)];
@@ -31,8 +51,8 @@ async function installMocks(page) {
     if (path === '/api/auth/status') return json({ ok: true, needsBootstrap: false, user: { id: 'qa-user', companyId: 'cmp_asteryon', email: 'qa@example.invalid', name: 'QA', role: 'SDM' } });
     if (path === '/api/admin/catalog' || path === '/api/public/catalog') {
       return json({ ok: true, catalog: {
-        products: [{ id: 'p1', code: '000123', name: 'Produto QA', shortDescription: 'Produto QA', status: 'ativo', departamentoId: 'dep-qa', secaoId: 'sec-qa', categoriaId: 'cat-qa', brandId: 'brand-qa' }],
-        brands: [{ id: 'brand-qa', name: 'Marca QA', slug: 'marca-qa', status: 'active' }],
+        products: qaProducts,
+        brands: qaBrands,
         hierarchy: [
           { id: 'dep-qa', level: 'departamento', name: 'QA Departamento Dinâmico', slug: 'qa-departamento', parentId: null, status: 'active' },
           { id: 'sec-qa', level: 'secao', name: 'QA Seção Dinâmica', slug: 'qa-secao', parentId: 'dep-qa', status: 'active' },
@@ -41,7 +61,7 @@ async function installMocks(page) {
         promotions: [], settings: { displayFields: ['image', 'code', 'shortDescription', 'brand', 'category', 'price', 'unit'] },
       } });
     }
-    if (path === '/api/admin/brands' || path === '/api/public/brands') return json({ ok: true, brands: [{ id: 'brand-qa', name: 'Marca QA', slug: 'marca-qa', status: 'active' }] });
+    if (path === '/api/admin/brands' || path === '/api/public/brands') return json({ ok: true, brands: qaBrands });
     if (path === '/api/admin/hierarchy' && request.method() === 'POST') {
       const payload = request.postDataJSON();
       hierarchyCreates.push(structuredClone(payload));
