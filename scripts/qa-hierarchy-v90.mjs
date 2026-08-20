@@ -47,13 +47,13 @@ globalThis.fetch = async (input, init = {}) => {
     if (method === 'PATCH') {
       const payload = JSON.parse(body || '{}');
       writes.push({ table: 'hierarchy_nodes', method, search: url.search, body: payload });
-      return new Response('', { status: 204 });
+      return new Response(null, { status: 204 });
     }
     if (method === 'DELETE') {
       const id = url.searchParams.get('id');
       if (id === 'eq.dep_in_use') return json({ message: 'foreign key violation' }, 409);
       writes.push({ table: 'hierarchy_nodes', method, search: url.search });
-      return new Response('', { status: 204 });
+      return new Response(null, { status: 204 });
     }
 
     const id = String(url.searchParams.get('id') || '').replace(/^eq\./, '');
