@@ -47,8 +47,16 @@
     const number = Number.parseFloat(value);
     return Number.isFinite(number) ? round(number) : fallback;
   };
-  const isEditor = () => location.pathname.startsWith('/admin') && [...document.querySelectorAll('h1,h2')]
-    .some((node) => normalize(node.textContent) === 'editar catalogo');
+  const isEditor = () => {
+    if (!location.pathname.startsWith('/admin')) return false;
+    const titleMatch = [...document.querySelectorAll('h1,h2')].some((node) => normalize(node.textContent) === 'editar catalogo');
+    if (titleMatch) return true;
+    const canvasNode = document.querySelector('[data-node-id]');
+    if (!(canvasNode instanceof HTMLElement)) return false;
+    const editorChrome = document.querySelector('[data-asteryon-editor-sidebar], [data-asteryon-mobile-toolbar]')
+      || [...document.querySelectorAll('button')].find((button) => ['elementos','modelos','gestao do catalogo','publicar','salvar'].includes(normalize(button.textContent)));
+    return !!editorChrome;
+  };
 
   function cssColor(value) {
     const raw = clean(value);

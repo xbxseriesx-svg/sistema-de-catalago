@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const [html, capture, team4, e2e] = await Promise.all([
+const [html, core, capture, team4, e2e] = await Promise.all([
   readFile('public/index.html', 'utf8'),
+  readFile('public/preview-editor-v91-core.js', 'utf8'),
   readFile('public/preview-editor-v91-capture.js', 'utf8'),
   readFile('public/preview-editor-v92-team4.js', 'utf8'),
   readFile('tests/e2e/preview-editor-team4-v92.spec.mjs', 'utf8'),
@@ -12,6 +13,10 @@ const [html, capture, team4, e2e] = await Promise.all([
 assert.match(html, /preview-editor-v92-team4\.js\?v=92/, 'Equipe 4 precisa carregar na release V92.');
 assert.ok(html.indexOf('/preview-editor-v91-capture.js') < html.indexOf('/preview-editor-v92-team4.js'), 'Equipe 4 deve auditar a captura produzida pelo Grupo 3.');
 assert.ok(html.indexOf('/preview-editor-v92-team4.js') < html.indexOf('/assets/index-V60Excel.js'), 'Equipe 4 precisa estar ativa antes do bundle/editor.');
+
+assert.match(core, /document\.querySelector\('\[data-node-id\]'\)/, 'Detecção do Editor precisa reconhecer o canvas editável real.');
+assert.match(core, /data-asteryon-editor-sidebar/, 'Detecção estrutural deve confirmar chrome do editor, não apenas um título.');
+assert.doesNotMatch(core, /const isEditor = \(\) => location\.pathname\.startsWith\('\/admin'\) &&/, 'V92 não pode voltar a depender exclusivamente do heading Editar catálogo.');
 
 assert.match(capture, /text\.includes\(name\)/, 'Marca sem logo precisa ser identificada pelo nome mesmo com subtítulo visível.');
 assert.match(capture, /card\.querySelector\('strong'\)/, 'Nome da marca sem logo deve vir do elemento visual real, não do textContent agregado.');
