@@ -131,6 +131,23 @@ test('Grupo 3/4 V93: todas as templates antigas são substituídas pela Prévia 
     expect(audit.group3?.productGeometryDriftCount, `${templateName}: produtos fora de proporção`).toBe(0);
     expect(audit.group4?.approved, `${templateName}: Equipe 4`).toBe(true);
     expect(audit.group4?.productGeometryDriftCount, `${templateName}: Equipe 4 produto`).toBe(0);
+
+    if (templateName === TEMPLATE_NAMES[0]) {
+      const before = await page.evaluate(() => ({ ...(window.__ASTERYON_EDITOR_PERF_V94__ || {}) }));
+      expect(before.version, 'Runtime de performance V94 não carregou.').toBe('94');
+      await page.evaluate(async () => {
+        const target = document.querySelector('[data-node-id]:not([data-node-id^="asteryon-brands-carousel-track-v91"])');
+        if (!(target instanceof HTMLElement)) throw new Error('Nenhum nó editável para stress de style.');
+        const original = target.getAttribute('style');
+        for (let index = 0; index < 200; index += 1) target.style.setProperty('--asteryon-v94-stress', String(index));
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        if (original == null) target.removeAttribute('style'); else target.setAttribute('style', original);
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      });
+      const after = await page.evaluate(() => ({ ...(window.__ASTERYON_EDITOR_PERF_V94__ || {}) }));
+      expect((after.observerSchedules || 0) - (before.observerSchedules || 0), '200 mudanças de style não podem acordar o observer global V91.').toBe(0);
+      expect((after.runtimeRuns || 0) - (before.runtimeRuns || 0), 'Stress de style não pode reprocessar o runtime do Editor.').toBeLessThanOrEqual(1);
+    }
   }
 
   expect(dialogs.filter(message => message.includes('Modelo não aplicado')), `Bloqueios encontrados: ${dialogs.join(' | ')}`).toEqual([]);

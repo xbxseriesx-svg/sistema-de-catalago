@@ -2,19 +2,21 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const [html, source, capture, visual, team4, bundle] = await Promise.all([
+const [html, source, capture, visual, team4, bundle, versionRaw] = await Promise.all([
   readFile('public/index.html', 'utf8'),
   readFile('public/preview-editor-v93-source.js', 'utf8'),
   readFile('public/preview-editor-v91-capture.js', 'utf8'),
   readFile('public/preview-editor-v93-visual-gate.js', 'utf8'),
   readFile('public/preview-editor-v93-team4.js', 'utf8'),
   readFile('public/assets/index-V60Excel.js', 'utf8'),
+  readFile('VERSION', 'utf8'),
 ]);
+const release = versionRaw.trim();
 
-assert.match(html, /ASTERYON Editor V93/, 'Release visual precisa estar em V93.');
-assert.match(html, /preview-editor-v93-source\.js\?v=93/, 'Fonte V93 precisa carregar.');
-assert.match(html, /preview-editor-v93-visual-gate\.js\?v=93/, 'Gate visual V93 precisa carregar.');
-assert.match(html, /preview-editor-v93-team4\.js\?v=93/, 'Equipe 4 V93 precisa carregar.');
+assert.match(html, new RegExp(`ASTERYON Editor V${release}`), 'HTML precisa anunciar a release corrente.');
+assert.match(html, new RegExp(`preview-editor-v93-source\\.js\\?v=${release}(?:["&])`), 'Fonte funcional V93 precisa carregar com o cache da release corrente.');
+assert.match(html, new RegExp(`preview-editor-v93-visual-gate\\.js\\?v=${release}(?:["&])`), 'Gate visual V93 precisa carregar com o cache da release corrente.');
+assert.match(html, new RegExp(`preview-editor-v93-team4\\.js\\?v=${release}(?:["&])`), 'Equipe 4 V93 precisa carregar com o cache da release corrente.');
 assert.ok(html.indexOf('/preview-editor-v91-core.js') < html.indexOf('/preview-editor-v93-source.js'), 'Core deve existir antes da fonte V93.');
 assert.ok(html.indexOf('/preview-editor-v93-source.js') < html.indexOf('/preview-editor-v91-capture.js'), 'V93 deve assumir o clique antes do capturador legado.');
 
@@ -50,4 +52,4 @@ for (const file of [
   'scripts/qa-preview-editor-v93.mjs',
 ]) execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
 
-console.log('QA V93: Preview preenchido é fonte corrente; hierarquia, tipografia, geometria, produtos e Equipe 4 estão protegidos.');
+console.log(`QA funcional V93 na release V${release}: Preview preenchido, hierarquia, tipografia, geometria, produtos e Equipe 4 protegidos.`);

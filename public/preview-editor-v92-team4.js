@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  const ASTER_V94_TEAM4_IDLE_PERFORMANCE = true;
 
   if (window.__ASTERYON_PREVIEW_EDITOR_V92_TEAM4__) return;
   window.__ASTERYON_PREVIEW_EDITOR_V92_TEAM4__ = true;
@@ -10,6 +11,7 @@
   const PREVIEW_ID = 'laurencini-template-preview-v69';
   const NODES_KEY = 'asteryon_preview_editor_nodes_v91';
   const TEAM4_KEY = 'asteryon_preview_editor_team4_v92';
+  let auditTimer = 0;
   const state = {
     version: '92',
     preflight: null,
@@ -164,6 +166,12 @@
     return report;
   }
 
+  function stopAuditPolling() {
+    if (!auditTimer) return;
+    clearInterval(auditTimer);
+    auditTimer = 0;
+  }
+
   function verifyEditor(group3Report) {
     if (!S.isEditor()) return null;
     const nodes = expectedNodes();
@@ -190,7 +198,10 @@
     state.editor = report;
     state.approved = Boolean(state.preflight?.ok && report.ok);
     document.documentElement.dataset.asteryonTeam4Parity = state.approved ? 'approved' : 'failed';
-    if (state.approved) clearBanner(); else banner('o Editor renderizado não reproduziu integralmente a árvore aprovada no Preview Final.');
+    if (state.approved) {
+      clearBanner();
+      stopAuditPolling();
+    } else banner('o Editor renderizado não reproduziu integralmente a árvore aprovada no Preview Final.');
     persist();
     window.dispatchEvent(new CustomEvent('asteryon:team4-editor-v92', { detail: report }));
     return report;
@@ -218,14 +229,31 @@
     alert('Publicação bloqueada pela Equipe 4: a validação independente do Preview Final e do Editor ainda não foi aprovada.');
   }
 
+  function ensureAuditPolling() {
+    if (auditTimer || state.approved) return;
+    auditTimer = setInterval(() => {
+      if (state.approved) {
+        stopAuditPolling();
+        return;
+      }
+      if (!S.isEditor()) return;
+      const group3 = S.report || window.__ASTERYON_PREVIEW_EDITOR_PARITY_V91__;
+      if (group3?.editorInitialParityOk != null) verifyEditor(group3);
+    }, 700);
+  }
+
   window.addEventListener('asteryon:team4-preflight-request-v92', (event) => {
     state.group3Apply = event.detail?.group3Report || null;
+    state.approved = false;
     const report = verifyPreflight(state.group3Apply, event.detail?.result || null);
     if (event.detail) event.detail.team4Report = report;
+    ensureAuditPolling();
   });
   window.addEventListener('asteryon:preview-final-copied-v91', (event) => {
     state.group3Apply = event.detail || state.group3Apply || null;
+    state.approved = false;
     if (!state.preflight) verifyPreflight(state.group3Apply);
+    ensureAuditPolling();
   });
   window.addEventListener('asteryon:preview-editor-parity-v91', (event) => {
     state.group3Editor = event.detail || null;
@@ -234,11 +262,7 @@
   document.addEventListener('click', blockApply, true);
   document.addEventListener('click', blockPublish, true);
 
-  setInterval(() => {
-    if (!S.isEditor() || state.approved) return;
-    const group3 = S.report || window.__ASTERYON_PREVIEW_EDITOR_PARITY_V91__;
-    if (group3?.editorInitialParityOk != null) verifyEditor(group3);
-  }, 700);
+  if (expectedNodes()?.length && !state.approved) ensureAuditPolling();
 
   persist();
   window.__ASTERYON_V92_GROUPS__ = Object.freeze({
@@ -247,5 +271,6 @@
     group3: 'valida a equivalência antes e depois da aplicação',
     group4: 'audita independentemente a Equipe 3 e bloqueia aplicação/publicação se qualquer evidência divergir',
     releaseRule: 'somente Equipe 3 APROVADA + Equipe 4 APROVADA permitem liberar',
+    v94Performance: 'polling independente encerra imediatamente apos aprovacao e reinicia apenas em nova aplicacao',
   });
 })();

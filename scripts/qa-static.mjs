@@ -125,7 +125,7 @@ assert.match(prepareV81, /ASTER_V81_CORE_PATCH/);
 assert.match(prepareV81, /Bundle V81 já materializado/);
 const packageJson = JSON.parse(pkg);
 assert.equal(packageJson.version, `2.1.${version}`, 'package.json deve acompanhar VERSION');
-assert.equal(packageJson.scripts['prepare:bundle'], 'node scripts/prepare-bundle-v81.mjs');
+assert.match(packageJson.scripts['prepare:bundle'], /^node scripts\/sync-release-metadata-v94\.mjs && node scripts\/prepare-bundle-v81\.mjs$/, 'V94 deve sincronizar metadados antes de executar o mesmo bundle V81 materializado.');
 assert.match(packageJson.scripts.test, /qa-template-preview-v69\.mjs/);
 assert.match(packageJson.scripts.test, /qa-system-v80\.mjs/);
 
@@ -142,5 +142,6 @@ execFileSync(process.execPath, ['--check', 'scripts/prepare-bundle-v81.mjs'], { 
 execFileSync(process.execPath, ['--check', 'scripts/patch-system-v81.mjs'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/qa-template-preview-v69.mjs'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/qa-system-v80.mjs'], { stdio: 'pipe' });
+execFileSync(process.execPath, ['--check', 'scripts/sync-release-metadata-v94.mjs'], { stdio: 'pipe' });
 
 console.log(`QA estático da camada física V81 / release V${version}: OK`);
