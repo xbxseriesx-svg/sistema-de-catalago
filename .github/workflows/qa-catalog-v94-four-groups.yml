@@ -1,0 +1,87 @@
+name: QA catálogo V94 — 4 grupos
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  group12:
+    name: Grupos 1 e 2 — performance estrutural e regressões
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+      - name: Grupo 1 — medir/diagnosticar e Grupo 2 — auditar correção
+        run: npm test
+
+  group3:
+    name: Grupo 3 — 8 templates + stress do Editor desktop/mobile
+    needs: group12
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar projeto
+        run: npm ci --ignore-scripts
+      - name: Preparar exatamente o bundle publicado
+        run: npm run prepare:bundle
+      - name: Instalar Playwright e Chromium somente para QA
+        run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Validar Preview preenchido, geometria e stress de 200 mudanças de style
+        run: npx playwright test tests/e2e/preview-editor-v93-filled-source.spec.mjs --project=chromium-desktop --project=chromium-mobile
+      - name: Evidências do Grupo 3 em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v94-grupo3-evidencias
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+
+  group4:
+    name: Grupo 4 — auditoria independente de performance e templates
+    needs: group3
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar projeto do mesmo commit aprovado
+        run: npm ci --ignore-scripts
+      - name: Preparar exatamente o bundle publicado
+        run: npm run prepare:bundle
+      - name: Instalar Chromium independente
+        run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Repetir independentemente as 8 templates e o stress do Editor
+        run: npx playwright test tests/e2e/preview-editor-v93-filled-source.spec.mjs --project=chromium-desktop --project=chromium-mobile
+      - name: Evidências do Grupo 4 em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v94-grupo4-evidencias
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
