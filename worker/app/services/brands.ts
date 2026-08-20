@@ -116,9 +116,15 @@ export async function handleBrandsRoute(req: Request, env: Env, path: string): P
     const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']);
     if (auth.error || !auth.user) return auth.error;
     const id = decodeURIComponent(brandItem[1]);
+    const scopedRows = await table(
+      env,
+      'brands',
+      `id=eq.${encodeURIComponent(id)}&company_id=eq.${encodeURIComponent(COMPANY_ID)}&select=id,name&limit=1`,
+    ) as any[];
+    if (!scopedRows?.[0]) return fail('Marca não encontrada', 404, 'NOT_FOUND');
 
     if (req.method === 'DELETE') {
-      await table(env, 'brands', `id=eq.${encodeURIComponent(id)}&company_id=eq.${COMPANY_ID}`, {
+      await table(env, 'brands', `id=eq.${encodeURIComponent(id)}&company_id=eq.${encodeURIComponent(COMPANY_ID)}`, {
         method: 'DELETE',
         headers: { prefer: 'return=minimal' },
       });
@@ -140,7 +146,7 @@ export async function handleBrandsRoute(req: Request, env: Env, path: string): P
       active: input.status !== 'inactive',
       featured: !!input.featured,
     };
-    await table(env, 'brands', `id=eq.${encodeURIComponent(id)}&company_id=eq.${COMPANY_ID}`, {
+    await table(env, 'brands', `id=eq.${encodeURIComponent(id)}&company_id=eq.${encodeURIComponent(COMPANY_ID)}`, {
       method: 'PATCH',
       headers: { prefer: 'return=minimal' },
       body: JSON.stringify(patch),
