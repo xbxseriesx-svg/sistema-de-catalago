@@ -11,11 +11,12 @@ const [html, core, capture, runtime, guard] = await Promise.all([
 ]);
 
 for (const file of ['preview-editor-v91-core.js', 'preview-editor-v91-capture.js', 'preview-editor-v91-runtime.js', 'preview-editor-v91-guard.js']) {
-  assert.match(html, new RegExp(`${file.replaceAll('.', '\\.')}\\?v=89`), `${file} precisa estar no HTML publicado.`);
+  assert.match(html, new RegExp(`${file.replaceAll('.', '\\.')}\\?v=91`), `${file} precisa estar no HTML publicado com cache key V91.`);
   assert.ok(html.indexOf(`/${file}`) < html.indexOf('/assets/index-V60Excel.js'), `${file} precisa carregar antes do bundle para compartilhar a mesma árvore do template.`);
   execFileSync(process.execPath, ['--check', `public/${file}`], { stdio: 'pipe' });
 }
 
+assert.doesNotMatch(html, /\?v=89(?:[&"'])/, 'HTML publicado não pode manter cache key V89 após a release V91.');
 assert.match(core, /templateNodeRefs:\s*new Map\(\)/, 'V91 precisa reter referências reais das árvores carregadas pelo editor.');
 assert.match(core, /ref\.splice\(0,\s*ref\.length,\s*\.\.\.nodes\)/, 'A árvore original precisa ser substituída in-place para o handler existente receber a cópia do preview.');
 assert.match(core, /\/api\/admin\/templates/, 'V91 precisa interceptar a carga dos modelos antes do bundle.');
@@ -50,4 +51,4 @@ assert.match(guard, /brandOverrides\.set\(id,\s*override\)/, 'Card e logo precis
 assert.match(guard, /brandLogoAuto:\s*true/, 'A sincronização deve manter o nó de imagem identificado como logo automático da marca.');
 assert.match(guard, /actionEntityId:\s*override\.brandId/, 'Card e logo precisam persistir o novo ID de marca.');
 
-console.log('QA V91: Preview Final preenchido = Editor inicial editável, com logos vinculados, cores e trava do Grupo 3: OK');
+console.log('QA V91: Preview Final preenchido = Editor inicial editável, cache V91, logos vinculados, cores e trava do Grupo 3: OK');
