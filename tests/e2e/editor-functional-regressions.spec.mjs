@@ -67,10 +67,14 @@ async function installMocks(page) {
 
 async function openSidebar(page, testInfo, side) {
   if (!testInfo.project.name.includes('mobile')) return;
-  const button = page.locator(`[data-asteryon-mobile-toolbar] button[data-side="${side}"]`);
-  await expect(button).toBeVisible();
-  await button.click();
-  await expect(page.locator(`[data-asteryon-editor-sidebar="${side}"]`)).toHaveAttribute('data-open', 'true');
+  const sidebar = page.locator(`[data-asteryon-editor-sidebar="${side}"]`);
+  await expect(sidebar).toBeAttached();
+  if (await sidebar.getAttribute('data-open') !== 'true') {
+    const button = page.locator(`[data-asteryon-mobile-toolbar] button[data-side="${side}"]`);
+    await expect(button).toBeVisible();
+    await button.click();
+    await expect(sidebar).toHaveAttribute('data-open', 'true');
+  }
 }
 
 async function openLeftPanel(page, testInfo) {
@@ -165,11 +169,18 @@ test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháve
   await openLeftPanel(page, testInfo);
   await page.getByRole('button', { name: /^Modelos$/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Modelos prontos' })).toBeVisible();
-  const apply = page.getByRole('button', { name: 'Aplicar modelo' }).first();
+  const apply = page.getByRole('button', { name: /Aplicar modelo/i }).first();
   await expect(apply).toBeVisible();
-  page.once('dialog', dialog => dialog.accept());
   await apply.click();
-  await expect(page.getByText(/Modelo aplicado/i)).toBeVisible();
+
+  const preview = page.locator('#laurencini-template-preview-v69');
+  await expect(preview).toBeVisible({ timeout: 12_000 });
+  await expect(preview.locator('.ltp-shell')).toBeVisible({ timeout: 12_000 });
+  await expect(preview.getByText('Um catálogo completo para apresentar a força da Laurencini.', { exact: true })).toBeVisible();
+  await preview.getByRole('button', { name: 'Aplicar este modelo' }).click();
+  await expect(preview).toBeHidden({ timeout: 12_000 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.asteryonV93VisualParity || ''), { timeout: 15_000 }).toBe('approved');
+
   const blank = page.getByRole('button', { name: /Começar com página em branco/i });
   await blank.scrollIntoViewIfNeeded();
   await expect(blank).toBeVisible();
@@ -177,7 +188,7 @@ test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháve
   expect(overflow).toBeLessThanOrEqual(2);
 
   await closeOpenSidebarWithBackdrop(page, testInfo);
-  const original = 'OFERTAS QUE MOVEM O SEU NEGÓCIO';
+  const original = 'Um catálogo completo para apresentar a força da Laurencini.';
   const heroText = page.getByText(original, { exact: true }).first();
   await expect(heroText).toBeVisible({ timeout: 10_000 });
   await heroText.click({ force: true });
