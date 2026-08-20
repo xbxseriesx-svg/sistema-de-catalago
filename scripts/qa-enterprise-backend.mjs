@@ -35,12 +35,13 @@ for (const contract of [
   '/api/auth/bootstrap',
   '/api/auth/login',
   '/api/auth/logout',
-  '__Host-asteryon_access',
-  '__Host-asteryon_refresh',
 ]) {
-  if (!session.includes(contract) && !['__Host-asteryon_access', '__Host-asteryon_refresh'].includes(contract)) {
-    fail(`contrato de sessão ausente: ${contract}`);
-  }
+  if (!session.includes(contract)) fail(`contrato de sessão ausente: ${contract}`);
+}
+
+const env = await readFile('worker/app/env.ts', 'utf8');
+for (const cookieName of ['__Host-asteryon_access', '__Host-asteryon_refresh']) {
+  if (!env.includes(cookieName)) fail(`cookie de sessão ausente: ${cookieName}`);
 }
 
 const account = await readFile('worker/app/auth/account.ts', 'utf8');
@@ -57,10 +58,10 @@ for (const contract of [
   '/api/public/catalog',
   '/api/public/brands',
   '/api/public/marketing',
-  '/api/public/pages/',
 ]) {
   if (!catalog.includes(contract)) fail(`contrato público ausente: ${contract}`);
 }
+if (!/api\\\/public\\\/pages/.test(catalog)) fail('contrato público de páginas ausente.');
 
 const hierarchy = await readFile('worker/app/services/hierarchy.ts', 'utf8');
 for (const level of ['departamento', 'secao', 'categoria']) {
