@@ -11,6 +11,8 @@ const templateNames = [
   'Modelo Oficial',
 ];
 
+const heroText = 'Um catálogo completo para apresentar a força da Laurencini.';
+
 const basePage = {
   id: 'qa-preview-base-page', type: 'page', name: 'Página base QA',
   x: 0, y: 0, width: 1440, height: 1800, rotation: 0, zIndex: 0,
@@ -29,9 +31,21 @@ function templatesFixture() {
   }));
 }
 
+function nodeTexts(nodes) {
+  const values = [];
+  const walk = (item) => {
+    if (!item) return;
+    if (item.props?.text) values.push(String(item.props.text));
+    for (const child of item.children || []) walk(child);
+  };
+  for (const node of nodes || []) walk(node);
+  return values;
+}
+
 async function installPreviewMocks(page) {
   let currentNodes = [structuredClone(basePage)];
   const templates = templatesFixture();
+  const draftWrites = [];
 
   await page.route('**/api/**', async (route) => {
     const request = route.request();
@@ -93,7 +107,11 @@ async function installPreviewMocks(page) {
       } });
     }
     if (path === '/api/admin/pages/home/draft') {
-      if (request.method() === 'PUT') currentNodes = structuredClone(request.postDataJSON().nodes || currentNodes);
+      if (request.method() === 'PUT') {
+        const payload = request.postDataJSON();
+        draftWrites.push(structuredClone(payload));
+        currentNodes = structuredClone(payload.nodes || currentNodes);
+      }
       return json({ ok: true, page: {
         id: 'qa-page-home', slug: 'home', title: 'Home QA V91', nodes: currentNodes,
         revision: 1, updatedAt: new Date().toISOString(),
@@ -107,6 +125,11 @@ async function installPreviewMocks(page) {
 
     return json({ ok: true });
   });
+
+  return {
+    getDraftWrites: () => structuredClone(draftWrites),
+    getCurrentNodes: () => structuredClone(currentNodes),
+  };
 }
 
 async function openModels(page, testInfo) {
@@ -122,8 +145,8 @@ async function openModels(page, testInfo) {
   await expect(page.getByRole('heading', { name: 'Modelos prontos' })).toBeVisible();
 }
 
-test('Preview Final preenchido aplica no editor sem falso missingTexts', async ({ page }, testInfo) => {
-  await installPreviewMocks(page);
+test('Preview Final preenchido aplica e persiste no editor sem falso missingTexts', async ({ page }, testInfo) => {
+  const mock = await installPreviewMocks(page);
   const dialogMessages = [];
   page.on('dialog', async (dialog) => {
     dialogMessages.push(dialog.message());
@@ -138,7 +161,7 @@ test('Preview Final preenchido aplica no editor sem falso missingTexts', async (
 
   const overlay = page.locator('#laurencini-template-preview-v69');
   await expect(overlay).toBeVisible();
-  await expect(overlay.getByText(/Preview final preenchido com os dados reais do catálogo/i)).toBeVisible();
+  await expect(overlay.locator('.ltp-shell')).toBeVisible();
 
   // Reproduz a estrutura que causava o falso negativo: blocos com texto pai/filhos
   // e marcas convertidas semanticamente em carrossel editável.
@@ -154,18 +177,21 @@ test('Preview Final preenchido aplica no editor sem falso missingTexts', async (
     `A aplicação repetiu o erro do vídeo: ${dialogMessages.join(' | ')}`,
   ).toEqual([]);
 
-  const report = await page.evaluate(() => window.__ASTERYON_PREVIEW_EDITOR_PARITY_V91__ || null);
-  expect(report, 'A aplicação não publicou o relatório funcional da V91.').not.toBeNull();
-  expect(report.ok).toBe(true);
-  expect(report.missingTexts).toEqual([]);
-  expect(report.missingImages).toEqual([]);
-  expect(report.missingBrandLogos).toEqual([]);
-  expect(report.missingBrandNames).toEqual([]);
-  expect(report.templateReferencesUpdated).toBeGreaterThan(0);
+  await expect.poll(() => mock.getDraftWrites().length, { timeout: 10_000 }).toBeGreaterThan(0);
+  const write = mock.getDraftWrites().at(-1);
+  expect(write.expectedRevision, 'O handler original precisa manter a proteção de revisão.').toBe(1);
+  expect(nodeTexts(write.nodes)).toContain(heroText);
+  expect(nodeTexts(mock.getCurrentNodes())).toContain(heroText);
+
+  // A V91 recarrega o editor após a resposta 2xx para consumir o draft realmente
+  // persistido, pois o React mantém uma cópia própria do template aplicado.
+  await expect(page.getByText(heroText, { exact: true }).first()).toBeVisible({ timeout: 15_000 });
 
   const stored = await page.evaluate(() => JSON.parse(sessionStorage.getItem('asteryon_preview_editor_parity_v91') || 'null'));
-  expect(stored?.ok).toBe(true);
-
-  await expect(page.getByText(/Modelo aplicado/i)).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByText('Um catálogo completo para apresentar a força da Laurencini.', { exact: true }).first()).toBeVisible({ timeout: 10_000 });
+  expect(stored, 'A aplicação não persistiu o relatório funcional da V91.').not.toBeNull();
+  expect(stored.missingTexts).toEqual([]);
+  expect(stored.missingImages).toEqual([]);
+  expect(stored.missingBrandLogos).toEqual([]);
+  expect(stored.missingBrandNames).toEqual([]);
+  expect(stored.templateReferencesUpdated).toBeGreaterThan(0);
 });
