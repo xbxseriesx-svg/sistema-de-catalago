@@ -115,7 +115,7 @@ export async function currentUserFromAccess(access: string, env: Env): Promise<C
     const memberships = await table(
       env,
       'company_memberships',
-      `user_id=eq.${encodeURIComponent(authUser.id)}&active=eq.true&select=company_id,role&limit=1`,
+      `company_id=eq.${encodeURIComponent(COMPANY_ID)}&user_id=eq.${encodeURIComponent(authUser.id)}&active=eq.true&select=company_id,role&limit=1`,
       {},
       access,
     ) as any[];
@@ -130,7 +130,7 @@ export async function currentUserFromAccess(access: string, env: Env): Promise<C
     ) as any[];
     return {
       id: authUser.id,
-      company_id: membership.company_id,
+      company_id: COMPANY_ID,
       email: profiles?.[0]?.email || authUser.email || null,
       name: profiles?.[0]?.display_name || authUser.user_metadata?.display_name || authUser.email || null,
       role: membership.role === 'owner' ? 'SDM' : String(membership.role).toUpperCase() as Role,
@@ -170,7 +170,7 @@ export async function companyMembership(req: Request, env: Env) {
   const user = await userResponse.json() as any;
   if (!clean(user?.id)) return null;
   const membershipResponse = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/company_memberships?company_id=eq.${COMPANY_ID}&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true&select=company_id,role&limit=1`,
+    `${env.SUPABASE_URL}/rest/v1/company_memberships?company_id=eq.${encodeURIComponent(COMPANY_ID)}&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true&select=company_id,role&limit=1`,
     { headers: authHeaders },
   );
   if (!membershipResponse.ok) return null;
@@ -178,17 +178,23 @@ export async function companyMembership(req: Request, env: Env) {
   return memberships?.[0] ? { user, membership: memberships[0] } : null;
 }
 
+async function ownerRows(env: Env) {
+  return await table(
+    env,
+    'company_memberships',
+    `company_id=eq.${encodeURIComponent(COMPANY_ID)}&role=eq.owner&active=eq.true&select=user_id&limit=1`,
+  ) as any[];
+}
+
 export async function handleCoreAuth(req: Request, env: Env, path: string): Promise<Response | null> {
   if (path === '/api/auth/status' && req.method === 'GET') {
     const user = await currentUser(req, env);
-    const owners = adminKey(env)
-      ? await table(env, 'company_memberships', 'role=eq.owner&active=eq.true&select=user_id&limit=1') as any[]
-      : [{ user_id: 'configured' }];
+    const owners = adminKey(env) ? await ownerRows(env) : [{ user_id: 'configured' }];
     return ok({
       needsBootstrap: !owners?.length,
       user: user ? {
         id: user.id,
-        companyId: user.company_id,
+        companyId: COMPANY_ID,
         email: user.email,
         name: user.name,
         role: user.role,
@@ -197,11 +203,7 @@ export async function handleCoreAuth(req: Request, env: Env, path: string): Prom
   }
 
   if (path === '/api/auth/bootstrap' && req.method === 'POST') {
-    const owners = await table(
-      env,
-      'company_memberships',
-      'role=eq.owner&active=eq.true&select=user_id&limit=1',
-    ) as any[];
+    const owners = await ownerRows(env);
     if (owners?.length) return fail('O primeiro SDM já foi criado', 409, 'BOOTSTRAP_CLOSED');
 
     const input = await requestBody(req);
@@ -245,7 +247,9 @@ export async function handleCoreAuth(req: Request, env: Env, path: string): Prom
       },
       body: JSON.stringify({ email, password }),
     });
-    if (!sessionResponse.ok) return fail('Usuário criado, mas a sessão inicial falhou', 502, 'BOOTSTRAP_SESSION_FAILED');
+    if (!sessionResponse.ok) {
+      return fail('Usuário criado, mas a sessão inicial falhou', 502, 'BOOTSTRAP_SESSION_FAILED');
+    }
     const session = await sessionResponse.json() as any;
     return new Response(JSON.stringify({
       ok: true,
@@ -282,7 +286,7 @@ export async function handleCoreAuth(req: Request, env: Env, path: string): Prom
       ok: true,
       user: {
         id: user.id,
-        companyId: user.company_id,
+        companyId: COMPANY_ID,
         email: user.email,
         name: user.name,
         role: user.role,
