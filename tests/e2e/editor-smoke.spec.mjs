@@ -3,8 +3,7 @@ import { test, expect } from '@playwright/test';
 function installApiMocks(page) {
   return page.route('**/api/**', async route => {
     const request = route.request();
-    const url = new URL(request.url());
-    const path = url.pathname;
+    const path = new URL(request.url()).pathname;
 
     const json = body => route.fulfill({
       status: 200,
@@ -24,28 +23,32 @@ function installApiMocks(page) {
       return json({
         ok: true,
         catalog: {
-          products: [{ id: 'p1', code: '1001', name: 'Produto QA', status: 'active', departamentoId: 'dep1', secaoId: 'sec1', categoriaId: 'cat1', imageUrl: null }],
+          products: [{ id: 'p1', code: '1001', name: 'Produto QA', shortDescription: 'Produto QA', status: 'ativo', departamentoId: 'dep1', secaoId: 'sec1', categoriaId: 'cat1', imageUrl: null }],
           brands: [{ id: 'b1', name: 'Marca QA', slug: 'marca-qa', status: 'active' }],
           hierarchy: [
-            { id: 'dep1', type: 'departamento', name: 'Atacado', slug: 'atacado', parentId: null, status: 'active' },
-            { id: 'sec1', type: 'secao', name: 'Higiene', slug: 'higiene', parentId: 'dep1', status: 'active' },
-            { id: 'cat1', type: 'categoria', name: 'Sabonetes', slug: 'sabonetes', parentId: 'sec1', status: 'active' },
+            { id: 'dep1', level: 'departamento', name: 'Atacado', slug: 'atacado', parentId: null, status: 'active' },
+            { id: 'sec1', level: 'secao', name: 'Higiene', slug: 'higiene', parentId: 'dep1', status: 'active' },
+            { id: 'cat1', level: 'categoria', name: 'Sabonetes', slug: 'sabonetes', parentId: 'sec1', status: 'active' },
           ],
           promotions: [],
-          settings: {},
+          settings: { displayFields: ['image', 'code', 'shortDescription', 'brand', 'category', 'price', 'unit'] },
         },
       });
+    }
+
+    if (path === '/api/admin/brands' || path === '/api/public/brands') {
+      return json({ ok: true, brands: [{ id: 'b1', name: 'Marca QA', slug: 'marca-qa', status: 'active' }] });
     }
 
     if (path === '/api/admin/marketing' || path === '/api/public/marketing') {
       return json({ ok: true, marketing: { theme: {}, banner: {}, videoBanner: {}, carousel: { items: [] }, layout: { x: 0, y: 0, width: 1440, height: 560, zIndex: 700, visible: true } } });
     }
 
-    if (/^\/api\/admin\/pages\/home$/.test(path)) {
+    if (path === '/api/admin/pages/home' || path === '/api/admin/pages/home/draft') {
       return json({ ok: true, page: { id: 'page_home', slug: 'home', title: 'Home', nodes: [], revision: 1, updatedAt: new Date().toISOString(), publishedVersionId: 'supabase-v1' } });
     }
 
-    if (/^\/api\/public\/pages\/home$/.test(path)) {
+    if (path === '/api/public/pages/home' || path.startsWith('/api/public/pages/home/')) {
       return json({ ok: true, page: { slug: 'home', title: 'Home', versionId: 'supabase-v1', versionNumber: 1, publishedAt: new Date().toISOString(), nodes: [] } });
     }
 
