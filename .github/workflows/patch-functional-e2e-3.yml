@@ -1,0 +1,65 @@
+name: Patch funcional V89 — rodada 3
+
+on:
+  push:
+    branches:
+      - audit/functional-e2e-hardening-3
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: audit/functional-e2e-hardening-3
+          fetch-depth: 0
+
+      - name: Corrigir Departamento dinâmico na origem compilada
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('public/assets/index-V60Excel.js')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+              (
+                  'rP={id:"",code:"",description:"",longDescription:"",department:"Atacado",sectionId:""',
+                  'rP={id:"",code:"",description:"",longDescription:"",department:"",sectionId:""',
+                  'valor inicial do Departamento',
+              ),
+              (
+                  'l.jsx(St,{label:"Departamento *",children:l.jsxs("select",{className:Ye,value:a.department,onChange:M=>r(oe=>({...oe,department:M.target.value,sectionId:"",section:"",categoryId:"",category:""})),children:[l.jsx("option",{children:"Atacado"}),l.jsx("option",{children:"Distribuição"})]})})',
+                  'l.jsx(St,{label:"Departamento *",children:l.jsxs("select",{className:Ye,value:a.department,onChange:M=>r(oe=>({...oe,department:M.target.value,sectionId:"",section:"",categoryId:"",category:""})),children:[l.jsx("option",{value:"",children:"Selecione"}),ee.map(M=>l.jsx("option",{value:M.name,children:M.name},M.id))]})})',
+                  'select dinâmico do Departamento',
+              ),
+          ]
+
+          for old, new, label in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: esperado 1 trecho, encontrado {count}')
+              text = text.replace(old, new, 1)
+
+          if 'children:[l.jsx("option",{children:"Atacado"}),l.jsx("option",{children:"Distribuição"})]' in text:
+              raise SystemExit('select fixo de Departamento ainda presente')
+          if 'ee.map(M=>l.jsx("option",{value:M.name,children:M.name},M.id))' not in text:
+              raise SystemExit('select dinâmico não foi materializado')
+
+          path.write_text(text, encoding='utf-8')
+
+      - name: Remover workflow temporário e publicar somente a correção
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/assets/index-V60Excel.js
+          git rm .github/workflows/patch-functional-e2e-3.yml
+          git diff --cached --check
+          git commit -m "fix: usa departamentos dinâmicos no cadastro de produto"
+          git push origin HEAD:audit/functional-e2e-hardening-3
