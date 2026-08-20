@@ -41,6 +41,8 @@ jobs:
           cache: npm
       - name: Instalar dependências
         run: npm ci --ignore-scripts
+      - name: Validar arquitetura modular em reconstrução
+        run: node scripts/qa-enterprise-backend.mjs
       - name: Compilar e executar regressão automatizada atual
         run: npm test
 
@@ -61,6 +63,8 @@ jobs:
         run: npm run prepare:bundle
       - name: TypeScript
         run: npm run check
+      - name: Revalidar independência do backend novo
+        run: node scripts/qa-enterprise-backend.mjs
       - name: Segurança, SSRF e isolamento por tenant
         run: |
           node scripts/qa-security-v89.mjs
@@ -157,6 +161,7 @@ jobs:
           node scripts/qa-version-v94.mjs
           node scripts/qa-cleanup-v89.mjs
           node scripts/qa-enterprise-transition.mjs
+          node scripts/qa-enterprise-backend.mjs
       - name: Artefato de dry-run para inspeção
         uses: actions/upload-artifact@v4
         with:
