@@ -21,7 +21,7 @@ assert.match(bundle, /V92A.modelName===b/, 'Payload V92 só pode ser consumido p
 assert.match(bundle, /V92A.team3Ok===!0&&V92A.team4Ok===!0/, 'Handler só pode consumir árvore com dupla aprovação prévia.');
 assert.match(capture, /__ASTERYON_PREVIEW_EDITOR_APPLY_V92__/, 'Captura precisa entregar o payload aprovado ao handler real.');
 assert.match(capture, /team3Ok: report.ok === true/, 'Payload deve carregar aprovação da Equipe 3.');
-assert.match(capture, /team4Ok: team4Request.team4Report?.ok === true/, 'Payload deve carregar aprovação da Equipe 4.');
+assert.ok(capture.includes('team4Ok: team4Request.team4Report?.ok === true'), 'Payload deve carregar aprovação da Equipe 4.');
 
 assert.match(core, /document\.querySelector\('\[data-node-id\]'\)/, 'Detecção do Editor precisa reconhecer o canvas editável real.');
 assert.match(core, /data-asteryon-editor-sidebar/, 'Detecção estrutural deve confirmar chrome do editor, não apenas um título.');
