@@ -101,7 +101,7 @@ if (!products.includes('on_conflict=company_id,code')) fail('upsert de produtos 
 
 const media = await readFile('worker/app/services/media.ts', 'utf8');
 if (!media.includes('/api/admin/media')) fail('contrato administrativo de mídia ausente.');
-if (!media.includes('/api/public/media')) fail('contrato público de mídia ausente.');
+if (!/api\\\/public\\\/media/.test(media)) fail('contrato público de mídia ausente.');
 
 const templates = await readFile('worker/app/services/templates.ts', 'utf8');
 if (!templates.includes('SDM_ONLY')) fail('proteção SDM de templates ausente.');
