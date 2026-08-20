@@ -2,16 +2,18 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const [html, bundle, core, capture, team4, e2e] = await Promise.all([
+const [html, bundle, core, capture, team4, e2e, versionRaw] = await Promise.all([
   readFile('public/index.html', 'utf8'),
   readFile('public/assets/index-V60Excel.js', 'utf8'),
   readFile('public/preview-editor-v91-core.js', 'utf8'),
   readFile('public/preview-editor-v91-capture.js', 'utf8'),
   readFile('public/preview-editor-v92-team4.js', 'utf8'),
   readFile('tests/e2e/preview-editor-team4-v92.spec.mjs', 'utf8'),
+  readFile('VERSION', 'utf8'),
 ]);
+const release = versionRaw.trim();
 
-assert.match(html, /preview-editor-v92-team4\.js\?v=(?:92|93)/, 'Equipe 4 V92 precisa continuar carregada como pré-gate na release corrente.');
+assert.match(html, new RegExp(`preview-editor-v92-team4\\.js\\?v=${release}(?:["&])`), 'Equipe 4 V92 precisa continuar carregada como pré-gate com o cache da release corrente.');
 assert.ok(html.indexOf('/preview-editor-v91-capture.js') < html.indexOf('/preview-editor-v92-team4.js'), 'Equipe 4 deve auditar a captura produzida pelo Grupo 3.');
 assert.ok(html.indexOf('/preview-editor-v92-team4.js') < html.indexOf('/assets/index-V60Excel.js'), 'Equipe 4 precisa estar ativa antes do bundle/editor.');
 
@@ -61,4 +63,4 @@ for (const file of ['public/preview-editor-v91-capture.js', 'public/preview-edit
   execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
 }
 
-console.log('QA compatibilidade V92 na release corrente: pré-gate, causa real, auditoria pré-mutação e aprovação dupla preservados.');
+console.log(`QA compatibilidade V92 na release V${release}: pré-gate, causa real, auditoria pré-mutação e aprovação dupla preservados.`);
