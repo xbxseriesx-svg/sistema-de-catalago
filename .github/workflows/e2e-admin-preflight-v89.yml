@@ -1,0 +1,52 @@
+name: V89 — preflight E2E admin QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - qa/v89-functional-e2e-real
+    paths:
+      - '.github/workflows/e2e-admin-preflight-v89.yml'
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  admin-secret-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Verificar segredo administrativo sem exibir valor
+        id: check
+        shell: bash
+        run: |
+          if [ -n "$SUPABASE_SECRET_KEY" ] || [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo 'Segredo administrativo do Supabase está disponível ao runner.'
+            echo 'state=success' >> "$GITHUB_OUTPUT"
+            echo 'description=Segredo admin disponível para CRUD QA' >> "$GITHUB_OUTPUT"
+          else
+            echo 'Nenhum segredo administrativo do Supabase está configurado no GitHub Actions.'
+            echo 'state=error' >> "$GITHUB_OUTPUT"
+            echo 'description=Falta SUPABASE_SECRET_KEY ou SUPABASE_SERVICE_ROLE_KEY' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publicar resultado do preflight
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATE: ${{ steps.check.outputs.state }}
+          DESCRIPTION: ${{ steps.check.outputs.description }}
+        shell: bash
+        run: |
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          PAYLOAD=$(jq -n --arg state "$STATE" --arg description "$DESCRIPTION" --arg target_url "$RUN_URL" '{state:$state,context:"qa/e2e-admin-secret",description:$description,target_url:$target_url}')
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -d "$PAYLOAD" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
