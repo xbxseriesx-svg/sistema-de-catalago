@@ -15,6 +15,21 @@ assert.ok(
   'seletor antigo com apenas Atacado/Distribuição não pode permanecer',
 );
 
+// Estrutura: Departamento deve ter o mesmo ciclo manual de criação/edição/exclusão.
+assert.ok(bundle.includes('children:"Novo departamento"'), 'Estrutura deve permitir criar Departamento manualmente');
+assert.ok(
+  bundle.includes('parentId:a==="departamento"?"":n'),
+  'Departamento manual deve ser enviado sem item pai',
+);
+assert.ok(
+  bundle.includes('!d&&a!=="departamento"&&l.jsxs(l.Fragment'),
+  'seletor de pai não deve ser exibido ao criar Departamento',
+);
+assert.ok(
+  bundle.includes('l.jsx(QF,{node:w,count:w.sections.length,onEdit:S,onDelete:b})'),
+  'Departamento listado deve expor editar/excluir como os demais níveis',
+);
+
 // Textos da arquitetura antiga não devem continuar sendo apresentados ao usuário.
 for (const stale of [
   'Dados do Lovable dentro do canvas Bolt',
@@ -61,4 +76,4 @@ for (const name of [
 assert.ok(bundle.includes('ASTER_V81_CORE_PATCH'), 'biblioteca de ações/inspector V81 deve permanecer');
 assert.ok(bundle.includes('ASTER_V81_WHITE_SCREEN_FIX'), 'correção de seleção/inspector deve permanecer');
 
-console.log('QA V90 funcional: departamentos dinâmicos, textos normalizados e templates recursivamente editáveis validados.');
+console.log('QA V90 funcional: departamentos dinâmicos, CRUD de estrutura, textos normalizados e templates recursivamente editáveis validados.');
