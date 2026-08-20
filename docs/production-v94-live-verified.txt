@@ -1,0 +1,9 @@
+ASTERYON Catálogo — V94 produção verificada
+
+Verificado em UTC: 2026-08-20T20:33:11Z
+Endpoint: https://sistema-de-catalago.xbxseriesx.workers.dev
+Health: {"ok":true,"service":"sistema-de-catalago","version":"V94","database":"Supabase Postgres","storage":"Supabase Storage","d1":false}
+Admin: ASTERYON Editor V94
+Runtime: preview-editor-v91-runtime.js?v=94 — ASTER_V94_EDITOR_PERFORMANCE confirmado
+Fonte: preview-editor-v93-source.js?v=94 — ASTER_V93_FILLED_PREVIEW_SOURCE confirmado
+Resultado: PRODUÇÃO V94 CONFIRMADA
