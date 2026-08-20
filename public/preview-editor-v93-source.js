@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   const ASTER_V93_FILLED_PREVIEW_SOURCE=true;
+  const ASTER_V94_TEMPLATE_OBSERVER_PERFORMANCE=true;
 
   if (window.__ASTERYON_PREVIEW_EDITOR_V93_SOURCE__) return;
   window.__ASTERYON_PREVIEW_EDITOR_V93_SOURCE__ = true;
@@ -20,6 +21,7 @@
   const normalize = S.normalize;
   const round = S.round;
   const px = S.px;
+  let templateFrame = 0;
 
   function visible(element) {
     if (!(element instanceof HTMLElement)) return false;
@@ -350,6 +352,7 @@
   }
 
   function refreshTemplateCards() {
+    templateFrame = 0;
     const title = [...document.querySelectorAll('h3')].find(item => normalize(item.textContent) === 'modelos prontos');
     if (!title) return;
     let root = title.parentElement;
@@ -369,15 +372,36 @@
     }
   }
 
+  function scheduleTemplateRefresh() {
+    if (!templateFrame) templateFrame = requestAnimationFrame(refreshTemplateCards);
+  }
+
+  function addedNodeTouchesTemplates(node) {
+    if (!(node instanceof Element)) return false;
+    if (node.matches('article,h3,[data-laurencini-template-preview]')) return true;
+    return !!node.querySelector?.('article,h3,[data-laurencini-template-preview]');
+  }
+
+  function templateMutation(records) {
+    return records.some(record => record.type === 'childList' && [...record.addedNodes].some(addedNodeTouchesTemplates));
+  }
+
   document.addEventListener('click', handlePreviewApply, true);
   document.addEventListener('click', forceFilledPreview, true);
-  const observer = new MutationObserver(() => requestAnimationFrame(refreshTemplateCards));
+  document.addEventListener('click', (event) => {
+    const button = event.target instanceof Element ? event.target.closest('button') : null;
+    if (button && normalize(button.textContent) === 'modelos') scheduleTemplateRefresh();
+  }, true);
+  const observer = new MutationObserver((records) => {
+    if (templateMutation(records)) scheduleTemplateRefresh();
+  });
   observer.observe(document.documentElement, { childList: true, subtree: true });
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refreshTemplateCards, { once: true });
-  else refreshTemplateCards();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scheduleTemplateRefresh, { once: true });
+  else scheduleTemplateRefresh();
 
   window.__ASTERYON_V93_TEMPLATE_POLICY__ = Object.freeze({
     version: 'V93', source: 'Preview Final preenchido', legacyApply: 'bloqueado',
     rule: 'Todas as templates correntes são aplicadas somente a partir da Prévia preenchida V93.',
+    v94Performance: 'observer global filtra somente inserções relacionadas ao painel Modelos e agrupa em um RAF',
   });
 })();
