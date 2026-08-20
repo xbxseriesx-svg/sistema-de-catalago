@@ -1,5 +1,6 @@
 import worker from './index-v71';
 import { handleHierarchyRoute } from './modules/hierarchy-v90';
+import { checkPasswordSafety } from './modules/password-security-v90';
 
 type Env = {
   ASSETS: Fetcher;
@@ -225,6 +226,22 @@ export default {
 
       if (path === '/api/health') {
         return finish(ok({ service: 'sistema-de-catalago', version: 'V89', database: 'Supabase Postgres', storage: 'Supabase Storage', d1: false }));
+      }
+
+      if (path === '/api/auth/bootstrap' && req.method === 'POST') {
+        const input = await req.clone().json().catch(() => ({})) as any;
+        const bootstrapToken = clean(input?.token);
+        const password = clean(input?.password);
+        if (env.SDM_BOOTSTRAP_TOKEN && bootstrapToken === env.SDM_BOOTSTRAP_TOKEN && password.length >= 10) {
+          const safety = await checkPasswordSafety(password);
+          if (!safety.ok) {
+            return finish(fail(
+              safety.message,
+              safety.code === 'PASSWORD_SCREENING_UNAVAILABLE' ? 503 : 400,
+              safety.code,
+            ));
+          }
+        }
       }
 
       if (path.startsWith('/api/admin/')) {
