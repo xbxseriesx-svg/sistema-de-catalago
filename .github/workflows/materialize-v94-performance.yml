@@ -1,11 +1,10 @@
 name: Materializar V94 performance
 
 on:
-  push:
-    branches:
-      - audit/v94-editor-performance-20260820
-    paths:
-      - .github/workflows/materialize-v94-performance.yml
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -39,10 +38,8 @@ jobs:
             .replace(/ASTERYON Editor V93/g, 'ASTERYON Editor V94')
             .replace(/\?v=93/g, '?v=94')
             .replace(/Manifesto V92/g, 'Manifesto V94'));
-
           replace('public/runtime-loader-v87.js', s => s.replace(/\?v=93/g, '?v=94'));
           replace('worker/index-v81.ts', s => s.replace("version: 'V93'", "version: 'V94'"));
-
           replace('README.md', s => {
             let out = s
               .replace('# ASTERYON Catálogo — V92', '# ASTERYON Catálogo — V94')
@@ -50,25 +47,16 @@ jobs:
               .replace('## Release atual — V92', '## Release atual — V94')
               .replace('### Gate das 4 equipes — V92', '### Gate das 4 equipes — V94')
               .replace('O QA atual da V92', 'O QA atual da V94');
-            out = out.replace(
-              /A V92 é a release lógica atual\.[^\n]*/,
-              'A V94 é a release lógica atual. O nome físico `worker/index-v81.ts` é mantido por compatibilidade e histórico, sem renomear a cadeia antiga apenas por estética.'
-            );
-            out = out.replace(
-              /A V92 preserva o hardening[^\n]*/,
-              'A V94 preserva integralmente a arquitetura V93 de **Prévia preenchida → Editor**, os gates das Equipes 3/4 e o hardening anterior, e corrige a lentidão reintroduzida no Editor por observers globais de compatibilidade. A camada V91 deixa de observar mudanças de `style/class/src` durante drag/resize, a camada V93 filtra mutações não relacionadas a Modelos e os pollings de paridade encerram assim que a auditoria é aprovada.'
-            );
-            out = out.replace(
-              /- O E2E obrigatório da V92[^\n]*/,
-              '- O E2E obrigatório da V94 percorre as 8 templates em desktop/mobile e, além da paridade visual, executa 200 mudanças consecutivas de `style` no canvas para provar que edição/drag/resize não reativam o observer global.'
-            );
+            out = out.replace(/A V92 é a release lógica atual\.[^\n]*/, 'A V94 é a release lógica atual. O nome físico `worker/index-v81.ts` é mantido por compatibilidade e histórico, sem renomear a cadeia antiga apenas por estética.');
+            out = out.replace(/A V92 preserva o hardening[^\n]*/, 'A V94 preserva integralmente a arquitetura V93 de **Prévia preenchida → Editor**, os gates das Equipes 3/4 e o hardening anterior, e corrige a lentidão reintroduzida no Editor por observers globais de compatibilidade. A camada V91 deixa de observar mudanças de `style/class/src` durante drag/resize, a camada V93 filtra mutações não relacionadas a Modelos e os pollings de paridade encerram assim que a auditoria é aprovada.');
+            out = out.replace(/- O E2E obrigatório da V92[^\n]*/, '- O E2E obrigatório da V94 percorre as 8 templates em desktop/mobile e, além da paridade visual, executa 200 mudanças consecutivas de `style` no canvas para provar que edição/drag/resize não reativam o observer global.');
             return out;
           });
 NODE
           rm -f .github/workflows/materialize-v94-performance.yml
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add VERSION package.json package-lock.json public/index.html public/runtime-loader-v87.js worker/index-v81.ts README.md .github/workflows/materialize-v94-performance.yml
+          git add package.json package-lock.json public/index.html public/runtime-loader-v87.js worker/index-v81.ts README.md .github/workflows/materialize-v94-performance.yml
           if git diff --cached --quiet; then
             echo 'Nada para materializar.'
           else
