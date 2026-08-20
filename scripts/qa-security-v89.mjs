@@ -35,7 +35,8 @@ for (const [name, source] of [['index-v70.ts', v70], ['index-v72.ts', v72]]) {
 assert(env.includes("export const REFRESH_COOKIE = '__Host-asteryon_refresh'"), 'Worker Enterprise não reconhece o refresh cookie');
 assert(session.includes('grant_type=refresh_token'), 'Worker Enterprise não renova access token via refresh token');
 assert(session.includes('requestWithSession(req, accessToken, nextRefreshToken)'), 'sessão renovada não é encaminhada ao request interno');
-assert(session.includes('attachRefreshedSession(response, session'), 'função de anexar tokens renovados não está preservada');
+assert(session.includes('export function attachRefreshedSession'), 'função de devolver sessão renovada não está preservada');
+assert(session.includes("'set-cookie'"), 'sessão renovada não devolve cookies HttpOnly seguros');
 assert(session.includes("path === '/api/auth/status'"), 'status de autenticação não está coberto pela sessão Enterprise');
 
 assert(/drop policy if exists pages_public_select on public\.pages/i.test(migration), 'migration não remove a policy pública insegura de pages');
