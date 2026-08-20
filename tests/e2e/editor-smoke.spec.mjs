@@ -24,7 +24,7 @@ function installApiMocks(page) {
       return json({
         ok: true,
         catalog: {
-          products: [{ id: 'p1', code: '1001', name: 'Produto QA', status: 'active', departamentoId: 'dep1', secaoId: 'sec1', categoriaId: 'cat1', imageUrl: null }],
+          products: [{ id: 'p1', code: '1001', name: 'Produto QA', shortDescription: 'Produto QA', status: 'active', departamentoId: 'dep1', secaoId: 'sec1', categoriaId: 'cat1', imageUrl: null }],
           brands: [{ id: 'b1', name: 'Marca QA', slug: 'marca-qa', status: 'active' }],
           hierarchy: [
             { id: 'dep1', type: 'departamento', name: 'Atacado', slug: 'atacado', parentId: null, status: 'active' },
@@ -137,6 +137,63 @@ test('produto permite selecionar departamento criado dinamicamente', async ({ pa
 
   const sectionField = page.locator('label').filter({ hasText: 'Seção *' }).first().locator('select');
   await expect(sectionField.locator('option', { hasText: 'Cozinha QA' })).toHaveCount(1);
+  expect(errors).toEqual([]);
+});
+
+test('Estrutura oferece criação manual de Departamento sem exigir pai', async ({ page }, testInfo) => {
+  await installApiMocks(page);
+  const errors = collectRuntimeErrors(page);
+
+  await page.goto('/admin', { waitUntil: 'networkidle' });
+  await openManagementPanel(page, testInfo);
+  await page.getByRole('button', { name: /^Estrutura$/i }).first().click();
+
+  const newDepartment = page.getByRole('button', { name: /^Novo departamento$/i }).first();
+  await expect(newDepartment).toBeVisible();
+  await newDepartment.click();
+  await expect(page.getByPlaceholder('Ex.: Food Service').first()).toBeVisible();
+  await expect(page.getByText('Departamento superior', { exact: true })).toHaveCount(0);
+
+  await page.getByRole('button', { name: /^Nova seção$/i }).first().click();
+  await expect(page.getByText('Departamento superior', { exact: true }).first()).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('todos os modelos prontos permitem selecionar e duplicar elemento do canvas', async ({ page }, testInfo) => {
+  await installApiMocks(page);
+  const errors = collectRuntimeErrors(page);
+  page.on('dialog', dialog => dialog.accept());
+
+  await page.goto('/admin', { waitUntil: 'networkidle' });
+  await openManagementPanel(page, testInfo);
+
+  const modelsTab = page.getByRole('button', { name: /^Modelos$/i }).first();
+  await expect(modelsTab).toBeVisible();
+  await modelsTab.click();
+
+  const cases = [
+    ['Varejo Contínuo', 'OFERTAS QUE MOVEM O SEU NEGÓCIO'],
+    ['Atacado B2B', 'CONDIÇÕES ESPECIAIS PARA O SEU NEGÓCIO'],
+    ['Distribuidora Institucional', 'DISTRIBUINDO QUALIDADE COM VELOCIDADE'],
+    ['Catálogo de Marcas B2B', 'DISTRIBUINDO QUALIDADE E GRANDES MARCAS'],
+    ['Distribuidora União • Figma B2B', 'O parceiro de distribuição que o seu negócio confia.'],
+    ['Catálogo Hierárquico B2B', 'CATÁLOGO HIERÁRQUICO B2B'],
+    ['Vitrine Atacado Pro', 'Seu mix comercial em destaque'],
+  ];
+
+  for (const [modelName, uniqueText] of cases) {
+    const card = page.locator('article').filter({ hasText: modelName }).first();
+    await expect(card).toBeVisible();
+    await card.getByRole('button', { name: /^Aplicar modelo$/i }).click();
+
+    const canvasText = page.getByText(uniqueText, { exact: true });
+    await expect(canvasText.first()).toBeVisible({ timeout: 10_000 });
+    const before = await canvasText.count();
+    await canvasText.first().click({ force: true });
+    await page.keyboard.press('Control+d');
+    await expect.poll(() => page.getByText(uniqueText, { exact: true }).count()).toBeGreaterThan(before);
+  }
+
   expect(errors).toEqual([]);
 });
 
