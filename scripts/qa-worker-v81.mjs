@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import worker from '../.wrangler-dry-run/index.js';
 
 const expectedRelease = `V${(await readFile('VERSION', 'utf8')).trim()}`;
+const expectedCompanyId = process.env.QA_COMPANY_ID || 'cmp_asteryon';
 const calls = [];
 const respond = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
 
@@ -12,9 +13,9 @@ globalThis.fetch = async (input, init = {}) => {
 
   if (url.pathname === '/auth/v1/user') return respond({ id: 'user_v81', email: 'qa@example.invalid' });
   if (url.pathname === '/rest/v1/company_memberships') {
-    assert.match(url.search, /company_id=eq\.cmp_asteryon/);
-    assert.match(url.search, /user_id=eq\.user_v81/);
-    return respond([{ company_id: 'cmp_asteryon', role: 'editor' }]);
+    assert.equal(url.searchParams.get('company_id'), `eq.${expectedCompanyId}`);
+    assert.equal(url.searchParams.get('user_id'), 'eq.user_v81');
+    return respond([{ company_id: expectedCompanyId, role: 'editor' }]);
   }
   if (url.pathname === '/rest/v1/brands') {
     if (url.searchParams.has('id')) return respond([]);
@@ -67,6 +68,6 @@ const missingForeignRecord = await worker.fetch(new Request('https://catalog.exa
 }), env);
 assert.equal(missingForeignRecord.status, 404, 'Mutação fora do escopo da empresa deve ser bloqueada');
 assert.equal((await missingForeignRecord.json()).error.code, 'NOT_FOUND');
-assert.ok(calls.some((call) => call.pathname === '/rest/v1/company_memberships' && call.search.includes('company_id=eq.cmp_asteryon')));
+assert.ok(calls.some((call) => call.pathname === '/rest/v1/company_memberships' && call.search.includes(`company_id=eq.${expectedCompanyId}`)));
 
-console.log(`QA Worker físico V81 / release ${expectedRelease}: OK — saúde, CSP, marcas canônicas, empresa obrigatória, cookie malformado e proteção contra escrita fora do escopo.`);
+console.log(`QA Worker físico V81 / release ${expectedRelease}: OK — tenant ${expectedCompanyId}, saúde, CSP, marcas canônicas, cookie malformado e proteção contra escrita fora do escopo.`);
