@@ -101,7 +101,8 @@ test('Equipe 4: Modelo Oficial aplica pelo Preview Final mesmo com marca sem log
 
   await preview.getByRole('button', { name: 'Aplicar este modelo' }).click();
   await expect(preview).toBeHidden({ timeout: 12_000 });
-  await expect(page.locator('[data-node-id]').filter({ hasText: 'MODELO OFICIAL QA' }).first()).toBeVisible({ timeout: 12_000 });
+  await expect(page.locator('[data-node-id]').filter({ hasText: 'Marca do catálogo' }).first()).toBeVisible({ timeout: 12_000 });
+  await expect(page.locator('[data-node-id]').filter({ hasText: 'Marca QA' }).first()).toBeVisible({ timeout: 12_000 });
 
   expect(dialogs.filter(message => message.includes('Modelo não aplicado')), `Alerta de produção reapareceu: ${dialogs.join(' | ')}`).toEqual([]);
 

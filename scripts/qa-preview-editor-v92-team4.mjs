@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const [html, core, capture, team4, e2e] = await Promise.all([
+const [html, bundle, core, capture, team4, e2e] = await Promise.all([
   readFile('public/index.html', 'utf8'),
+  readFile('public/assets/index-V60Excel.js', 'utf8'),
   readFile('public/preview-editor-v91-core.js', 'utf8'),
   readFile('public/preview-editor-v91-capture.js', 'utf8'),
   readFile('public/preview-editor-v92-team4.js', 'utf8'),
@@ -13,6 +14,14 @@ const [html, core, capture, team4, e2e] = await Promise.all([
 assert.match(html, /preview-editor-v92-team4\.js\?v=92/, 'Equipe 4 precisa carregar na release V92.');
 assert.ok(html.indexOf('/preview-editor-v91-capture.js') < html.indexOf('/preview-editor-v92-team4.js'), 'Equipe 4 deve auditar a captura produzida pelo Grupo 3.');
 assert.ok(html.indexOf('/preview-editor-v92-team4.js') < html.indexOf('/assets/index-V60Excel.js'), 'Equipe 4 precisa estar ativa antes do bundle/editor.');
+
+assert.match(bundle, /ASTER_V92_PREVIEW_APPLY_BRIDGE/, 'Bundle publicado precisa conter a ponte V92 para a árvore aprovada.');
+assert.match(bundle, /__ASTERYON_PREVIEW_EDITOR_APPLY_V92__/, 'Handler React precisa consumir o payload one-shot aprovado do Preview.');
+assert.match(bundle, /V92A.modelName===b/, 'Payload V92 só pode ser consumido pelo mesmo modelo que originou o Preview.');
+assert.match(bundle, /V92A.team3Ok===!0&&V92A.team4Ok===!0/, 'Handler só pode consumir árvore com dupla aprovação prévia.');
+assert.match(capture, /__ASTERYON_PREVIEW_EDITOR_APPLY_V92__/, 'Captura precisa entregar o payload aprovado ao handler real.');
+assert.match(capture, /team3Ok: report.ok === true/, 'Payload deve carregar aprovação da Equipe 3.');
+assert.match(capture, /team4Ok: team4Request.team4Report?.ok === true/, 'Payload deve carregar aprovação da Equipe 4.');
 
 assert.match(core, /document\.querySelector\('\[data-node-id\]'\)/, 'Detecção do Editor precisa reconhecer o canvas editável real.');
 assert.match(core, /data-asteryon-editor-sidebar/, 'Detecção estrutural deve confirmar chrome do editor, não apenas um título.');
@@ -48,7 +57,7 @@ assert.match(e2e, /Marca do catálogo/, 'E2E deve reproduzir marca sem logo com 
 assert.match(e2e, /Modelo não aplicado/, 'E2E deve falhar se o alerta de produção reaparecer.');
 assert.match(e2e, /asteryonTeam4Parity/, 'E2E deve exigir aprovação pós-renderização da Equipe 4.');
 
-for (const file of ['public/preview-editor-v91-capture.js', 'public/preview-editor-v92-team4.js', 'scripts/qa-preview-editor-v92-team4.mjs', 'tests/e2e/preview-editor-team4-v92.spec.mjs']) {
+for (const file of ['public/preview-editor-v91-capture.js', 'public/preview-editor-v92-team4.js', 'scripts/patch-preview-apply-v92.mjs', 'scripts/qa-preview-editor-v92-team4.mjs', 'tests/e2e/preview-editor-team4-v92.spec.mjs']) {
   execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
 }
 

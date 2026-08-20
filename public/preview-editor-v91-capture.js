@@ -325,6 +325,13 @@
       const refs = S.replaceTemplateNodes(result.modelName, result.nodes);
       if (!refs) return block(event, `O modelo "${result.modelName}" não está ligado à árvore usada pelo editor.`, { available: [...S.templateNodeRefs.keys()] });
       report.templateReferencesUpdated = refs;
+      window.__ASTERYON_PREVIEW_EDITOR_APPLY_V92__ = {
+        modelName: result.modelName,
+        nodes: result.nodes,
+        team3Ok: report.ok === true,
+        team4Ok: team4Request.team4Report?.ok === true,
+        createdAt: Date.now(),
+      };
       S.capturedNodes = result.nodes;
       S.report = report;
       window.__ASTERYON_PREVIEW_EDITOR_NODES_V91__ = result.nodes;
