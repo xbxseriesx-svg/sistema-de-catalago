@@ -23,9 +23,7 @@ if (!bundle.includes(marker)) {
     'scripts/patch-system-v81.mjs',
   ];
 
-  for (const patch of patches) {
-    execFileSync(process.execPath, [patch], { stdio: 'inherit' });
-  }
+  for (const patch of patches) execFileSync(process.execPath, [patch], { stdio: 'inherit' });
   bundle = await readFile(bundlePath, 'utf8');
   if (!bundle.includes(marker)) throw new Error('Cadeia V81 terminou sem materializar o marcador final.');
   console.log('Cadeia completa de patches V81 aplicada com sucesso.');
@@ -33,31 +31,34 @@ if (!bundle.includes(marker)) {
   console.log('Bundle V81 já materializado: cadeia legada não será reaplicada.');
 }
 
-// Hotfix obrigatório após a V81: corrige ReferenceError no inspetor que causava
-// tela branca ao selecionar/editar qualquer objeto e aplica a ação universal no
-// renderer público correto. É idempotente e deve rodar inclusive em bundle pronto.
 bundle = await readFile(bundlePath, 'utf8');
-if (!bundle.includes(whiteScreenMarker)) {
-  execFileSync(process.execPath, ['scripts/patch-white-screen-v81.mjs'], { stdio: 'inherit' });
-}
+if (!bundle.includes(whiteScreenMarker)) execFileSync(process.execPath, ['scripts/patch-white-screen-v81.mjs'], { stdio: 'inherit' });
 bundle = await readFile(bundlePath, 'utf8');
 if (!bundle.includes(whiteScreenMarker)) throw new Error('Hotfix V81 de tela branca não foi materializado.');
 
-// V86: o autosave continua com o debounce original de 850 ms, mas deixa de
-// serializar a árvore completa do editor em cada atualização de drag/resize.
-if (!bundle.includes(performanceMarker)) {
-  execFileSync(process.execPath, ['scripts/patch-editor-performance-v86.mjs'], { stdio: 'inherit' });
-}
+if (!bundle.includes(performanceMarker)) execFileSync(process.execPath, ['scripts/patch-editor-performance-v86.mjs'], { stdio: 'inherit' });
 bundle = await readFile(bundlePath, 'utf8');
 if (!bundle.includes(performanceMarker)) throw new Error('Hotfix V86 de performance não foi materializado.');
 
-// V89: completa a edição manual da hierarquia. A importação já conseguia criar
-// departamentos dinâmicos; o editor agora precisa oferecer o mesmo contrato.
-if (!bundle.includes(hierarchyMarker)) {
-  execFileSync(process.execPath, ['scripts/patch-hierarchy-v89.mjs'], { stdio: 'inherit' });
-}
+// V89: roda SEMPRE. O script é semanticamente idempotente: um marcador isolado
+// não pode mais mascarar uma transformação parcial do CRUD de hierarquia.
+execFileSync(process.execPath, ['scripts/patch-hierarchy-v89.mjs'], { stdio: 'inherit' });
 bundle = await readFile(bundlePath, 'utf8');
-if (!bundle.includes(hierarchyMarker)) throw new Error('Patch V89 da hierarquia não foi materializado.');
-if (!bundle.includes('children:"Novo departamento"')) throw new Error('Bundle V89 não contém a ação Novo departamento.');
 
-console.log('Bundle V81 validado com correções de seleção, performance e hierarquia V89.');
+const hierarchyRequirements = [
+  ['marcador V89', hierarchyMarker],
+  ['nível inicial Departamento', '[a,r]=q.useState("departamento")'],
+  ['Departamento sem pai obrigatório', 'if(!d&&a!=="departamento"&&!n)'],
+  ['parentId nulo no Departamento', 'parentId:a==="departamento"?null:n'],
+  ['ação Novo departamento', 'children:"Novo departamento"'],
+  ['seletor de pai oculto no Departamento', '!d&&a!=="departamento"&&l.jsxs'],
+  ['placeholder de Departamento', 'a==="departamento"?"Ex.: Food Service"'],
+  ['ações editar/excluir em Departamento', 'l.jsx(QF,{node:w,count:w.sections.length,onEdit:S,onDelete:b})'],
+  ['Produto consome departamentos da hierarquia', 'ee=t.filter(M=>M.level==="departamento"&&M.status!=="inactive")'],
+  ['Produto renderiza departamentos dinâmicos', 'ee.map(M=>l.jsx("option",{value:M.name,children:M.name},M.id))'],
+];
+for (const [label, token] of hierarchyRequirements) {
+  if (!bundle.includes(token)) throw new Error(`Bundle preparado sem requisito de hierarquia: ${label}.`);
+}
+
+console.log('Bundle V81 validado com seleção, performance e CRUD completo de hierarquia V89.');
