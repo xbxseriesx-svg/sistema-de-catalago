@@ -7,10 +7,15 @@
   const S = window.__ASTERYON_V91_STATE__;
   if (!S) return;
 
-  function flatten(nodes) {
+  function visualItems(nodes) {
     const list = [];
-    const walk = item => { if (!item) return; list.push(item); (item.children || []).forEach(walk); };
-    (nodes || []).forEach(walk);
+    const walk = (item, movingCarousel = false) => {
+      if (!item) return;
+      const moving = movingCarousel || (item.props?.carousel === true && item.props?.carouselAnimated === true);
+      list.push({ item, movingCarousel: moving });
+      (item.children || []).forEach(child => walk(child, moving));
+    };
+    (nodes || []).forEach(item => walk(item, false));
     return list;
   }
 
@@ -26,13 +31,14 @@
 
     const pageRect = pageWrapper.getBoundingClientRect();
     const scale = pageRect.width / Math.max(1, Number(page.width || 1440));
-    const items = flatten(nodes).filter(item => item.type !== 'page' && item.props?.previewSourceRect && !item.props?.duplicateForLoop);
+    const entries = visualItems(nodes).filter(({ item }) => item.type !== 'page' && item.props?.previewSourceRect && !item.props?.duplicateForLoop);
     const missing = [];
     const drift = [];
     const texts = [];
     const products = [];
+    let animatedCarouselNodesAudited = 0;
 
-    for (const item of items) {
+    for (const { item, movingCarousel } of entries) {
       const wrapper = document.querySelector(`[data-node-id="${CSS.escape(item.id)}"]`);
       if (!(wrapper instanceof HTMLElement)) { missing.push(item.id); continue; }
       const rect = wrapper.getBoundingClientRect();
@@ -43,15 +49,22 @@
         height: rect.height / scale,
       };
       const expected = item.props.previewSourceRect;
-      const limitW = Math.max(14, Number(expected.width || 0) * .06);
-      const limitH = Math.max(14, Number(expected.height || 0) * .06);
-      const bad = Math.abs(actual.x - expected.x) > limitW || Math.abs(actual.y - expected.y) > limitH
-        || Math.abs(actual.width - expected.width) > limitW || Math.abs(actual.height - expected.height) > limitH;
-      if (bad) drift.push({ id: item.id, name: item.name, type: item.type, expected, actual });
+      const carouselTrack = movingCarousel && item.props?.carousel === true && item.props?.carouselAnimated === true;
+      const expectedWidth = carouselTrack ? Number(item.width || expected.width) : Number(expected.width || 0);
+      const expectedHeight = carouselTrack ? Number(item.height || expected.height) : Number(expected.height || 0);
+      const limitW = Math.max(14, Number(expected.width || expectedWidth) * .06);
+      const limitH = Math.max(14, Number(expected.height || expectedHeight) * .06);
+      if (movingCarousel) animatedCarouselNodesAudited += 1;
+      const bad = (!movingCarousel && Math.abs(actual.x - Number(expected.x || 0)) > limitW)
+        || Math.abs(actual.y - Number(expected.y || 0)) > limitH
+        || Math.abs(actual.width - expectedWidth) > limitW
+        || Math.abs(actual.height - expectedHeight) > limitH;
+      if (bad) drift.push({ id: item.id, name: item.name, type: item.type, movingCarousel, expected, expectedWidth, expectedHeight, actual });
       if (['text','button'].includes(item.type) && item.props?.text) texts.push(S.normalize(item.props.text));
       if (item.props?.previewProductCard) products.push(item.id);
     }
 
+    const items = entries.map(({ item }) => item);
     const canvasText = S.normalize([...document.querySelectorAll('[data-node-id]')].map(item => item.textContent || '').join(' | '));
     const missingTexts = [...new Set(texts.filter(Boolean))].filter(text => !canvasText.includes(text));
     const productDrift = drift.filter(item => products.includes(item.id));
@@ -63,7 +76,9 @@
       version: '93', ok, approved: ok, checkedAt: new Date().toISOString(),
       group3Ok, expectedVisualNodes: items.length, missingNodes: missing,
       missingTexts, geometryDriftCount: drift.length, allowedGeometryDrift: allowed,
-      productGeometryDriftCount: productDrift.length, geometryDrift: drift.slice(0, 25),
+      productGeometryDriftCount: productDrift.length, animatedCarouselNodesAudited,
+      animatedCarouselRule: 'Equipe 4 permite deslocamento X apenas dentro da faixa animada; dimensões, Y, textos e loop continuam auditados.',
+      geometryDrift: drift.slice(0, 25),
       rule: 'Equipe 4 audita independentemente tamanho, posição, proporção, textos e produtos do Editor V93.',
     };
   }
