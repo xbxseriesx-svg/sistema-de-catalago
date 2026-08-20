@@ -6,6 +6,7 @@ const bundlePath = 'public/assets/index-V60Excel.js';
 const marker = 'ASTER_V81_CORE_PATCH';
 const whiteScreenMarker = 'ASTER_V81_WHITE_SCREEN_FIX';
 const performanceMarker = 'ASTER_V86_EDITOR_PERFORMANCE';
+const hierarchyMarker = 'ASTER_V89_HIERARCHY_CRUD';
 
 // O Modelo Oficial é fonte auxiliar independente do bundle e precisa permanecer
 // normalizado mesmo quando o bundle V81 já está materializado.
@@ -49,4 +50,14 @@ if (!bundle.includes(performanceMarker)) {
 }
 bundle = await readFile(bundlePath, 'utf8');
 if (!bundle.includes(performanceMarker)) throw new Error('Hotfix V86 de performance não foi materializado.');
-console.log('Bundle V81 validado com hotfixes de seleção e performance V86.');
+
+// V89: completa a edição manual da hierarquia. A importação já conseguia criar
+// departamentos dinâmicos; o editor agora precisa oferecer o mesmo contrato.
+if (!bundle.includes(hierarchyMarker)) {
+  execFileSync(process.execPath, ['scripts/patch-hierarchy-v89.mjs'], { stdio: 'inherit' });
+}
+bundle = await readFile(bundlePath, 'utf8');
+if (!bundle.includes(hierarchyMarker)) throw new Error('Patch V89 da hierarquia não foi materializado.');
+if (!bundle.includes('children:"Novo departamento"')) throw new Error('Bundle V89 não contém a ação Novo departamento.');
+
+console.log('Bundle V81 validado com correções de seleção, performance e hierarquia V89.');
