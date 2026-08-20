@@ -27,7 +27,8 @@ export async function brandsPayload(env: Env, publicOnly = false) {
     'brands',
     `company_id=eq.${COMPANY_ID}${publicOnly ? '&active=eq.true' : ''}&select=id,name,slug,description,website,logo_url,banner_url,sort_order,active,featured,data&order=sort_order.asc,name.asc`,
   );
-  return rows.map(brandDto);
+  const visible = publicOnly ? rows.filter((row: any) => row?.active === true) : rows;
+  return visible.map(brandDto);
 }
 
 function liveOffer(item: any, now = Date.now()) {
@@ -83,8 +84,11 @@ export async function catalogPayload(env: Env, publicOnly: boolean) {
     offersPayload(env, publicOnly),
   ]);
 
+  const visibleProducts = publicOnly ? products.filter((product: any) => product?.status === 'active') : products;
+  const visibleHierarchy = publicOnly ? hierarchy.filter((node: any) => node?.active === true) : hierarchy;
+
   return {
-    products: products.map((product: any) => ({
+    products: visibleProducts.map((product: any) => ({
       ...product.data,
       id: product.id,
       code: product.code,
@@ -95,7 +99,7 @@ export async function catalogPayload(env: Env, publicOnly: boolean) {
     })),
     brands,
     distributions: [],
-    hierarchy: hierarchy.map((node: any) => ({
+    hierarchy: visibleHierarchy.map((node: any) => ({
       id: node.id,
       name: node.name,
       slug: node.slug,
