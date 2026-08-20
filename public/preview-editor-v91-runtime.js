@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  const ASTER_V94_EDITOR_PERFORMANCE = true;
 
   if (window.__ASTERYON_PREVIEW_EDITOR_V91_RUNTIME__) return;
   window.__ASTERYON_PREVIEW_EDITOR_V91_RUNTIME__ = true;
@@ -8,9 +9,14 @@
 
   const REPORT_KEY = 'asteryon_preview_editor_parity_v91';
   const NODES_KEY = 'asteryon_preview_editor_nodes_v91';
+  const perf = window.__ASTERYON_EDITOR_PERF_V94__ ||= {
+    version: '94', runtimeRuns: 0, observerSchedules: 0, parityPolls: 0,
+    interactionSchedules: 0, lastRunAt: 0,
+  };
   let editorSeenAt = 0;
   let saveTimer = 0;
   let frame = 0;
+  let parityTimer = 0;
 
   function installStyles() {
     if (document.getElementById('asteryon-preview-editor-v91-styles')) return;
@@ -77,7 +83,7 @@
     const expectedBrands = [...new Set(expected.filter((item) => item.props?.brandLogoAuto && item.props?.src).map((item) => S.absoluteUrl(item.props.src)))];
     const expectedTexts = [...new Set(expected.filter((item) => ['text','button'].includes(item.type) && item.props?.text).map((item) => S.normalize(item.props.text)).filter(Boolean))];
     const actualImages = [...new Set([...document.querySelectorAll('[data-node-id] img[src]')].map((item) => S.absoluteUrl(item.getAttribute('src'))))];
-    const canvasText = S.normalize([...document.querySelectorAll('[data-node-id]')].map((item) => item.textContent || '').join(' | '));
+    const canvasText = S.normalize(wrappers.map((item) => item.textContent || '').join(' | '));
     const missingImages = expectedImages.filter((item) => !actualImages.includes(item));
     const missingBrands = expectedBrands.filter((item) => !actualImages.includes(item));
     const missingTexts = expectedTexts.filter((item) => !canvasText.includes(item));
@@ -108,7 +114,8 @@
   }
 
   function selectedWrapper() {
-    return [...document.querySelectorAll('[data-node-id]')].find((item) => item.querySelector('[style*="nwse-resize"],[style*="nesw-resize"],[style*="ns-resize"],[style*="ew-resize"]')) || null;
+    const handle = document.querySelector('[style*="nwse-resize"],[style*="nesw-resize"],[style*="ns-resize"],[style*="ew-resize"]');
+    return handle?.closest?.('[data-node-id]') || null;
   }
 
   function scheduleSave() {
@@ -224,29 +231,88 @@
     alert('Publicação bloqueada pelo Grupo 3: o Editor inicial não ficou igual ao Preview Final preenchido. A regra exige voltar ao Grupo 1 e corrigir antes de publicar.');
   }
 
+  function stopParityPolling() {
+    if (!parityTimer) return;
+    clearInterval(parityTimer);
+    parityTimer = 0;
+  }
+
   function run() {
     frame = 0;
+    perf.runtimeRuns += 1;
+    perf.lastRunAt = Date.now();
     installStyles();
     applyOverrides();
     verifyInitialParity();
     backgroundEditor();
+    if (S.initialParityChecked) stopParityPolling();
   }
-  function scheduleRun() {
+
+  function scheduleRun(source = 'interaction') {
+    if (source === 'observer') perf.observerSchedules += 1;
+    else perf.interactionSchedules += 1;
     if (!frame) frame = requestAnimationFrame(run);
+  }
+
+  function addedNodeNeedsRun(node) {
+    if (!(node instanceof Element)) return false;
+    if (node.matches('[data-node-id],#asteryon-v91-background-editor')) return true;
+    return !!node.querySelector?.('[data-node-id],#asteryon-v91-background-editor');
+  }
+
+  function mutationNeedsRun(records) {
+    if (!S.initialParityChecked) return records.some((record) => record.type === 'childList' && record.addedNodes.length > 0);
+    if (!S.brandOverrides.size && !S.styleOverrides.size) return false;
+    return records.some((record) => record.type === 'childList' && [...record.addedNodes].some(addedNodeNeedsRun));
+  }
+
+  function ensureParityPolling() {
+    if (parityTimer || S.initialParityChecked) return;
+    parityTimer = setInterval(() => {
+      perf.parityPolls += 1;
+      if (S.initialParityChecked) {
+        stopParityPolling();
+        return;
+      }
+      if (S.isEditor()) scheduleRun('parity');
+    }, 500);
+  }
+
+  function scheduleInteraction() {
+    scheduleRun('interaction');
   }
 
   document.addEventListener('change', handleBrandChange, true);
   document.addEventListener('click', blockBrokenPublish, true);
-  const observer = new MutationObserver(scheduleRun);
-  observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class','style','src'] });
-  setInterval(() => { if (!S.initialParityChecked && S.isEditor()) scheduleRun(); }, 500);
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scheduleRun, { once: true });
-  else scheduleRun();
+  document.addEventListener('click', scheduleInteraction, true);
+  document.addEventListener('pointerup', scheduleInteraction, true);
+  document.addEventListener('keyup', scheduleInteraction, true);
+  const observer = new MutationObserver((records) => {
+    if (mutationNeedsRun(records)) scheduleRun('observer');
+  });
+  observer.observe(document.documentElement, { childList: true, subtree: true });
+
+  window.addEventListener('asteryon:preview-final-copied-v91', () => {
+    editorSeenAt = 0;
+    S.initialParityChecked = false;
+    ensureParityPolling();
+    scheduleRun('preview');
+  });
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => {
+    ensureParityPolling();
+    scheduleRun('startup');
+  }, { once: true });
+  else {
+    ensureParityPolling();
+    scheduleRun('startup');
+  }
 
   window.__ASTERYON_V91_GROUPS__ = Object.freeze({
     group1: 'captura Preview Final + diagnostica diferenças',
     group2: 'corrige árvore, logos vinculados, marcas, cores e carrossel',
     group3: 'testa Editor inicial contra Preview; somente OK permite aprovação/publicação',
     failRule: 'qualquer diferença retorna ao Grupo 1',
+    v94Performance: 'sem observer de style/class/src durante drag/resize; polling encerra após paridade',
   });
 })();
