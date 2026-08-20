@@ -76,8 +76,11 @@ async function installMocks(page) {
       return json({ ok: true, page: { id: 'page-home', slug: 'home', title: 'Home QA', nodes: currentNodes, revision: 1, updatedAt: new Date().toISOString() } });
     }
     if (path === '/api/admin/pages/home/snapshots') return json({ ok: true, snapshots: [] });
-    if (path === '/api/admin/templates') return json({ ok: true, templates: [] });
-    if (path === '/api/admin/templates/seed') return json({ ok: true, templates: [] });
+    if (path === '/api/admin/templates') return json({ ok: true, templates: [{
+      id: 'tpl-modelo-oficial-qa', systemKey: 'modelo-oficial-qa', name: 'Modelo Oficial', description: 'Template QA corrente',
+      category: 'pre-pronto', tags: ['qa'], accent: '#214C8F', nodes: [structuredClone(pageNode)], isSystem: true, version: 93,
+    }] });
+    if (path === '/api/admin/templates/seed') return json({ ok: true, requested: 0 });
     if (path === '/api/public/pages/home') return json({ ok: true, page: { slug: 'home', title: 'Home QA', versionId: 'qa-v1', versionNumber: 1, publishedAt: new Date().toISOString(), nodes: currentNodes } });
     return json({ ok: true });
   });
@@ -189,7 +192,9 @@ test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháve
   await openLeftPanel(page, testInfo);
   await page.getByRole('button', { name: /^Modelos$/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Modelos prontos' })).toBeVisible();
-  const apply = page.getByRole('button', { name: /Aplicar modelo/i }).first();
+  const article = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Modelo Oficial', exact: true }) }).first();
+  await expect(article).toBeVisible();
+  const apply = article.getByRole('button', { name: /Aplicar modelo/i }).first();
   await expect(apply).toBeVisible();
   await apply.click();
 
