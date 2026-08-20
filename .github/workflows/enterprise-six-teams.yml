@@ -1,0 +1,166 @@
+name: Enterprise — 6 Equipes
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enterprise-six-teams-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  team0:
+    name: Equipe 0 — Arquitetura e Governança
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar dependências sem scripts de terceiros
+        run: npm ci --ignore-scripts
+      - name: Validar invariantes da transição Enterprise
+        run: node scripts/qa-enterprise-transition.mjs
+
+  team1:
+    name: Equipe 1 — Build e Desenvolvimento
+    needs: team0
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+      - name: Compilar e executar regressão automatizada atual
+        run: npm test
+
+  team2:
+    name: Equipe 2 — Auditoria Técnica e Segurança
+    needs: team1
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+      - name: Preparar bundle de referência
+        run: npm run prepare:bundle
+      - name: TypeScript
+        run: npm run check
+      - name: Segurança, SSRF e isolamento por tenant
+        run: |
+          node scripts/qa-security-v89.mjs
+          node scripts/qa-remote-image-ssrf-v89.mjs
+          node scripts/qa-tenant-isolation-v89.mjs
+      - name: Auditoria de dependências
+        run: npm audit --audit-level=high
+
+  team3:
+    name: Equipe 3 — Homologação Funcional e UX
+    needs: team2
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar projeto
+        run: npm ci --ignore-scripts
+      - name: Preparar aplicação
+        run: npm run prepare:bundle
+      - name: Instalar Playwright/Chromium para QA
+        run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Executar homologação desktop e mobile
+        run: npx playwright test --project=chromium-desktop --project=chromium-mobile
+      - name: Evidências da Equipe 3
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enterprise-equipe3-evidencias
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  team4:
+    name: Equipe 4 — Auditoria Mestra Independente
+    needs: team3
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar projeto em runner independente
+        run: npm ci --ignore-scripts
+      - name: Preparar aplicação do mesmo commit
+        run: npm run prepare:bundle
+      - name: Instalar Chromium independente
+        run: |
+          npm install --no-save @playwright/test@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Repetir regressões críticas e stress do Editor
+        run: |
+          npx playwright test tests/e2e/editor-functional-regressions.spec.mjs --project=chromium-desktop --project=chromium-mobile
+          npx playwright test tests/e2e/preview-editor-v93-filled-source.spec.mjs --project=chromium-desktop --project=chromium-mobile
+      - name: Evidências da Equipe 4
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: enterprise-equipe4-evidencias
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  team5:
+    name: Equipe 5 — DevOps e Release Readiness
+    needs: team4
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+      - name: Preparar exatamente os assets de release
+        run: npm run prepare:bundle
+      - name: Validar Cloudflare Worker sem publicar
+        run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-dry-run
+      - name: Revalidar metadados e limpeza transitória
+        run: |
+          node scripts/qa-version-v94.mjs
+          node scripts/qa-cleanup-v89.mjs
+          node scripts/qa-enterprise-transition.mjs
+      - name: Artefato de dry-run para inspeção
+        uses: actions/upload-artifact@v4
+        with:
+          name: enterprise-equipe5-wrangler-dry-run
+          path: .wrangler-enterprise-dry-run/
+          if-no-files-found: error
+          retention-days: 14
