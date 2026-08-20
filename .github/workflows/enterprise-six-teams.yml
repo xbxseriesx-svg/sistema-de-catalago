@@ -63,6 +63,8 @@ jobs:
         run: npm run prepare:bundle
       - name: TypeScript
         run: npm run check
+      - name: Gerar baseline V94 no caminho dos testes históricos
+        run: npx wrangler deploy --dry-run --outdir .wrangler-dry-run
       - name: Compilar Worker Enterprise candidato no Wrangler
         run: npx wrangler deploy --dry-run --config wrangler.enterprise.jsonc --outdir .wrangler-enterprise-audit
       - name: Revalidar independência do backend novo
