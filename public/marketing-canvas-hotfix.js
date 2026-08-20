@@ -122,6 +122,7 @@
   const drag = (event, direction) => {
     event.preventDefault();
     event.stopPropagation();
+    try { event.currentTarget?.setPointerCapture?.(event.pointerId); } catch { /* captura opcional */ }
     const start = { ...normalizeLayout(config.layout) };
     const targetCanvas = canvas();
     const zoom = Number(getComputedStyle(targetCanvas).transform.match(/matrix\(([^,]+)/)?.[1]) || 1;
@@ -139,13 +140,7 @@
       if (direction.includes('n')) { y += dy; height -= dy; }
       if (width < MIN_W) { if (direction.includes('w')) x -= MIN_W - width; width = MIN_W; }
       if (height < MIN_H) { if (direction.includes('n')) y -= MIN_H - height; height = MIN_H; }
-      config.layout = {
-        ...start,
-        x: Math.round(Math.max(0, x)),
-        y: Math.round(Math.max(0, y)),
-        width: Math.round(width),
-        height: Math.round(height),
-      };
+      config.layout = { ...start, x: Math.round(Math.max(0, x)), y: Math.round(Math.max(0, y)), width: Math.round(width), height: Math.round(height) };
       applyLayout();
     };
 
@@ -163,6 +158,7 @@
     const up = async (pointer) => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
       if (dragRaf) cancelAnimationFrame(dragRaf);
       dragRaf = 0;
       if (pendingPointer) applyPointer(pendingPointer);
@@ -175,6 +171,7 @@
     document.body.style.cursor = direction === 'move' ? 'move' : `${direction}-resize`;
     window.addEventListener('pointermove', move, { passive: true });
     window.addEventListener('pointerup', up, { once: true });
+    window.addEventListener('pointercancel', up, { once: true });
   };
 
   const button = (text, title, action) => {
@@ -182,7 +179,7 @@
     item.type = 'button';
     item.textContent = text;
     item.title = title;
-    item.style.cssText = 'border:1px solid #3f3f46;border-radius:5px;padding:4px 8px;background:#18181b;color:#f4f4f5;font:800 10px Inter,sans-serif;cursor:pointer';
+    item.style.cssText = 'border:1px solid #3f3f46;border-radius:5px;padding:4px 8px;background:#18181b;color:#f4f4f5;font:800 10px Inter,sans-serif;cursor:pointer;touch-action:manipulation';
     item.addEventListener('pointerdown', event => event.stopPropagation());
     item.addEventListener('click', event => { event.stopPropagation(); action(); });
     return item;
@@ -200,7 +197,7 @@
 
     const toolbar = document.createElement('div');
     toolbar.setAttribute('data-marketing-drag-handle', 'true');
-    toolbar.style.cssText = 'position:absolute;inset:0 0 auto 0;z-index:20;height:32px;display:flex;align-items:center;gap:8px;padding:0 8px;background:rgba(9,9,11,.94);color:#f4f4f5;cursor:move;font:800 10px Inter,sans-serif;text-transform:uppercase;letter-spacing:.08em';
+    toolbar.style.cssText = 'position:absolute;inset:0 0 auto 0;z-index:20;height:32px;display:flex;align-items:center;gap:8px;padding:0 8px;background:rgba(9,9,11,.94);color:#f4f4f5;cursor:move;font:800 10px Inter,sans-serif;text-transform:uppercase;letter-spacing:.08em;touch-action:none;user-select:none;-webkit-user-select:none';
     const label = document.createElement('span');
     label.textContent = 'Marketing · arraste para mover';
     label.style.flex = '1';
@@ -209,13 +206,7 @@
     toolbar.append(button('Excluir', 'Excluir marketing', async () => {
       if (!confirm('Excluir todo o marketing e as imagens do carrossel?')) return;
       const ids = (config.carousel?.items || []).map(item => item.url?.match(/\/api\/public\/media\/([^/?#]+)/)?.[1]).filter(Boolean);
-      config = {
-        ...config,
-        banner: { ...config.banner, active: false, mediaUrl: '' },
-        videoBanner: { ...config.videoBanner, active: false, mediaUrl: '' },
-        carousel: { ...config.carousel, active: false, items: [] },
-        layout: { ...config.layout, visible: false },
-      };
+      config = { ...config, banner: { ...config.banner, active: false, mediaUrl: '' }, videoBanner: { ...config.videoBanner, active: false, mediaUrl: '' }, carousel: { ...config.carousel, active: false, items: [] }, layout: { ...config.layout, visible: false } };
       configLoaded = true;
       await save();
       await Promise.allSettled(ids.map(id => api(`/api/admin/media/${encodeURIComponent(id)}`, { method: 'DELETE' })));
@@ -234,7 +225,7 @@
     for (const direction of ['n','s','e','w','ne','nw','se','sw']) {
       const handle = document.createElement('div');
       handle.setAttribute('data-marketing-resize', direction);
-      handle.style.cssText = 'position:absolute;z-index:25;background:#ec4899;border:2px solid white;border-radius:3px;';
+      handle.style.cssText = 'position:absolute;z-index:25;background:#ec4899;border:2px solid white;border-radius:3px;touch-action:none;user-select:none;-webkit-user-select:none';
       if (direction.includes('n')) Object.assign(handle.style, { top: '-5px', height: '12px' });
       if (direction.includes('s')) Object.assign(handle.style, { bottom: '-5px', height: '12px' });
       if (direction.includes('w')) Object.assign(handle.style, { left: '-5px', width: '12px' });
@@ -251,9 +242,7 @@
     showSlide(0);
     let index = 0;
     clearInterval(interval);
-    interval = setInterval(() => {
-      if (config?.carousel?.autoplay !== false) showSlide(++index);
-    }, Math.max(2000, 5000 / Math.max(.25, Number(config.carousel?.speed) || 1)));
+    interval = setInterval(() => { if (config?.carousel?.autoplay !== false) showSlide(++index); }, Math.max(2000, 5000 / Math.max(.25, Number(config.carousel?.speed) || 1)));
   };
 
   const mount = async () => {
@@ -261,10 +250,8 @@
     if (location.pathname !== '/admin') return;
     if (element?.isConnected) return;
     if (element && !element.isConnected) element = null;
-
     const target = canvas();
     if (!target) return;
-
     if (!configLoaded) await loadConfigOnce();
     if (!configLoaded || !active(config)) return;
     if (!element) createElement(target);
@@ -275,18 +262,13 @@
     mountTimer = window.setTimeout(() => void mount(), delay);
   };
 
-  // V88: o observer não chama mais a API em toda mutação. Ele só tenta remontar
-  // quando um canvas novo aparece e já existe Marketing ativo em memória.
   const observer = new MutationObserver((records) => {
     if (element?.isConnected) return;
     if (configLoaded && !active(config)) return;
     for (const record of records) {
       for (const node of record.addedNodes) {
         if (!(node instanceof Element)) continue;
-        if (node.matches('[data-canvas-bg="true"]') || node.querySelector?.('[data-canvas-bg="true"]')) {
-          scheduleMount(80);
-          return;
-        }
+        if (node.matches('[data-canvas-bg="true"]') || node.querySelector?.('[data-canvas-bg="true"]')) { scheduleMount(80); return; }
       }
     }
   });
@@ -299,9 +281,7 @@
     if (active(config)) {
       if (!element?.isConnected) scheduleMount(0);
       else { applyLayout(); showSlide(0); }
-    } else if (element) {
-      applyLayout();
-    }
+    } else if (element) applyLayout();
   };
 
   window.addEventListener('asteryon:marketing-live', event => updateFromEvent(event.detail));
