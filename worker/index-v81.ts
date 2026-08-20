@@ -19,7 +19,7 @@ type RefreshedSession = {
   expiresIn: number;
 };
 
-const COMPANY_ID = 'cmp_asteryon';
+const COMPANY_ID = 'qa_e2e_asteryon';
 const ACCESS_COOKIE = '__Host-asteryon_access';
 const REFRESH_COOKIE = '__Host-asteryon_refresh';
 

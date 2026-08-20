@@ -22,7 +22,7 @@ type AuthUser = {
   role: string;
 };
 
-const COMPANY_ID = 'cmp_asteryon';
+const COMPANY_ID = 'qa_e2e_asteryon';
 const PRODUCT_BUCKET = 'product-images';
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIMES = new Set([

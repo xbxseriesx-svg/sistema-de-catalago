@@ -32,7 +32,7 @@ type SearchImage = {
   provider: 'google' | 'wikimedia';
 };
 
-const COMPANY_ID = 'cmp_asteryon';
+const COMPANY_ID = 'qa_e2e_asteryon';
 const BRAND_BUCKET = 'brand-media';
 const MAX_REMOTE_BYTES = 8 * 1024 * 1024;
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
