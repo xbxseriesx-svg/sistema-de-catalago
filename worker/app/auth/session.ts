@@ -112,6 +112,7 @@ export async function refreshSession(req: Request, env: Env): Promise<RefreshedS
 export async function currentUserFromAccess(access: string, env: Env): Promise<CurrentUser | null> {
   try {
     const authUser = await supabase(env, '/auth/v1/user', {}, access) as any;
+    if (!clean(authUser?.id)) return null;
     const memberships = await table(
       env,
       'company_memberships',
@@ -121,18 +122,28 @@ export async function currentUserFromAccess(access: string, env: Env): Promise<C
     ) as any[];
     const membership = memberships?.[0];
     if (!membership) return null;
-    const profiles = await table(
-      env,
-      'profiles',
-      `user_id=eq.${encodeURIComponent(authUser.id)}&select=display_name,email&limit=1`,
-      {},
-      access,
-    ) as any[];
+
+    let profile: any = null;
+    try {
+      const profiles = await table(
+        env,
+        'profiles',
+        `user_id=eq.${encodeURIComponent(authUser.id)}&select=display_name,email&limit=1`,
+        {},
+        access,
+      ) as any[];
+      profile = profiles?.[0] || null;
+    } catch (error) {
+      // O perfil enriquece a sessão, mas não é fonte de autorização.
+      // Auth + membership válidos devem continuar funcionando mesmo se profiles estiver indisponível.
+      console.error('Falha ao carregar perfil opcional da sessão', error);
+    }
+
     return {
       id: authUser.id,
       company_id: COMPANY_ID,
-      email: profiles?.[0]?.email || authUser.email || null,
-      name: profiles?.[0]?.display_name || authUser.user_metadata?.display_name || authUser.email || null,
+      email: profile?.email || authUser.email || null,
+      name: profile?.display_name || authUser.user_metadata?.display_name || authUser.email || null,
       role: membership.role === 'owner' ? 'SDM' : String(membership.role).toUpperCase() as Role,
     };
   } catch {
@@ -170,7 +181,7 @@ export async function companyMembership(req: Request, env: Env) {
   const user = await userResponse.json() as any;
   if (!clean(user?.id)) return null;
   const membershipResponse = await fetch(
-    `${env.SUPABASE_URL}/rest/v1/company_memberships?company_id=eq.${encodeURIComponent(COMPANY_ID)}&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true&select=company_id,role&limit=1`,
+    `${env.SUPABASE_URL}/rest/v1/company_memberships?company_id=eq.${COMPANY_ID}&user_id=eq.${encodeURIComponent(user.id)}&active=eq.true&select=company_id,role&limit=1`,
     { headers: authHeaders },
   );
   if (!membershipResponse.ok) return null;
