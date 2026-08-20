@@ -141,7 +141,12 @@ test('Estrutura cria Departamento manual sem exigir item pai', async ({ page }, 
   const name = page.getByPlaceholder('Ex.: Food Service').first();
   await expect(name).toBeVisible();
   await name.fill('QA Novo Departamento');
-  await page.getByRole('button', { name: /^Salvar$/i }).first().click();
+
+  const structureForm = name.locator('xpath=ancestor::div[.//button[normalize-space()="Salvar"]][1]');
+  const structureSave = structureForm.getByRole('button', { name: /^Salvar$/i });
+  await expect(structureSave).toBeVisible();
+  await structureSave.click();
+
   await expect.poll(() => mock.hierarchyCreates.length).toBe(1);
   expect(mock.hierarchyCreates[0]).toEqual(expect.objectContaining({ level: 'departamento', name: 'QA Novo Departamento', parentId: null }));
   await expect(page.getByText('Configurações salvas com sucesso.')).toBeVisible();
@@ -189,7 +194,7 @@ test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháve
   await openSidebar(page, testInfo, 'right');
   const right = page.locator('[data-asteryon-editor-sidebar="right"]');
   await expect(right).toHaveAttribute('data-open', 'true');
-  const contentField = right.locator('label').filter({ hasText: /^Conteúdo$/ }).locator('textarea').first();
+  const contentField = right.locator('label').filter({ hasText: /^Conteúdo$/ }).locator('textarea,input').first();
   await expect(contentField).toBeVisible();
   await expect(contentField).toHaveValue('OFERTAS QUE MOVEM O SEU NEGÓCIO');
   const edited = 'QA TEMPLATE TOTALMENTE EDITÁVEL';
