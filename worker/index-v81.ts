@@ -1,4 +1,7 @@
 import worker from './index-v71';
+import { handleHierarchyRoute } from './modules/hierarchy-v90';
+import { handleMediaRoute } from './modules/media-v90';
+import { checkPasswordSafety } from './modules/password-security-v90';
 
 type Env = {
   ASSETS: Fetcher;
@@ -226,6 +229,22 @@ export default {
         return finish(ok({ service: 'sistema-de-catalago', version: 'V89', database: 'Supabase Postgres', storage: 'Supabase Storage', d1: false }));
       }
 
+      if (path === '/api/auth/bootstrap' && req.method === 'POST') {
+        const input = await req.clone().json().catch(() => ({})) as any;
+        const bootstrapToken = clean(input?.token);
+        const password = clean(input?.password);
+        if (env.SDM_BOOTSTRAP_TOKEN && bootstrapToken === env.SDM_BOOTSTRAP_TOKEN && password.length >= 10) {
+          const safety = await checkPasswordSafety(password);
+          if (!safety.ok) {
+            return finish(fail(
+              safety.message,
+              safety.code === 'PASSWORD_SCREENING_UNAVAILABLE' ? 503 : 400,
+              safety.code,
+            ));
+          }
+        }
+      }
+
       if (path.startsWith('/api/admin/')) {
         let membership = await companyMembership(effectiveReq, env);
         if (!membership && cookie(req, REFRESH_COOKIE)) {
@@ -237,6 +256,12 @@ export default {
         }
         if (!membership) return finish(fail('Sessão sem acesso ativo a esta empresa', 403, 'COMPANY_FORBIDDEN'));
         if (!(await scopedWriteExists(path, effectiveReq.method, env))) return finish(fail('Registro não encontrado nesta empresa', 404, 'NOT_FOUND'));
+
+        const userContext = { id: clean(membership.user?.id), role: clean(membership.membership?.role) };
+        const hierarchyResponse = await handleHierarchyRoute(effectiveReq, env, path, COMPANY_ID, userContext);
+        if (hierarchyResponse) return finish(hierarchyResponse);
+        const mediaResponse = await handleMediaRoute(effectiveReq, env, path, COMPANY_ID, userContext);
+        if (mediaResponse) return finish(mediaResponse);
       } else if (path === '/api/auth/status' && cookie(req, REFRESH_COOKIE)) {
         const membership = await companyMembership(effectiveReq, env);
         if (!membership) {

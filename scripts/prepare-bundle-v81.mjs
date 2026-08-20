@@ -6,9 +6,9 @@ const bundlePath = 'public/assets/index-V60Excel.js';
 const marker = 'ASTER_V81_CORE_PATCH';
 const whiteScreenMarker = 'ASTER_V81_WHITE_SCREEN_FIX';
 const performanceMarker = 'ASTER_V86_EDITOR_PERFORMANCE';
+const functionalPolishMarker = 'ASTER_V90_FUNCTIONAL_POLISH';
+const group3Marker = 'ASTER_V90_GROUP3_FIXES';
 
-// O Modelo Oficial é fonte auxiliar independente do bundle e precisa permanecer
-// normalizado mesmo quando o bundle V81 já está materializado.
 execFileSync(process.execPath, ['scripts/patch-modelo-oficial-v81.mjs'], { stdio: 'inherit' });
 
 let bundle = await readFile(bundlePath, 'utf8');
@@ -21,10 +21,7 @@ if (!bundle.includes(marker)) {
     'scripts/patch-brand-laurencini-v68.mjs',
     'scripts/patch-system-v81.mjs',
   ];
-
-  for (const patch of patches) {
-    execFileSync(process.execPath, [patch], { stdio: 'inherit' });
-  }
+  for (const patch of patches) execFileSync(process.execPath, [patch], { stdio: 'inherit' });
   bundle = await readFile(bundlePath, 'utf8');
   if (!bundle.includes(marker)) throw new Error('Cadeia V81 terminou sem materializar o marcador final.');
   console.log('Cadeia completa de patches V81 aplicada com sucesso.');
@@ -32,21 +29,29 @@ if (!bundle.includes(marker)) {
   console.log('Bundle V81 já materializado: cadeia legada não será reaplicada.');
 }
 
-// Hotfix obrigatório após a V81: corrige ReferenceError no inspetor que causava
-// tela branca ao selecionar/editar qualquer objeto e aplica a ação universal no
-// renderer público correto. É idempotente e deve rodar inclusive em bundle pronto.
 bundle = await readFile(bundlePath, 'utf8');
-if (!bundle.includes(whiteScreenMarker)) {
-  execFileSync(process.execPath, ['scripts/patch-white-screen-v81.mjs'], { stdio: 'inherit' });
-}
+if (!bundle.includes(whiteScreenMarker)) execFileSync(process.execPath, ['scripts/patch-white-screen-v81.mjs'], { stdio: 'inherit' });
 bundle = await readFile(bundlePath, 'utf8');
 if (!bundle.includes(whiteScreenMarker)) throw new Error('Hotfix V81 de tela branca não foi materializado.');
 
-// V86: o autosave continua com o debounce original de 850 ms, mas deixa de
-// serializar a árvore completa do editor em cada atualização de drag/resize.
-if (!bundle.includes(performanceMarker)) {
-  execFileSync(process.execPath, ['scripts/patch-editor-performance-v86.mjs'], { stdio: 'inherit' });
-}
+if (!bundle.includes(performanceMarker)) execFileSync(process.execPath, ['scripts/patch-editor-performance-v86.mjs'], { stdio: 'inherit' });
 bundle = await readFile(bundlePath, 'utf8');
 if (!bundle.includes(performanceMarker)) throw new Error('Hotfix V86 de performance não foi materializado.');
-console.log('Bundle V81 validado com hotfixes de seleção e performance V86.');
+
+// V90 é executado sempre: um marcador de release não prova que cada alteração
+// funcional está presente. O script é idempotente e valida transformação por transformação.
+execFileSync(process.execPath, ['scripts/patch-functional-polish-v90.mjs'], { stdio: 'inherit' });
+bundle = await readFile(bundlePath, 'utf8');
+if (!bundle.includes(functionalPolishMarker)) throw new Error('Polimento funcional V90 não foi materializado.');
+if (!bundle.includes('children:ee.length?ee.map(M=>l.jsx("option",{value:M.name,children:M.name},M.id))')) {
+  throw new Error('V90: seletor dinâmico de Departamento não foi materializado apesar do marcador.');
+}
+if (bundle.includes('children:[l.jsx("option",{children:"Atacado"}),l.jsx("option",{children:"Distribuição"})]')) {
+  throw new Error('V90: seletor fixo Atacado/Distribuição ainda existe após o polimento.');
+}
+
+if (!bundle.includes(group3Marker)) execFileSync(process.execPath, ['scripts/patch-group3-v90.mjs'], { stdio: 'inherit' });
+bundle = await readFile(bundlePath, 'utf8');
+if (!bundle.includes(group3Marker)) throw new Error('Correções finais do Grupo 3 V90 não foram materializadas.');
+
+console.log('Bundle validado com V81, performance V86 e correções funcionais V90 verificadas por conteúdo.');

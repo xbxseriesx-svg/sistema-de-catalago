@@ -1,3 +1,5 @@
+import { checkPasswordSafety } from './modules/password-security-v90';
+
 type AuthAccountEnv = {
   SUPABASE_URL: string;
   SUPABASE_PUBLISHABLE_KEY: string;
@@ -124,6 +126,15 @@ async function updatePassword(req: Request, env: AuthAccountEnv) {
 
   const current = await authUser(env, accessToken);
   if (!current) return fail('Sua sessão de recuperação expirou. Solicite um novo link.', 401, 'RECOVERY_SESSION_EXPIRED');
+
+  const safety = await checkPasswordSafety(password);
+  if (!safety.ok) {
+    return fail(
+      safety.message,
+      safety.code === 'PASSWORD_SCREENING_UNAVAILABLE' ? 503 : 400,
+      safety.code,
+    );
+  }
 
   const response = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, {
     method: 'PUT',
