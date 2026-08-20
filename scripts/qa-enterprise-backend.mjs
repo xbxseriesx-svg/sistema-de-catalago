@@ -2,6 +2,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import process from 'node:process';
 
 const required = [
+  'worker/app/index.ts',
   'worker/app/env.ts',
   'worker/app/http.ts',
   'worker/app/domain.ts',
@@ -12,10 +13,14 @@ const required = [
   'worker/app/services/catalog.ts',
   'worker/app/services/catalog-admin.ts',
   'worker/app/services/brands.ts',
+  'worker/app/services/brand-images.ts',
   'worker/app/services/hierarchy.ts',
   'worker/app/services/marketing.ts',
+  'worker/app/services/media.ts',
   'worker/app/services/offers.ts',
   'worker/app/services/pages.ts',
+  'worker/app/services/product-images.ts',
+  'worker/app/services/products.ts',
   'worker/app/services/templates.ts',
 ];
 
@@ -34,6 +39,10 @@ for (const path of required) {
 const appEntries = await readdir('worker/app', { withFileTypes: true });
 if (!appEntries.some((entry) => entry.name === 'services' && entry.isDirectory())) fail('worker/app/services ausente.');
 if (!appEntries.some((entry) => entry.name === 'auth' && entry.isDirectory())) fail('worker/app/auth ausente.');
+
+const entry = await readFile('worker/app/index.ts', 'utf8');
+if (/index-v\d+/i.test(entry)) fail('entrypoint Enterprise ainda depende de Worker versionado.');
+if (!entry.includes("version: 'V94'")) fail('entrypoint Enterprise não preserva metadado V94 da release corrente.');
 
 const session = await readFile('worker/app/auth/session.ts', 'utf8');
 for (const contract of ['/api/auth/status', '/api/auth/bootstrap', '/api/auth/login', '/api/auth/logout']) {
@@ -61,6 +70,16 @@ for (const contract of ['/api/admin/catalog', '/api/admin/catalog/settings']) {
   if (!catalogAdmin.includes(contract)) fail(`contrato administrativo do catálogo ausente: ${contract}`);
 }
 
+const brands = await readFile('worker/app/services/brands.ts', 'utf8');
+for (const contract of ['/api/admin/brands', '/api/admin/brands/bulk']) {
+  if (!brands.includes(contract)) fail(`contrato de marca ausente: ${contract}`);
+}
+
+const brandImages = await readFile('worker/app/services/brand-images.ts', 'utf8');
+for (const contract of ['/api/admin/brand-images/search', '/api/admin/brand-images/fetch', '/api/admin/brand-images/upload']) {
+  if (!brandImages.includes(contract)) fail(`contrato de imagem de marca ausente: ${contract}`);
+}
+
 const hierarchy = await readFile('worker/app/services/hierarchy.ts', 'utf8');
 for (const level of ['departamento', 'secao', 'categoria']) {
   if (!hierarchy.includes(`'${level}'`)) fail(`nível de hierarquia ausente: ${level}`);
@@ -72,6 +91,18 @@ if (!pages.includes("['GET', 'POST'].includes(req.method)")) fail('snapshots nã
 if (!pages.includes("req.method === 'POST'")) fail('publicação/rollback sem restrição POST.');
 if (!pages.includes('REVISION_CONFLICT')) fail('proteção expectedRevision ausente no draft.');
 
+const productImages = await readFile('worker/app/services/product-images.ts', 'utf8');
+if (!productImages.includes('/api/admin/product-images/import')) fail('importação de imagens de produto ausente.');
+if (!productImages.includes("const PRODUCT_BUCKET = 'product-images'")) fail('bucket oficial de produto ausente.');
+
+const products = await readFile('worker/app/services/products.ts', 'utf8');
+if (!products.includes('/api/admin/catalog/products/bulk')) fail('importação em lote de produtos ausente.');
+if (!products.includes('on_conflict=company_id,code')) fail('upsert de produtos não usa chave company_id+code.');
+
+const media = await readFile('worker/app/services/media.ts', 'utf8');
+if (!media.includes('/api/admin/media')) fail('contrato administrativo de mídia ausente.');
+if (!media.includes('/api/public/media')) fail('contrato público de mídia ausente.');
+
 const templates = await readFile('worker/app/services/templates.ts', 'utf8');
 if (!templates.includes('SDM_ONLY')) fail('proteção SDM de templates ausente.');
 
@@ -80,5 +111,5 @@ if (failed) {
   process.exit(1);
 }
 
-ok('módulos reconstruídos permanecem independentes da cadeia index-vXX.');
+ok('entrypoint e serviços reconstruídos permanecem independentes da cadeia index-vXX.');
 console.log('ENTERPRISE BACKEND APROVADO PARA CONTINUAR A RECONSTRUÇÃO.');
