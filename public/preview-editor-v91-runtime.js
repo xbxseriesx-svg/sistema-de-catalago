@@ -267,10 +267,10 @@
   }
 
   function ensureParityPolling() {
-    if (parityTimer || S.initialParityChecked) return;
+    if (parityTimer || S.initialParityChecked || !expectedNodes()?.length) return;
     parityTimer = setInterval(() => {
       perf.parityPolls += 1;
-      if (S.initialParityChecked) {
+      if (S.initialParityChecked || !expectedNodes()?.length) {
         stopParityPolling();
         return;
       }
@@ -299,20 +299,18 @@
     scheduleRun('preview');
   });
 
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => {
-    ensureParityPolling();
-    scheduleRun('startup');
-  }, { once: true });
-  else {
-    ensureParityPolling();
+  function start() {
+    if (expectedNodes()?.length) ensureParityPolling();
     scheduleRun('startup');
   }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
+  else start();
 
   window.__ASTERYON_V91_GROUPS__ = Object.freeze({
     group1: 'captura Preview Final + diagnostica diferenças',
     group2: 'corrige árvore, logos vinculados, marcas, cores e carrossel',
     group3: 'testa Editor inicial contra Preview; somente OK permite aprovação/publicação',
     failRule: 'qualquer diferença retorna ao Grupo 1',
-    v94Performance: 'sem observer de style/class/src durante drag/resize; polling encerra após paridade',
+    v94Performance: 'sem observer de style/class/src durante drag/resize; polling existe somente com Preview pendente e encerra após paridade',
   });
 })();
