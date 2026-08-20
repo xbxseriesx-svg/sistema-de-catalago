@@ -150,6 +150,7 @@ jobs:
             playwright-report/
             .wrangler-enterprise-team4/
           if-no-files-found: ignore
+          include-hidden-files: true
           retention-days: 14
 
   team5:
@@ -186,4 +187,5 @@ jobs:
             .wrangler-v94-baseline/
             .wrangler-enterprise-dry-run/
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
