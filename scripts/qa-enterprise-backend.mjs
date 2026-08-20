@@ -10,7 +10,13 @@ const required = [
   'worker/app/auth/account.ts',
   'worker/app/auth/session.ts',
   'worker/app/services/catalog.ts',
+  'worker/app/services/catalog-admin.ts',
+  'worker/app/services/brands.ts',
   'worker/app/services/hierarchy.ts',
+  'worker/app/services/marketing.ts',
+  'worker/app/services/offers.ts',
+  'worker/app/services/pages.ts',
+  'worker/app/services/templates.ts',
 ];
 
 let failed = false;
@@ -30,12 +36,7 @@ if (!appEntries.some((entry) => entry.name === 'services' && entry.isDirectory()
 if (!appEntries.some((entry) => entry.name === 'auth' && entry.isDirectory())) fail('worker/app/auth ausente.');
 
 const session = await readFile('worker/app/auth/session.ts', 'utf8');
-for (const contract of [
-  '/api/auth/status',
-  '/api/auth/bootstrap',
-  '/api/auth/login',
-  '/api/auth/logout',
-]) {
+for (const contract of ['/api/auth/status', '/api/auth/bootstrap', '/api/auth/login', '/api/auth/logout']) {
   if (!session.includes(contract)) fail(`contrato de sessão ausente: ${contract}`);
 }
 
@@ -45,33 +46,39 @@ for (const cookieName of ['__Host-asteryon_access', '__Host-asteryon_refresh']) 
 }
 
 const account = await readFile('worker/app/auth/account.ts', 'utf8');
-for (const contract of [
-  '/api/auth/account/session',
-  '/api/auth/account/recovery',
-  '/api/auth/account/password',
-]) {
+for (const contract of ['/api/auth/account/session', '/api/auth/account/recovery', '/api/auth/account/password']) {
   if (!account.includes(contract)) fail(`contrato de conta ausente: ${contract}`);
 }
 
 const catalog = await readFile('worker/app/services/catalog.ts', 'utf8');
-for (const contract of [
-  '/api/public/catalog',
-  '/api/public/brands',
-  '/api/public/marketing',
-]) {
+for (const contract of ['/api/public/catalog', '/api/public/brands', '/api/public/marketing']) {
   if (!catalog.includes(contract)) fail(`contrato público ausente: ${contract}`);
 }
 if (!/api\\\/public\\\/pages/.test(catalog)) fail('contrato público de páginas ausente.');
+
+const catalogAdmin = await readFile('worker/app/services/catalog-admin.ts', 'utf8');
+for (const contract of ['/api/admin/catalog', '/api/admin/catalog/settings']) {
+  if (!catalogAdmin.includes(contract)) fail(`contrato administrativo do catálogo ausente: ${contract}`);
+}
 
 const hierarchy = await readFile('worker/app/services/hierarchy.ts', 'utf8');
 for (const level of ['departamento', 'secao', 'categoria']) {
   if (!hierarchy.includes(`'${level}'`)) fail(`nível de hierarquia ausente: ${level}`);
 }
 
+const pages = await readFile('worker/app/services/pages.ts', 'utf8');
+if (!pages.includes("['GET', 'PUT'].includes(req.method)")) fail('draft não restringe métodos a GET|PUT.');
+if (!pages.includes("['GET', 'POST'].includes(req.method)")) fail('snapshots não restringem métodos a GET|POST.');
+if (!pages.includes("req.method === 'POST'")) fail('publicação/rollback sem restrição POST.');
+if (!pages.includes('REVISION_CONFLICT')) fail('proteção expectedRevision ausente no draft.');
+
+const templates = await readFile('worker/app/services/templates.ts', 'utf8');
+if (!templates.includes('SDM_ONLY')) fail('proteção SDM de templates ausente.');
+
 if (failed) {
   console.error('ENTERPRISE BACKEND REPROVADO.');
   process.exit(1);
 }
 
-ok('módulos iniciais independentes da cadeia index-vXX.');
+ok('módulos reconstruídos permanecem independentes da cadeia index-vXX.');
 console.log('ENTERPRISE BACKEND APROVADO PARA CONTINUAR A RECONSTRUÇÃO.');
