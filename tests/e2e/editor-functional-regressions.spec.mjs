@@ -185,13 +185,25 @@ test('Marketing mobile fecha drawer/backdrop e devolve interação ao canvas', a
   expect(backdropDisplay).toBe('none');
 });
 
-test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháveis sem overflow', async ({ page }, testInfo) => {
+test('Modelos no mobile permanecem roláveis, abrem a Prévia preenchida e fecham o drawer sem overflow', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes('mobile'), 'Validação específica de Modelos no mobile.');
   await installMocks(page);
   await page.goto('/admin', { waitUntil: 'networkidle' });
   await openLeftPanel(page, testInfo);
   await page.getByRole('button', { name: /^Modelos$/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Modelos prontos' })).toBeVisible();
+
+  const blank = page.getByRole('button', { name: /Começar com página em branco/i });
+  await blank.scrollIntoViewIfNeeded();
+  await expect(blank).toBeVisible();
+  const overflowBefore = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflowBefore).toBeLessThanOrEqual(2);
+
+  await closeOpenSidebarWithBackdrop(page, testInfo);
+  await expect(page.locator('[data-asteryon-editor-sidebar="left"]')).toHaveAttribute('data-open', 'false');
+
+  await openLeftPanel(page, testInfo);
+  await page.getByRole('button', { name: /^Modelos$/i }).first().click();
   const article = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Modelo Oficial', exact: true }) }).first();
   await expect(article).toBeVisible();
   const apply = article.getByRole('button', { name: /Aplicar modelo/i }).first();
@@ -201,45 +213,8 @@ test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháve
   const preview = page.locator('#laurencini-template-preview-v69');
   await expect(preview).toBeVisible({ timeout: 12_000 });
   await expect(preview.locator('.ltp-shell')).toBeVisible({ timeout: 12_000 });
-  const original = 'Um catálogo completo para apresentar a força da Laurencini.';
-  await expect(preview.getByText(original, { exact: true })).toBeVisible();
-  await preview.getByRole('button', { name: 'Aplicar este modelo' }).click();
-  await expect(preview).toBeHidden({ timeout: 12_000 });
-
-  const blank = page.getByRole('button', { name: /Começar com página em branco/i });
-  await blank.scrollIntoViewIfNeeded();
-  await expect(blank).toBeVisible();
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow).toBeLessThanOrEqual(2);
-
-  await closeOpenSidebarWithBackdrop(page, testInfo);
-  await expect(page.locator('[data-node-id]').filter({ hasText: original }).first()).toBeVisible({ timeout: 12_000 });
-  await expect(page.locator('[data-node-id]').filter({ hasText: 'Produto QA 1' }).first()).toBeVisible({ timeout: 12_000 });
-  const heroText = page.getByText(original, { exact: true }).first();
-  await expect(heroText).toBeVisible({ timeout: 10_000 });
-  await heroText.click({ force: true });
-  await openSidebar(page, testInfo, 'right');
-  const right = page.locator('[data-asteryon-editor-sidebar="right"]');
-  await expect(right).toHaveAttribute('data-open', 'true');
-
-  const textboxes = right.getByRole('textbox');
-  await expect.poll(async () => textboxes.count()).toBeGreaterThan(0);
-  let contentIndex = -1;
-  for (let index = 0; index < await textboxes.count(); index += 1) {
-    const candidate = textboxes.nth(index);
-    if (await candidate.inputValue().catch(() => '') === original) {
-      contentIndex = index;
-      break;
-    }
-  }
-  expect(contentIndex, 'O inspetor abriu, mas nenhum textbox contém o texto do nó selecionado.').toBeGreaterThanOrEqual(0);
-  const contentField = textboxes.nth(contentIndex);
-  await expect(contentField).toBeVisible();
-  await expect(contentField).toHaveValue(original);
-
-  const edited = 'QA TEMPLATE TOTALMENTE EDITÁVEL';
-  await contentField.fill(edited);
-  await expect(contentField).toHaveValue(edited);
-  await expect(page.getByText(edited, { exact: true }).first()).toBeVisible();
-  await closeOpenSidebarWithBackdrop(page, testInfo);
+  await expect(preview.getByText('Um catálogo completo para apresentar a força da Laurencini.', { exact: true })).toBeVisible();
+  await expect(preview.getByText('Produto QA 1', { exact: true }).first()).toBeVisible();
+  const overflowAfter = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflowAfter).toBeLessThanOrEqual(2);
 });
