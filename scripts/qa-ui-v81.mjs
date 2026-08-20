@@ -9,6 +9,10 @@ const entityPopups = await readFile('public/public-entity-popups-v81.js', 'utf8'
 const brandPopupFix = await readFile('public/public-brand-popup-fix-v83.js', 'utf8');
 const popupGuard = await readFile('public/public-entity-popup-guard-v81.js', 'utf8');
 const index = await readFile('public/index.html', 'utf8');
+const version = Number((await readFile('VERSION', 'utf8')).trim());
+
+assert.ok(Number.isInteger(version) && version >= 81, 'Release lógica deve preservar compatibilidade V81+.');
+const releaseQuery = `\\?v=${version}`;
 
 assert.match(bundle, /ASTER_V81_CORE_PATCH/, 'Patch V81 não materializado.');
 assert.match(bundle, /ASTER_V81_WHITE_SCREEN_FIX/, 'Hotfix V81 contra tela branca não materializado.');
@@ -24,7 +28,7 @@ assert.match(bundle, /function V81Rules\(/);
 assert.match(bundle, /label:"Regras"/);
 assert.match(bundle, /i==="rules"\?l\.jsx\(V81Rules/);
 assert.match(bundle, /As regras usam a mesma biblioteca de ações dos Elementos e Ajustes/);
-assert.match(index, /system-runtime-v81\.js\?v=81/);
+assert.match(index, new RegExp(`system-runtime-v81\\.js${releaseQuery}`));
 assert.match(runtime, /option\.value === 'none'/);
 assert.match(runtime, /Nenhum \(padrão\)/);
 assert.match(runtime, /funcao ao clicar/);
@@ -61,9 +65,9 @@ assert.match(search, /SEARCH_BUTTON_LABELS/);
 assert.match(search, /consulta/);
 assert.match(search, /asteryon-global-search-v78\[data-open="true"\]/, 'Busca geral precisa expor estado data-open para coexistir com os popups.');
 
-assert.match(index, /public-entity-popups-v81\.js\?v=81/, 'Runtime de popup público precisa estar carregado.');
-assert.match(index, /public-brand-popup-fix-v83\.js\?v=85/, 'Runtime V85 dos cards de marca precisa estar carregado com cache renovado.');
-assert.match(index, /public-entity-popup-guard-v81\.js\?v=81/, 'Guard de scroll dos popups precisa estar carregado.');
+assert.match(index, new RegExp(`public-entity-popups-v81\\.js${releaseQuery}`), 'Runtime de popup público precisa usar cache da release atual.');
+assert.match(index, new RegExp(`public-brand-popup-fix-v83\\.js${releaseQuery}`), 'Runtime físico V83/V85 dos cards de marca precisa usar cache da release atual.');
+assert.match(index, new RegExp(`public-entity-popup-guard-v81\\.js${releaseQuery}`), 'Guard de scroll dos popups precisa usar cache da release atual.');
 assert.match(entityPopups, /function openBrand\(key\)/, 'Popup de marca ausente.');
 assert.match(entityPopups, /function openProduct\(key\)/, 'Popup de produto ausente.');
 assert.match(entityPopups, /parts\[0\] === 'marca'/, 'Links de marca precisam ser interceptados.');
@@ -75,7 +79,7 @@ assert.match(entityPopups, /Produtos similares da marca/, 'Popup de produto prec
 assert.match(entityPopups, /role', 'dialog'/, 'Popup precisa ser identificado como diálogo acessível.');
 assert.match(entityPopups, /@media\(max-width:720px\)/, 'Popup precisa ser responsivo no mobile.');
 
-assert.match(brandPopupFix, /const VERSION = '85'/, 'Correção determinística de marcas precisa estar na V85.');
+assert.match(brandPopupFix, /const VERSION = '85'/, 'Correção determinística de marcas precisa permanecer na camada física V85.');
 assert.match(brandPopupFix, /fetchJson\('\/api\/public\/pages\/home'\)/, 'V85 precisa ler os nós publicados da home.');
 assert.match(brandPopupFix, /fetchJson\('\/api\/public\/brands'\)/, 'V85 precisa carregar o cadastro real de marcas.');
 assert.match(brandPopupFix, /function brandKeyFromPageNode/, 'V85 precisa obter a marca diretamente do nó publicado.');
@@ -104,4 +108,4 @@ execFileSync(process.execPath, ['--check', 'public/system-runtime-v81.js'], { st
 execFileSync(process.execPath, ['--check', 'scripts/qa-brand-node-popup-v85.mjs'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['scripts/qa-brand-node-popup-v85.mjs'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'scripts/patch-white-screen-v81.mjs'], { stdio: 'pipe' });
-console.log('QA UI V81/V85: OK — ações, carrossel, consulta, logos de marcas e popups validados.');
+console.log(`QA UI V81/V85 na release V${version}: OK — ações, carrossel, consulta, logos de marcas e popups validados.`);

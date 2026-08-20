@@ -2,17 +2,21 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const [index, loader, responsive, marketing] = await Promise.all([
+const [index, loader, responsive, marketing, versionText] = await Promise.all([
   readFile('public/index.html', 'utf8'),
   readFile('public/runtime-loader-v87.js', 'utf8'),
   readFile('public/responsive-v67.js', 'utf8'),
   readFile('public/marketing-canvas-hotfix.js', 'utf8'),
+  readFile('VERSION', 'utf8'),
 ]);
+const version = Number(versionText.trim());
+assert.ok(Number.isInteger(version) && version >= 88, 'Release lógica precisa preservar as otimizações V88.');
+const releaseQuery = `\\?v=${version}`;
 
-assert.match(index, /index-V60Excel\.js\?v=81&perf=88/, 'Bundle precisa renovar cache na V88.');
-assert.match(index, /runtime-loader-v87\.js\?v=87&perf=88/, 'Loader contextual precisa renovar cache na V88.');
-assert.match(index, /responsive-v67\.js\?v=81&perf=88/, 'Manifesto precisa expor a camada responsiva V88.');
-assert.match(index, /marketing-canvas-hotfix\.js\?v=81&perf=88/, 'Manifesto precisa expor Marketing V88.');
+assert.match(index, new RegExp(`index-V60Excel\\.js${releaseQuery}&perf=88`), 'Bundle precisa usar cache da release atual e preservar o patch perf=88.');
+assert.match(index, new RegExp(`runtime-loader-v87\\.js${releaseQuery}&perf=88`), 'Loader contextual precisa usar cache da release atual.');
+assert.match(index, new RegExp(`responsive-v67\\.js${releaseQuery}&perf=88`), 'Manifesto precisa expor a camada responsiva V88 com cache atual.');
+assert.match(index, new RegExp(`marketing-canvas-hotfix\\.js${releaseQuery}&perf=88`), 'Manifesto precisa expor Marketing V88 com cache atual.');
 
 assert.match(responsive, /ASTER_V88_RESPONSIVE_PERFORMANCE/, 'Camada responsiva V88 não foi materializada.');
 assert.match(responsive, /ResizeObserver/, 'Editor deve usar ResizeObserver para geometria do shell em vez de medir em toda mutação.');
@@ -44,4 +48,4 @@ for (const file of [
   execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
 }
 
-console.log('QA Editor V88: OK — mutações filtradas, Marketing sem polling por DOM e runtimes administrativos contextuais.');
+console.log(`QA Editor V88 na release V${version}: OK — mutações filtradas, Marketing sem polling por DOM e runtimes administrativos contextuais.`);

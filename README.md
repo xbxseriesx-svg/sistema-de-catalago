@@ -1,4 +1,4 @@
-# ASTERYON Catálogo — V69
+# ASTERYON Catálogo — V89
 
 Versão oficial do catálogo ASTERYON com dados e mídias no **Supabase** e aplicação publicada na **Cloudflare** a partir do repositório GitHub.
 
@@ -16,8 +16,16 @@ Versão oficial do catálogo ASTERYON com dados e mídias no **Supabase** e apli
 
 - Worker: `sistema-de-catalago`
 - Supabase Project ID: `bjcfknhiwjxznxydvmzt`
-- Entry point: `worker/index-v62.ts`
-- Versão da aplicação: `2.1.69`
+- Entry point: `worker/index-v81.ts`
+- Versão da aplicação: `2.1.89`
+
+## Release atual — V89
+
+A V89 é a release lógica atual. O nome físico `worker/index-v81.ts` é mantido por compatibilidade e histórico, sem renomear a cadeia antiga apenas por estética.
+
+A V89 inclui hardening de sessão, HMAC dedicado para imagens remotas, proteção SSRF/DNS, baseline Supabase versionado, proteção de drafts, restrição das RPCs mutáveis de páginas e QA/E2E ampliado. A rodada funcional V89 também adiciona regressão para impedir leitura direta anônima entre tenants nas tabelas públicas servidas pelo Worker.
+
+As fontes funcionais de versão que devem permanecer coerentes são `VERSION`, `package.json`, `/api/health` e este README.
 
 ## Preview completo dos templates — V69
 
@@ -206,6 +214,9 @@ As credenciais do Supabase usadas pelo Worker permanecem na configuração segur
 
 - `SUPABASE_SECRET_KEY` ou `SUPABASE_SERVICE_ROLE_KEY`
 - `SDM_BOOTSTRAP_TOKEN`
+- `REMOTE_IMAGE_HMAC_SECRET`
+
+`REMOTE_IMAGE_HMAC_SECRET` deve ser um segredo aleatório exclusivo e não deve reutilizar chave administrativa do Supabase, bootstrap token ou chave Google.
 
 `SUPABASE_URL` e `SUPABASE_PUBLISHABLE_KEY` ficam no `wrangler.jsonc`.
 
@@ -236,7 +247,7 @@ npm ci
 npm test
 ```
 
-O QA da V69 valida TypeScript, Worker, Supabase, autenticação, importação Excel, campos da planilha, marketing, Modelo Oficial, catálogo real, modais V65/V66, responsividade V67+, identidade Laurencini V68+ e os previews completos V69. O teste V69 confirma os oito modelos, a logo, a dependência apenas do catálogo público, a ausência de recursos de e-commerce e a reutilização do fluxo atual de aplicação do template.
+O QA atual da V89 preserva as regressões históricas de V61–V88 e acrescenta validações de autenticação/refresh, segurança de imagens remotas, baseline Supabase, E2E desktop/mobile, isolamento anônimo entre tenants e coerência de versionamento. Testes mockados continuam úteis para smoke de UI, mas não substituem a prova funcional com persistência real.
 
 ## Recuperação
 

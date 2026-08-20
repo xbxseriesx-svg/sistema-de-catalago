@@ -2,15 +2,20 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const [index, editorRuntime, loader] = await Promise.all([
+const [index, editorRuntime, loader, versionText] = await Promise.all([
   readFile('public/index.html', 'utf8'),
   readFile('public/editor-runtime-v87.js', 'utf8'),
   readFile('public/runtime-loader-v87.js', 'utf8'),
+  readFile('VERSION', 'utf8'),
 ]);
+const version = Number(versionText.trim());
+assert.ok(Number.isInteger(version) && version >= 87, 'Release lógica precisa preservar o runtime V87.');
+const editorSrc = `/editor-runtime-v87.js?v=${version}`;
+const loaderSrc = `/runtime-loader-v87.js?v=${version}`;
 
-assert.match(index, /editor-runtime-v87\.js\?v=87/, 'Runtime V87 precisa carregar antes do bundle do editor.');
-assert.match(index, /runtime-loader-v87\.js\?v=87/, 'Loader contextual V87 precisa estar habilitado.');
-const earlyRuntimeIndex = index.indexOf('/editor-runtime-v87.js?v=87');
+assert.ok(index.includes(editorSrc), 'Runtime físico V87 precisa carregar antes do bundle usando cache da release atual.');
+assert.ok(index.includes(loaderSrc), 'Loader contextual físico V87 precisa usar cache da release atual.');
+const earlyRuntimeIndex = index.indexOf(editorSrc);
 const bundleIndex = index.indexOf('/assets/index-V60Excel.js');
 assert.ok(earlyRuntimeIndex >= 0 && bundleIndex > earlyRuntimeIndex, 'Barreira de publicação V87 precisa carregar antes do bundle principal.');
 
@@ -49,4 +54,4 @@ assert.match(loader, /pointerover/, 'Pré-aquecimento contextual deve iniciar an
 
 execFileSync(process.execPath, ['--check', 'public/editor-runtime-v87.js'], { stdio: 'pipe' });
 execFileSync(process.execPath, ['--check', 'public/runtime-loader-v87.js'], { stdio: 'pipe' });
-console.log('QA Editor V87: OK — Marca, publicação após autosave e carregamento contextual validados.');
+console.log(`QA Editor V87 na release V${version}: OK — Marca, publicação após autosave e carregamento contextual validados.`);

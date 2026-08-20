@@ -38,9 +38,9 @@ assert(workerV70.includes("import baseWorker from './index-v62'"), 'Worker V70 p
 assert(workerV62.includes("database: 'Supabase Postgres'"), 'Base V62 não declara Supabase Postgres.');
 assert(workerV62.includes('d1: false'), 'Base V62 precisa declarar d1=false.');
 assert(workerV62.includes("storage: 'Supabase Storage'"), 'Base V62 não declara Supabase Storage.');
-assert(index.includes('/runtime-loader-v87.js?v=87'), 'Editor precisa ativar o loader contextual V87.');
-assert(runtimeLoaderV87.includes('/import-progress-v62.js?v=81'), 'Loader V87 não preserva o progresso de importação.');
-assert(runtimeLoaderV87.includes('/import-progress-fetch-v62.js?v=81'), 'Loader V87 não preserva o acompanhamento de importação por fetch.');
+assert(index.includes(`/runtime-loader-v87.js?v=${versionNumber}&perf=88`), 'Editor precisa ativar o loader contextual com cache da release atual.');
+assert(runtimeLoaderV87.includes(`/import-progress-v62.js?v=${versionNumber}`), 'Loader V87 não preserva o progresso de importação na release atual.');
+assert(runtimeLoaderV87.includes(`/import-progress-fetch-v62.js?v=${versionNumber}`), 'Loader V87 não preserva o acompanhamento de importação por fetch na release atual.');
 assert(runtimeLoaderV87.includes('ADMIN_IMPORT'), 'Importação precisa permanecer disponível sob carregamento contextual no editor.');
 assert(index.includes(`ASTERYON Editor V${versionNumber}`), 'Título do editor não acompanha VERSION.');
 assert(imagePage.includes('/import-progress-v62.js'), 'Importador de imagens não carrega o progresso.');

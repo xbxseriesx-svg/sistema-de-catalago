@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import worker from '../.wrangler-dry-run/index.js';
 
+const expectedRelease = `V${(await readFile('VERSION', 'utf8')).trim()}`;
 const calls = [];
 const respond = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
 
@@ -38,7 +40,7 @@ const env = {
 
 const health = await worker.fetch(new Request('https://catalog.example/api/health'), env);
 assert.equal(health.status, 200);
-assert.equal((await health.json()).version, 'V81');
+assert.equal((await health.json()).version, expectedRelease, 'health deve acompanhar VERSION, sem hardcode da versão física do arquivo');
 assert.match(health.headers.get('content-security-policy') || '', /fonts\.googleapis\.com/);
 assert.match(health.headers.get('strict-transport-security') || '', /max-age=31536000/);
 
@@ -67,4 +69,4 @@ assert.equal(missingForeignRecord.status, 404, 'Mutação fora do escopo da empr
 assert.equal((await missingForeignRecord.json()).error.code, 'NOT_FOUND');
 assert.ok(calls.some((call) => call.pathname === '/rest/v1/company_memberships' && call.search.includes('company_id=eq.cmp_asteryon')));
 
-console.log('QA Worker V81: OK — saúde, CSP, marcas canônicas, empresa obrigatória, cookie malformado e proteção contra escrita fora do escopo.');
+console.log(`QA Worker físico V81 / release ${expectedRelease}: OK — saúde, CSP, marcas canônicas, empresa obrigatória, cookie malformado e proteção contra escrita fora do escopo.`);

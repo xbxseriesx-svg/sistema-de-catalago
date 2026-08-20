@@ -23,13 +23,15 @@ const bundle = read('public/assets/index-V60Excel.js');
 const worker = read('worker/index.ts');
 const pkg = JSON.parse(read('package.json'));
 const version = Number(read('VERSION').trim());
+const release = `V${version}`;
+const q = `?v=${version}`;
 
-must(index, 'ASTERYON Editor V81', 'título oficial V81');
-must(index, '/runtime-loader-v87.js?v=87&perf=88', 'loader contextual V88 carregado no index');
-must(runtimeLoaderV87, '/system-runtime-v80.js?v=81&perf=88', 'runtime legado V80 gerido sob demanda na V88');
-must(runtimeLoaderV87, '/system-runtime-v81.js?v=81&perf=88', 'runtime V81 gerido pelo loader V88');
+must(index, `ASTERYON Editor ${release}`, `título oficial ${release}`);
+must(index, `/runtime-loader-v87.js${q}&perf=88`, 'loader contextual V88 carregado com cache da release atual');
+must(runtimeLoaderV87, `/system-runtime-v80.js${q}&perf=88`, 'runtime legado V80 gerido sob demanda');
+must(runtimeLoaderV87, `/system-runtime-v81.js${q}&perf=88`, 'runtime V81 gerido pelo loader V88');
 mustNot(index, '/marketing-panel-scope-v79.js', 'V79 antigo não deve continuar ativo');
-must(runtimeLoaderV87, '/marketing-canvas-hotfix.js?v=81&perf=88', 'objeto de Marketing preservado no carregamento contextual');
+must(runtimeLoaderV87, `/marketing-canvas-hotfix.js${q}&perf=88`, 'objeto de Marketing preservado no carregamento contextual');
 
 must(runtime, "['Produtos', 'Importar', 'Estrutura', 'Marcas', 'Ofertas', 'Marketing']", 'seis áreas de Gestão/Vínculos protegidas');
 must(runtime, 'adicionar vitrine editavel', 'detecção da vitrine externa');
@@ -54,7 +56,7 @@ must(marketingCanvas, '/api/admin/marketing', 'canvas persiste posição via Wor
 must(marketingCanvas, 'resize', 'objeto Marketing redimensionável');
 must(marketingCanvas, 'pointermove', 'objeto Marketing movível');
 
-must(index, '/assets/index-V60Excel.js?v=81&perf=88', 'cache do bundle renovado na V88');
+must(index, `/assets/index-V60Excel.js${q}&perf=88`, 'cache do bundle acompanha a release atual');
 must(runtimeLoaderV87, 'ASTER_V88_CONTEXT_LOADER', 'loader V88 materializado');
 must(runtimeLoaderV87, 'ADMIN_MANAGEMENT', 'Gestão/Vínculos carregada somente quando necessária');
 must(runtimeLoaderV87, 'requestIdleCallback', 'preparações tardias aguardam janela ociosa');
@@ -110,8 +112,8 @@ for (const file of [
   execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
 }
 
-if (version !== 81) throw new Error(`QA V81: VERSION esperada 81, recebida ${version}`);
-if (pkg.version !== '2.1.81') throw new Error(`QA V81: package version esperada 2.1.81, recebida ${pkg.version}`);
+if (!Number.isInteger(version) || version < 81) throw new Error(`QA V81: release lógica inválida ${version}`);
+if (pkg.version !== `2.1.${version}`) throw new Error(`QA V81: package precisa acompanhar VERSION; recebido ${pkg.version}`);
 
-console.log('QA V81/V88 OK — V86/V87 preservadas, observers filtrados, Marketing sem polling por DOM e runtimes contextuais verificados.');
+console.log(`QA V80/V81 na release ${release} OK — V86/V87 preservadas, observers filtrados, Marketing sem polling por DOM e runtimes contextuais verificados.`);
 process.exit(0);
