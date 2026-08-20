@@ -62,10 +62,14 @@ async function installMocks(page) {
 
 async function openLeft(page, testInfo) {
   if (!testInfo.project.name.includes('mobile')) return;
-  const button = page.locator('[data-asteryon-mobile-toolbar] button[data-side="left"]');
-  await expect(button).toBeVisible();
-  await button.click();
-  await expect(page.locator('[data-asteryon-editor-sidebar="left"]')).toHaveAttribute('data-open', 'true');
+  const sidebar = page.locator('[data-asteryon-editor-sidebar="left"]');
+  await expect(sidebar).toBeAttached();
+  if (await sidebar.getAttribute('data-open') !== 'true') {
+    const button = page.locator('[data-asteryon-mobile-toolbar] button[data-side="left"]');
+    await expect(button).toBeVisible();
+    await button.click();
+    await expect(sidebar).toHaveAttribute('data-open', 'true');
+  }
 }
 
 async function openModels(page, testInfo) {
@@ -107,7 +111,14 @@ test('Grupo 3/4 V93: todas as templates antigas são substituídas pela Prévia 
     await expect(page.locator('[data-node-id]').filter({ hasText: 'Marca do catálogo' }).first()).toBeVisible({ timeout: 12_000 });
     await expect(page.locator('[data-node-id]').filter({ hasText: 'TEMPLATE LEGADA NÃO PODE APARECER' })).toHaveCount(0);
 
-    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.asteryonV93VisualParity || ''), { timeout: 15_000 }).toBe('approved');
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.asteryonV93VisualParity || ''), { timeout: 15_000 }).toMatch(/^(approved|failed)$/);
+    const visualState = await page.evaluate(() => ({
+      status: document.documentElement.dataset.asteryonV93VisualParity || '',
+      report: window.__ASTERYON_PREVIEW_EDITOR_VISUAL_V93__ || null,
+    }));
+    if (visualState.status !== 'approved') console.log(`V93_VISUAL_FAIL ${templateName}: ${JSON.stringify(visualState.report)}`);
+    expect(visualState.status, `${templateName}: relatório visual ${JSON.stringify(visualState.report)}`).toBe('approved');
+
     await expect.poll(() => page.evaluate(() => document.documentElement.dataset.asteryonTeam4V93 || ''), { timeout: 15_000 }).toBe('approved');
 
     const audit = await page.evaluate(() => ({
