@@ -1,0 +1,5 @@
+ASTERYON Catálogo — solicitação de produção V91
+Data: 2026-08-20
+Base funcional validada: 622472adcd55f6f055b5f6a20e0bc635027ea040
+Objetivo: disparar nova build/deploy da integração GitHub -> Cloudflare com todas as correções V90/V91 já presentes no main.
+Regra principal: Preview Final preenchido = Editor inicial editável (paridade Ctrl+C/Ctrl+V), com logos vinculados, marcas, cores e trava do Grupo 3.
