@@ -18,6 +18,26 @@ const pageNode = {
   }],
 };
 
+const qaImage = label => `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="240" height="260"><rect width="240" height="260" fill="#eef4fb"/><text x="120" y="135" text-anchor="middle" font-family="Arial" font-size="24" fill="#214C8F">${label}</text></svg>`)}`;
+const qaBrands = [
+  { id: 'brand-qa', name: 'Marca QA', slug: 'marca-qa', status: 'active', logoUrl: qaImage('MARCA QA') },
+  { id: 'brand-qa-2', name: 'Marca QA Dois', slug: 'marca-qa-dois', status: 'active', logoUrl: qaImage('MARCA 2') },
+];
+const qaProducts = Array.from({ length: 8 }, (_, index) => ({
+  id: `p${index + 1}`,
+  code: `00012${index + 1}`,
+  name: `Produto QA ${index + 1}`,
+  shortDescription: `Produto QA ${index + 1}`,
+  status: 'ativo',
+  departamentoId: 'dep-qa',
+  secaoId: 'sec-qa',
+  categoriaId: 'cat-qa',
+  brandId: index % 2 ? 'brand-qa-2' : 'brand-qa',
+  brandName: index % 2 ? 'Marca QA Dois' : 'Marca QA',
+  packaging: 'CX 12',
+  image: qaImage(`P${index + 1}`),
+}));
+
 async function installMocks(page) {
   let currentMarketing = structuredClone(marketing);
   let currentNodes = [structuredClone(pageNode)];
@@ -31,8 +51,8 @@ async function installMocks(page) {
     if (path === '/api/auth/status') return json({ ok: true, needsBootstrap: false, user: { id: 'qa-user', companyId: 'cmp_asteryon', email: 'qa@example.invalid', name: 'QA', role: 'SDM' } });
     if (path === '/api/admin/catalog' || path === '/api/public/catalog') {
       return json({ ok: true, catalog: {
-        products: [{ id: 'p1', code: '000123', name: 'Produto QA', shortDescription: 'Produto QA', status: 'ativo', departamentoId: 'dep-qa', secaoId: 'sec-qa', categoriaId: 'cat-qa', brandId: 'brand-qa' }],
-        brands: [{ id: 'brand-qa', name: 'Marca QA', slug: 'marca-qa', status: 'active' }],
+        products: qaProducts,
+        brands: qaBrands,
         hierarchy: [
           { id: 'dep-qa', level: 'departamento', name: 'QA Departamento Dinâmico', slug: 'qa-departamento', parentId: null, status: 'active' },
           { id: 'sec-qa', level: 'secao', name: 'QA Seção Dinâmica', slug: 'qa-secao', parentId: 'dep-qa', status: 'active' },
@@ -41,7 +61,7 @@ async function installMocks(page) {
         promotions: [], settings: { displayFields: ['image', 'code', 'shortDescription', 'brand', 'category', 'price', 'unit'] },
       } });
     }
-    if (path === '/api/admin/brands' || path === '/api/public/brands') return json({ ok: true, brands: [{ id: 'brand-qa', name: 'Marca QA', slug: 'marca-qa', status: 'active' }] });
+    if (path === '/api/admin/brands' || path === '/api/public/brands') return json({ ok: true, brands: qaBrands });
     if (path === '/api/admin/hierarchy' && request.method() === 'POST') {
       const payload = request.postDataJSON();
       hierarchyCreates.push(structuredClone(payload));
@@ -56,8 +76,11 @@ async function installMocks(page) {
       return json({ ok: true, page: { id: 'page-home', slug: 'home', title: 'Home QA', nodes: currentNodes, revision: 1, updatedAt: new Date().toISOString() } });
     }
     if (path === '/api/admin/pages/home/snapshots') return json({ ok: true, snapshots: [] });
-    if (path === '/api/admin/templates') return json({ ok: true, templates: [] });
-    if (path === '/api/admin/templates/seed') return json({ ok: true, templates: [] });
+    if (path === '/api/admin/templates') return json({ ok: true, templates: [{
+      id: 'tpl-modelo-oficial-qa', systemKey: 'modelo-oficial-qa', name: 'Modelo Oficial', description: 'Template QA corrente',
+      category: 'pre-pronto', tags: ['qa'], accent: '#214C8F', nodes: [structuredClone(pageNode)], isSystem: true, version: 93,
+    }] });
+    if (path === '/api/admin/templates/seed') return json({ ok: true, requested: 0 });
     if (path === '/api/public/pages/home') return json({ ok: true, page: { slug: 'home', title: 'Home QA', versionId: 'qa-v1', versionNumber: 1, publishedAt: new Date().toISOString(), nodes: currentNodes } });
     return json({ ok: true });
   });
@@ -67,10 +90,14 @@ async function installMocks(page) {
 
 async function openSidebar(page, testInfo, side) {
   if (!testInfo.project.name.includes('mobile')) return;
-  const button = page.locator(`[data-asteryon-mobile-toolbar] button[data-side="${side}"]`);
-  await expect(button).toBeVisible();
-  await button.click();
-  await expect(page.locator(`[data-asteryon-editor-sidebar="${side}"]`)).toHaveAttribute('data-open', 'true');
+  const sidebar = page.locator(`[data-asteryon-editor-sidebar="${side}"]`);
+  await expect(sidebar).toBeAttached();
+  if (await sidebar.getAttribute('data-open') !== 'true') {
+    const button = page.locator(`[data-asteryon-mobile-toolbar] button[data-side="${side}"]`);
+    await expect(button).toBeVisible();
+    await button.click();
+    await expect(sidebar).toHaveAttribute('data-open', 'true');
+  }
 }
 
 async function openLeftPanel(page, testInfo) {
@@ -158,51 +185,36 @@ test('Marketing mobile fecha drawer/backdrop e devolve interação ao canvas', a
   expect(backdropDisplay).toBe('none');
 });
 
-test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháveis sem overflow', async ({ page }, testInfo) => {
+test('Modelos no mobile permanecem roláveis, abrem a Prévia preenchida e fecham o drawer sem overflow', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes('mobile'), 'Validação específica de Modelos no mobile.');
   await installMocks(page);
   await page.goto('/admin', { waitUntil: 'networkidle' });
   await openLeftPanel(page, testInfo);
   await page.getByRole('button', { name: /^Modelos$/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Modelos prontos' })).toBeVisible();
-  const apply = page.getByRole('button', { name: 'Aplicar modelo' }).first();
-  await expect(apply).toBeVisible();
-  page.once('dialog', dialog => dialog.accept());
-  await apply.click();
-  await expect(page.getByText(/Modelo aplicado/i)).toBeVisible();
+
   const blank = page.getByRole('button', { name: /Começar com página em branco/i });
   await blank.scrollIntoViewIfNeeded();
   await expect(blank).toBeVisible();
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow).toBeLessThanOrEqual(2);
+  const overflowBefore = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflowBefore).toBeLessThanOrEqual(2);
 
   await closeOpenSidebarWithBackdrop(page, testInfo);
-  const original = 'OFERTAS QUE MOVEM O SEU NEGÓCIO';
-  const heroText = page.getByText(original, { exact: true }).first();
-  await expect(heroText).toBeVisible({ timeout: 10_000 });
-  await heroText.click({ force: true });
-  await openSidebar(page, testInfo, 'right');
-  const right = page.locator('[data-asteryon-editor-sidebar="right"]');
-  await expect(right).toHaveAttribute('data-open', 'true');
+  await expect(page.locator('[data-asteryon-editor-sidebar="left"]')).toHaveAttribute('data-open', 'false');
 
-  const textboxes = right.getByRole('textbox');
-  await expect.poll(async () => textboxes.count()).toBeGreaterThan(0);
-  let contentIndex = -1;
-  for (let index = 0; index < await textboxes.count(); index += 1) {
-    const candidate = textboxes.nth(index);
-    if (await candidate.inputValue().catch(() => '') === original) {
-      contentIndex = index;
-      break;
-    }
-  }
-  expect(contentIndex, 'O inspetor abriu, mas nenhum textbox contém o texto do nó selecionado.').toBeGreaterThanOrEqual(0);
-  const contentField = textboxes.nth(contentIndex);
-  await expect(contentField).toBeVisible();
-  await expect(contentField).toHaveValue(original);
+  await openLeftPanel(page, testInfo);
+  await page.getByRole('button', { name: /^Modelos$/i }).first().click();
+  const article = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Modelo Oficial', exact: true }) }).first();
+  await expect(article).toBeVisible();
+  const apply = article.getByRole('button', { name: /Aplicar modelo/i }).first();
+  await expect(apply).toBeVisible();
+  await apply.click();
 
-  const edited = 'QA TEMPLATE TOTALMENTE EDITÁVEL';
-  await contentField.fill(edited);
-  await expect(contentField).toHaveValue(edited);
-  await expect(page.getByText(edited, { exact: true }).first()).toBeVisible();
-  await closeOpenSidebarWithBackdrop(page, testInfo);
+  const preview = page.locator('#laurencini-template-preview-v69');
+  await expect(preview).toBeVisible({ timeout: 12_000 });
+  await expect(preview.locator('.ltp-shell')).toBeVisible({ timeout: 12_000 });
+  await expect(preview.getByText('Um catálogo completo para apresentar a força da Laurencini.', { exact: true })).toBeVisible();
+  await expect(preview.getByText('Produto QA 1', { exact: true }).first()).toBeVisible();
+  const overflowAfter = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflowAfter).toBeLessThanOrEqual(2);
 });

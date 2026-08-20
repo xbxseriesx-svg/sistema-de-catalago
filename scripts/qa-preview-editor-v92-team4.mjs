@@ -11,7 +11,7 @@ const [html, bundle, core, capture, team4, e2e] = await Promise.all([
   readFile('tests/e2e/preview-editor-team4-v92.spec.mjs', 'utf8'),
 ]);
 
-assert.match(html, /preview-editor-v92-team4\.js\?v=92/, 'Equipe 4 precisa carregar na release V92.');
+assert.match(html, /preview-editor-v92-team4\.js\?v=(?:92|93)/, 'Equipe 4 V92 precisa continuar carregada como pré-gate na release corrente.');
 assert.ok(html.indexOf('/preview-editor-v91-capture.js') < html.indexOf('/preview-editor-v92-team4.js'), 'Equipe 4 deve auditar a captura produzida pelo Grupo 3.');
 assert.ok(html.indexOf('/preview-editor-v92-team4.js') < html.indexOf('/assets/index-V60Excel.js'), 'Equipe 4 precisa estar ativa antes do bundle/editor.');
 
@@ -61,4 +61,4 @@ for (const file of ['public/preview-editor-v91-capture.js', 'public/preview-edit
   execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
 }
 
-console.log('QA V92 Equipe 4: causa real coberta, auditoria ocorre antes da mutação e aprovação dupla é obrigatória.');
+console.log('QA compatibilidade V92 na release corrente: pré-gate, causa real, auditoria pré-mutação e aprovação dupla preservados.');
