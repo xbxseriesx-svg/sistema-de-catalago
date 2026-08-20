@@ -18,11 +18,12 @@ const pageNode = {
   }],
 };
 
-function installMocks(page) {
+async function installMocks(page) {
   let currentMarketing = structuredClone(marketing);
   let currentNodes = [structuredClone(pageNode)];
+  const hierarchyCreates = [];
 
-  return page.route('**/api/**', async route => {
+  await page.route('**/api/**', async route => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json; charset=utf-8', body: JSON.stringify(body) });
@@ -48,6 +49,12 @@ function installMocks(page) {
       return json({ ok: true, brands: [{ id: 'brand-qa', name: 'Marca QA', slug: 'marca-qa', status: 'active' }] });
     }
 
+    if (path === '/api/admin/hierarchy' && request.method() === 'POST') {
+      const payload = request.postDataJSON();
+      hierarchyCreates.push(structuredClone(payload));
+      return json({ ok: true, id: 'hier-created-qa' });
+    }
+
     if (path === '/api/admin/marketing' || path === '/api/public/marketing') {
       if (request.method() === 'PUT') {
         const body = request.postDataJSON();
@@ -71,6 +78,8 @@ function installMocks(page) {
 
     return json({ ok: true });
   });
+
+  return { hierarchyCreates };
 }
 
 async function openLeftPanel(page, testInfo) {
@@ -106,6 +115,29 @@ test('cadastro de Produto usa Departamento dinâmico da hierarquia e filtra Seç
   const section = page.locator('label').filter({ hasText: 'Seção *' }).locator('select');
   await expect(section.locator('option')).toContainText(['Selecione', 'QA Seção Dinâmica']);
   expect(await department.inputValue()).toBe('QA Departamento Dinâmico');
+});
+
+test('Estrutura cria Departamento manual sem exigir item pai', async ({ page }, testInfo) => {
+  const mock = await installMocks(page);
+  await page.goto('/admin', { waitUntil: 'networkidle' });
+  await openLeftPanel(page, testInfo);
+
+  await page.getByRole('button', { name: /^Estrutura$/i }).first().click();
+  const newDepartment = page.getByRole('button', { name: /^Novo departamento$/i }).first();
+  await expect(newDepartment).toBeVisible();
+  await newDepartment.click();
+
+  await expect(page.getByText('Departamento superior', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Seção superior', { exact: true })).toHaveCount(0);
+  const name = page.getByPlaceholder('Ex.: Food Service').first();
+  await expect(name).toBeVisible();
+  await name.fill('QA Novo Departamento');
+  await page.getByRole('button', { name: /^Salvar$/i }).first().click();
+
+  await expect.poll(() => mock.hierarchyCreates.length).toBe(1);
+  expect(mock.hierarchyCreates[0]).toMatchObject({ level: 'departamento', name: 'QA Novo Departamento' });
+  expect(String(mock.hierarchyCreates[0].parentId || '')).toBe('');
+  await expect(page.getByText('Configurações salvas com sucesso.')).toBeVisible();
 });
 
 test('Marketing mobile fecha drawer/backdrop e devolve interação ao canvas', async ({ page }, testInfo) => {
