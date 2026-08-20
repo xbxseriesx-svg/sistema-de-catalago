@@ -6,6 +6,7 @@ const bundlePath = 'public/assets/index-V60Excel.js';
 const marker = 'ASTER_V81_CORE_PATCH';
 const whiteScreenMarker = 'ASTER_V81_WHITE_SCREEN_FIX';
 const performanceMarker = 'ASTER_V86_EDITOR_PERFORMANCE';
+const functionalPolishMarker = 'ASTER_V90_FUNCTIONAL_POLISH';
 
 // O Modelo Oficial é fonte auxiliar independente do bundle e precisa permanecer
 // normalizado mesmo quando o bundle V81 já está materializado.
@@ -49,4 +50,14 @@ if (!bundle.includes(performanceMarker)) {
 }
 bundle = await readFile(bundlePath, 'utf8');
 if (!bundle.includes(performanceMarker)) throw new Error('Hotfix V86 de performance não foi materializado.');
-console.log('Bundle V81 validado com hotfixes de seleção e performance V86.');
+
+// V90: polimento funcional resultante da revisão Criadores -> Engenheiros -> QA.
+// Mantido na preparação do bundle porque a árvore atual não possui o fonte React
+// original; quando o módulo for recuperado, estas correções devem migrar para ele.
+if (!bundle.includes(functionalPolishMarker)) {
+  execFileSync(process.execPath, ['scripts/patch-functional-polish-v90.mjs'], { stdio: 'inherit' });
+}
+bundle = await readFile(bundlePath, 'utf8');
+if (!bundle.includes(functionalPolishMarker)) throw new Error('Polimento funcional V90 não foi materializado.');
+
+console.log('Bundle validado com V81, performance V86 e polimento funcional V90.');
