@@ -1,0 +1,101 @@
+name: V89 — E2E funcional real QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - qa/v89-functional-e2e-real
+    paths:
+      - 'worker/**'
+      - 'public/auth/**'
+      - 'tests/e2e-functional/**'
+      - 'playwright.functional.config.mjs'
+      - 'wrangler.jsonc'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/e2e-functional-v89.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: v89-e2e-functional-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auth-functional:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      QA_E2E_EMAIL: paulohenriquepmelo@gmail.com
+      QA_E2E_PASSWORD: ${{ secrets.QA_E2E_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Validar credencial QA sem exibir valor
+        shell: bash
+        run: |
+          if [ -z "$QA_E2E_PASSWORD" ]; then
+            echo 'QA_E2E_PASSWORD não está configurado nos Actions Secrets.' >&2
+            exit 1
+          fi
+          echo 'QA_E2E_PASSWORD está disponível ao runner.'
+
+      - name: Preparar tenant QA somente no checkout efêmero
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const root = path.resolve('worker');
+          let replacements = 0;
+          function walk(dir) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) walk(full);
+              else if (entry.isFile() && entry.name.endsWith('.ts')) {
+                const before = fs.readFileSync(full, 'utf8');
+                const matches = before.match(/cmp_asteryon/g)?.length || 0;
+                if (!matches) continue;
+                const after = before.replaceAll('cmp_asteryon', 'qa_e2e_asteryon');
+                fs.writeFileSync(full, after);
+                replacements += matches;
+              }
+            }
+          }
+          walk(root);
+          if (!replacements) throw new Error('Nenhum COMPANY_ID de produção foi encontrado para isolamento do QA.');
+          console.log(`Tenant QA preparado em ${replacements} ocorrência(s) no checkout temporário.`);
+          NODE
+          if grep -R --line-number --fixed-strings 'cmp_asteryon' worker; then
+            echo 'Ainda existe referência ao tenant de produção no Worker QA.' >&2
+            exit 1
+          fi
+
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+
+      - name: Instalar Playwright no runner QA
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.62.0
+          npx playwright install --with-deps chromium
+
+      - name: Executar autenticação real sem mocks
+        run: npx playwright test --config=playwright.functional.config.mjs
+
+      - name: Publicar evidências em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-functional-auth-v89
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
