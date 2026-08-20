@@ -75,14 +75,15 @@
       return (id && S.clean(card.dataset.ltpBrandId) === id)
         || (logo && src && S.sameUrl(logo, src))
         || (name && alt === name)
-        || (name && text === name);
+        || (name && text.includes(name));
     }) || null;
   }
 
   function brandCard(card, index, duplicate, step, width, height) {
     const brand = findBrandForCard(card);
     const id = S.brandId(brand);
-    const name = S.clean(brand?.name || card.querySelector('img')?.alt || card.textContent || `Marca ${index + 1}`);
+    const strong = card.querySelector('strong');
+    const name = S.clean(brand?.name || card.querySelector('img')?.alt || strong?.textContent || card.textContent || `Marca ${index + 1}`);
     const logo = S.brandLogo(brand) || S.clean(card.querySelector('img')?.getAttribute('src'));
     const box = { x: S.round(index * step), y: 0, width, height, responsive: S.responsive(index * step, 0, width, height) };
     const group = node('group', `${name} • marca${duplicate ? ' loop' : ''}`, box, {
@@ -104,12 +105,31 @@
         actionValue: id, actionTarget: 'same',
       }, img ? S.stylesFrom(img) : { objectFit: 'contain' }, 2));
     } else {
-      group.children.push(node('text', `${name} • nome da marca`, {
-        x: 8, y: 8, width: width - 16, height: height - 16,
-        responsive: S.responsive(8, 8, width - 16, height - 16),
-      }, { text: name, brandId: id, brandName: name, actionContext: 'brand', actionEntityId: id }, {
-        color: '#123F7D', fontSize: 12, fontWeight: 800, textAlign: 'center', fontFamily: 'Inter, sans-serif',
-      }, 2));
+      const cardRect = card.getBoundingClientRect();
+      const textElements = [...card.querySelectorAll('strong,small,span,p')]
+        .filter((item) => visible(item) && S.clean(item.textContent));
+      if (textElements.length) {
+        textElements.forEach((item, textIndex) => {
+          const rect = item.getBoundingClientRect();
+          const local = cardRect.width > .5
+            ? relativeGeometry(rect, cardRect, width / cardRect.width)
+            : {
+              x: 8, y: 8 + (textIndex * 20), width: Math.max(20, width - 16), height: 18,
+              responsive: S.responsive(8, 8 + (textIndex * 20), Math.max(20, width - 16), 18),
+            };
+          const text = S.clean(item.textContent);
+          group.children.push(node('text', `${name} • texto da marca ${textIndex + 1}`, local, {
+            text, brandId: id, brandName: name, actionContext: 'brand', actionEntityId: id,
+          }, S.stylesFrom(item), 2 + textIndex));
+        });
+      } else {
+        group.children.push(node('text', `${name} • nome da marca`, {
+          x: 8, y: 8, width: width - 16, height: height - 16,
+          responsive: S.responsive(8, 8, width - 16, height - 16),
+        }, { text: name, brandId: id, brandName: name, actionContext: 'brand', actionEntityId: id }, {
+          color: '#123F7D', fontSize: 12, fontWeight: 800, textAlign: 'center', fontFamily: 'Inter, sans-serif',
+        }, 2));
+      }
     }
     return group;
   }
@@ -297,9 +317,21 @@
       const result = capture();
       const report = validate(result);
       if (!report.ok) return block(event, 'A cópia do Preview Final não passou na validação de equivalência.', report);
+      const team4Request = { result, group3Report: report, team4Report: null };
+      window.dispatchEvent(new CustomEvent('asteryon:team4-preflight-request-v92', { detail: team4Request }));
+      if (window.__ASTERYON_V92_GROUPS__ && team4Request.team4Report?.ok !== true) {
+        return block(event, 'A Equipe 4 reprovou a equivalência antes da substituição da árvore.', team4Request.team4Report);
+      }
       const refs = S.replaceTemplateNodes(result.modelName, result.nodes);
       if (!refs) return block(event, `O modelo "${result.modelName}" não está ligado à árvore usada pelo editor.`, { available: [...S.templateNodeRefs.keys()] });
       report.templateReferencesUpdated = refs;
+      window.__ASTERYON_PREVIEW_EDITOR_APPLY_V92__ = {
+        modelName: result.modelName,
+        nodes: result.nodes,
+        team3Ok: report.ok === true,
+        team4Ok: team4Request.team4Report?.ok === true,
+        createdAt: Date.now(),
+      };
       S.capturedNodes = result.nodes;
       S.report = report;
       window.__ASTERYON_PREVIEW_EDITOR_NODES_V91__ = result.nodes;

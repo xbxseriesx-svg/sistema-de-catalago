@@ -1,0 +1,19 @@
+ASTERYON Catálogo — gate de produção V92
+Data: 2026-08-20
+
+Falha reaberta a partir de evidência de produção:
+"Modelo não aplicado. A cópia do Preview Final não passou na validação de equivalência."
+
+Causa raiz confirmada:
+- cards de marca sem logo exibiam nome + subtítulo "Marca do catálogo" no Preview;
+- a captura V91 copiava somente o nome e o validador encontrava texto ausente;
+- o E2E anterior clicava no botão legado "Aplicar modelo" e não exercitava "Aplicar este modelo" do Preview Final.
+
+Regra V92:
+Equipe 1 corrige -> Equipe 2 revisa -> Equipe 3 valida -> Equipe 4 audita a Equipe 3.
+A Equipe 4 precisa aprovar antes de qualquer substituição da árvore e novamente após o Editor renderizar.
+Somente Equipe 3 APROVADA + Equipe 4 APROVADA liberam a integração.
+
+Teste crítico obrigatório:
+Modelo Oficial -> Pré-visualizar modelo completo -> marca sem logo -> "Marca do catálogo" -> Aplicar este modelo -> Editor.
+Não pode existir alerta "Modelo não aplicado" e o Editor precisa obter paridade aprovada pelas Equipes 3 e 4.

@@ -7,6 +7,7 @@ const marker = 'ASTER_V81_CORE_PATCH';
 const whiteScreenMarker = 'ASTER_V81_WHITE_SCREEN_FIX';
 const performanceMarker = 'ASTER_V86_EDITOR_PERFORMANCE';
 const hierarchyMarker = 'ASTER_V89_HIERARCHY_CRUD';
+const previewApplyMarker = 'ASTER_V92_PREVIEW_APPLY_BRIDGE';
 
 // O Modelo Oficial é fonte auxiliar independente do bundle e precisa permanecer
 // normalizado mesmo quando o bundle V81 já está materializado.
@@ -61,4 +62,10 @@ for (const [label, token] of hierarchyRequirements) {
   if (!bundle.includes(token)) throw new Error(`Bundle preparado sem requisito de hierarquia: ${label}.`);
 }
 
-console.log('Bundle V81 validado com seleção, performance e CRUD completo de hierarquia V89.');
+// V92: roda sempre e é idempotente. O clique do Preview Final precisa alimentar
+// diretamente o handler React com a árvore já aprovada pelas Equipes 3 e 4.
+execFileSync(process.execPath, ['scripts/patch-preview-apply-v92.mjs'], { stdio: 'inherit' });
+bundle = await readFile(bundlePath, 'utf8');
+if (!bundle.includes(previewApplyMarker)) throw new Error('Ponte V92 Preview Final -> handler React não foi materializada.');
+
+console.log('Bundle V81/V92 validado com seleção, performance, CRUD de hierarquia e aplicação do Preview aprovado.');
