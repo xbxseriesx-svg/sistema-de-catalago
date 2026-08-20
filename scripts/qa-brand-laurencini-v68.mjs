@@ -13,7 +13,15 @@ const version = Number(versionText);
 const packagePatch = Number(String(pkg.version).split('.').at(-1));
 assert.ok(Number.isFinite(version) && version >= 68, 'A identidade Laurencini exige VERSION 68 ou superior.');
 assert.equal(packagePatch, version, 'package.json precisa acompanhar VERSION.');
-assert.equal(pkg.scripts['prepare:bundle'], 'node scripts/prepare-bundle-v81.mjs');
+if (version >= 94) {
+  assert.equal(
+    pkg.scripts['prepare:bundle'],
+    'node scripts/sync-release-metadata-v94.mjs && node scripts/prepare-bundle-v81.mjs',
+    'V94 deve sincronizar metadados e depois executar o mesmo preparador V81 que preserva a identidade Laurencini.',
+  );
+} else {
+  assert.equal(pkg.scripts['prepare:bundle'], 'node scripts/prepare-bundle-v81.mjs');
+}
 assert.match(prepareV81, /patch-brand-laurencini-v68\.mjs/, 'Preparador V81 precisa preservar o patch Laurencini V68.');
 
 for (const value of ['#214C8F', '#123F7D', '#D13130', '#A7252A', '#F4F8FC', '#DCE6F2']) {
