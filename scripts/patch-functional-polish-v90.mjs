@@ -25,6 +25,44 @@ replaceOnce(
   'seletor dinâmico de Departamento no produto',
 );
 
+// A tela Estrutura declarava Departamento → Seção → Categoria → Produto, mas
+// permitia criar apenas seção/categoria. Completa o CRUD manual de Departamento.
+replaceOnce(
+  'if(!o.trim())return p("Informe o nome.");if(!d&&!n)return p(a==="secao"?"Selecione o departamento superior.":"Selecione a seção superior.");',
+  'if(!o.trim())return p("Informe o nome.");if(!d&&a!=="departamento"&&!n)return p(a==="secao"?"Selecione o departamento superior.":"Selecione a seção superior.");',
+  'validação de pai no formulário de hierarquia',
+);
+replaceOnce(
+  'await Be.createHierarchy({level:a,name:o.trim(),parentId:n,sortOrder:100})',
+  'await Be.createHierarchy({level:a,name:o.trim(),parentId:a==="departamento"?"":n,sortOrder:100})',
+  'criação de departamento sem pai',
+);
+replaceOnce(
+  'T=a==="secao"?x:k;',
+  'T=a==="departamento"?[]:a==="secao"?x:k;',
+  'fonte de pais por nível',
+);
+replaceOnce(
+  'className:"grid grid-cols-2 gap-2",children:[l.jsx("button",{disabled:!!d,onClick:()=>{r("secao"),i("")},className:`rounded py-2 text-[9px] font-bold ${a==="secao"?"bg-emerald-600 text-white":"bg-zinc-800 text-zinc-500"}`,children:"Nova seção"}),l.jsx("button",{disabled:!!d,onClick:()=>{r("categoria"),i("")},className:`rounded py-2 text-[9px] font-bold ${a==="categoria"?"bg-emerald-600 text-white":"bg-zinc-800 text-zinc-500"}`,children:"Nova categoria"})]',
+  'className:"grid grid-cols-3 gap-2",children:[l.jsx("button",{disabled:!!d,onClick:()=>{r("departamento"),i("")},className:`rounded py-2 text-[9px] font-bold ${a==="departamento"?"bg-emerald-600 text-white":"bg-zinc-800 text-zinc-500"}`,children:"Novo departamento"}),l.jsx("button",{disabled:!!d,onClick:()=>{r("secao"),i("")},className:`rounded py-2 text-[9px] font-bold ${a==="secao"?"bg-emerald-600 text-white":"bg-zinc-800 text-zinc-500"}`,children:"Nova seção"}),l.jsx("button",{disabled:!!d,onClick:()=>{r("categoria"),i("")},className:`rounded py-2 text-[9px] font-bold ${a==="categoria"?"bg-emerald-600 text-white":"bg-zinc-800 text-zinc-500"}`,children:"Nova categoria"})]',
+  'botões de criação da estrutura',
+);
+replaceOnce(
+  '!d&&l.jsxs(l.Fragment,{children:[l.jsxs("label",{className:"mb-1 mt-3 block text-[9px] text-zinc-500",children:[a==="secao"?"Departamento":"Seção"," superior"]})',
+  '!d&&a!=="departamento"&&l.jsxs(l.Fragment,{children:[l.jsxs("label",{className:"mb-1 mt-3 block text-[9px] text-zinc-500",children:[a==="secao"?"Departamento":"Seção"," superior"]})',
+  'ocultar seletor de pai para departamento',
+);
+replaceOnce(
+  'placeholder:a==="secao"?"Ex.: Bebidas":"Ex.: Refrigerante"',
+  'placeholder:a==="departamento"?"Ex.: Food Service":a==="secao"?"Ex.: Bebidas":"Ex.: Refrigerante"',
+  'placeholder por nível da hierarquia',
+);
+replaceOnce(
+  'l.jsx("div",{className:"text-[10px] font-black uppercase tracking-wide text-blue-300",children:w.name})',
+  'l.jsx(QF,{node:w,count:w.sections.length,onEdit:S,onDelete:b})',
+  'ações de editar/excluir departamento',
+);
+
 // Textos técnicos antigos apareciam para o usuário mesmo depois da migração
 // definitiva D1/Lovable/Bolt -> Supabase/ASTERYON.
 replaceOnce(
@@ -51,4 +89,4 @@ replaceOnce(
 );
 
 fs.writeFileSync(path, source);
-console.log('Polimento funcional V90 aplicado: departamentos dinâmicos e textos técnicos normalizados.');
+console.log('Polimento funcional V90 aplicado: departamentos dinâmicos, CRUD completo da estrutura e textos técnicos normalizados.');
