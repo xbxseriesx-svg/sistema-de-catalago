@@ -36,12 +36,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          PAYLOAD=$(jq -n --arg target_url "$RUN_URL" '{state:"pending",context:"qa/e2e-functional",description:"E2E funcional real em execução",target_url:$target_url}')
           curl --fail --silent --show-error \
             -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            -d '{"state":"pending","context":"qa/e2e-functional","description":"E2E funcional real em execução"}' \
+            -d "$PAYLOAD" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
 
       - name: Checkout
@@ -120,12 +122,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          PAYLOAD=$(jq -n --arg target_url "$RUN_URL" '{state:"success",context:"qa/e2e-functional",description:"Login, sessão, refresh e logout reais aprovados",target_url:$target_url}')
           curl --fail --silent --show-error \
             -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            -d '{"state":"success","context":"qa/e2e-functional","description":"Login, sessão, refresh e logout reais aprovados"}' \
+            -d "$PAYLOAD" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
 
       - name: Publicar status de falha
@@ -134,10 +138,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          PAYLOAD=$(jq -n --arg target_url "$RUN_URL" '{state:"failure",context:"qa/e2e-functional",description:"E2E funcional real falhou; consultar evidências",target_url:$target_url}')
           curl --fail --silent --show-error \
             -X POST \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            -d '{"state":"failure","context":"qa/e2e-functional","description":"E2E funcional real falhou; consultar evidências"}' \
+            -d "$PAYLOAD" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
