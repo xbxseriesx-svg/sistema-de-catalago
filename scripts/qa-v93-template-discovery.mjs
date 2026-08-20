@@ -14,5 +14,9 @@ assert.match(source, /article\.dataset\.asteryonTemplateVersion = '93'/,
   'Cards correntes precisam ser identificados como V93.');
 assert.match(source, /Aplicar modelo preenchido V93/,
   'Botão legado deve anunciar a fonte preenchida V93.');
+assert.doesNotMatch(source, /if \(grid !== element\.parentElement\) return null/,
+  'Captura V93 não pode descartar filhos reais dos cards de marca.');
+assert.match(source, /for \(const child of element\.children\)[\s\S]*captureElement\(child, rect, sourceShellRect, sourceScale/,
+  'Cards de marca/produto precisam carregar seus filhos visuais para a árvore corrente.');
 
-console.log('QA V93 descoberta: oito templates normalizadas, contêiner real e identificação V93 protegidos.');
+console.log('QA V93 descoberta: oito templates normalizadas, contêiner real e filhos completos dos cards protegidos.');
