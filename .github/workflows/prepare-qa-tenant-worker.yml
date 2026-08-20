@@ -1,0 +1,64 @@
+name: QA — preparar Worker no tenant E2E
+
+on:
+  push:
+    branches:
+      - qa/v89-functional-e2e-real
+    paths:
+      - '.github/workflows/prepare-qa-tenant-worker.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout da branch QA
+        uses: actions/checkout@v4
+        with:
+          ref: qa/v89-functional-e2e-real
+
+      - name: Trocar tenant somente na branch QA
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          const root = path.resolve('worker');
+          let replacements = 0;
+          function walk(dir) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+              const full = path.join(dir, entry.name);
+              if (entry.isDirectory()) walk(full);
+              else if (entry.isFile() && entry.name.endsWith('.ts')) {
+                const before = fs.readFileSync(full, 'utf8');
+                const matches = before.match(/cmp_asteryon/g)?.length || 0;
+                if (!matches) continue;
+                fs.writeFileSync(full, before.replaceAll('cmp_asteryon', 'qa_e2e_asteryon'));
+                replacements += matches;
+              }
+            }
+          }
+          walk(root);
+          if (!replacements) throw new Error('Nenhuma referência ao tenant de produção encontrada.');
+          console.log(`Branch QA isolada: ${replacements} ocorrência(s) ajustada(s).`);
+          NODE
+          if grep -R --line-number --fixed-strings 'cmp_asteryon' worker; then
+            echo 'Falha: referência de produção ainda presente no Worker QA.' >&2
+            exit 1
+          fi
+
+      - name: Commitar somente arquivos do Worker na branch QA
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add worker
+          if git diff --cached --quiet; then
+            echo 'Nenhuma alteração para commitar.'
+            exit 0
+          fi
+          git commit -m 'QA-only: aponta Worker ao tenant qa_e2e_asteryon'
+          git push origin HEAD:qa/v89-functional-e2e-real
