@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  const ASTER_V93_FILLED_PREVIEW_SOURCE=true;
 
   if (window.__ASTERYON_PREVIEW_EDITOR_V93_SOURCE__) return;
   window.__ASTERYON_PREVIEW_EDITOR_V93_SOURCE__ = true;

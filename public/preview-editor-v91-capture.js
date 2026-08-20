@@ -312,6 +312,7 @@
   }
 
   function handleApply(event) {
+    if (event.__asteryonV93Captured) return;
     if (!(event.target instanceof Element) || !event.target.closest('[data-ltp-apply]')) return;
     try {
       const result = capture();
