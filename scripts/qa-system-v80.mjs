@@ -5,11 +5,11 @@ import { execFileSync } from 'node:child_process';
 const read = (path) => fs.readFileSync(path, 'utf8');
 const must = (content, pattern, label) => {
   const ok = typeof pattern === 'string' ? content.includes(pattern) : pattern.test(content);
-  if (!ok) throw new Error(`QA V81: ausente/inválido: ${label}`);
+  if (!ok) throw new Error(`QA Enterprise: ausente/inválido: ${label}`);
 };
 const mustNot = (content, pattern, label) => {
   const found = typeof pattern === 'string' ? content.includes(pattern) : pattern.test(content);
-  if (found) throw new Error(`QA V81: conteúdo indevido: ${label}`);
+  if (found) throw new Error(`QA Enterprise: conteúdo indevido: ${label}`);
 };
 
 const index = read('public/index.html');
@@ -20,7 +20,14 @@ const runtime = read('public/system-runtime-v80.js');
 const runtime81 = read('public/system-runtime-v81.js');
 const marketingCanvas = read('public/marketing-canvas-hotfix.js');
 const bundle = read('public/assets/index-V60Excel.js');
-const worker = read('worker/index.ts');
+const worker = [
+  read('worker/app/index.ts'),
+  read('worker/app/services/marketing.ts'),
+  read('worker/app/services/offers.ts'),
+  read('worker/app/services/catalog-admin.ts'),
+  read('worker/app/services/pages.ts'),
+].join('\n');
+const rollbackWorker = read('worker/index-v81.ts');
 const pkg = JSON.parse(read('package.json'));
 const version = Number(read('VERSION').trim());
 const release = `V${version}`;
@@ -87,17 +94,18 @@ must(runtime81, 'record.addedNodes', 'runtime V81 limita normalização às sub�
 must(runtime81, 'pendingRoots', 'runtime V81 agrupa subárvores antes de normalizar');
 mustNot(runtime81, "document.addEventListener('click', schedule", 'runtime V81 não revarre todos os selects a cada clique');
 
-must(worker, "path === '/api/admin/marketing'", 'rota admin Marketing');
-must(worker, 'input.marketing || input', 'Worker aceita envelope marketing do frontend');
-must(worker, "path === '/api/admin/catalog/offers'", 'rota admin Ofertas');
-must(worker, "path === '/api/admin/catalog/settings'", 'rota configurações do catálogo');
-must(worker, 'const snapshots = path.match', 'rotas de snapshots');
-must(worker, 'const publish = path.match', 'rota de publicação');
-must(worker, 'const rollback = path.match', 'rota de rollback');
-must(worker, 'marketing_settings', 'persistência Marketing Supabase');
-must(worker, 'offer_products', 'vínculos oferta-produto Supabase');
-must(worker, 'page_snapshots', 'persistência de snapshots Supabase');
-must(worker, 'page_publications', 'persistência de publicações Supabase');
+must(worker, "path === '/api/admin/marketing'", 'rota admin Marketing no Enterprise');
+must(worker, 'input.marketing || input', 'Worker Enterprise aceita envelope marketing do frontend');
+must(worker, "path === '/api/admin/catalog/offers'", 'rota admin Ofertas no Enterprise');
+must(worker, "path === '/api/admin/catalog/settings'", 'rota configurações do catálogo no Enterprise');
+must(worker, 'const snapshots = path.match', 'rotas de snapshots no Enterprise');
+must(worker, 'const publish = path.match', 'rota de publicação no Enterprise');
+must(worker, 'const rollback = path.match', 'rota de rollback no Enterprise');
+must(worker, 'marketing_settings', 'persistência Marketing Supabase no Enterprise');
+must(worker, 'offer_products', 'vínculos oferta-produto Supabase no Enterprise');
+must(worker, 'page_snapshots', 'persistência de snapshots Supabase no Enterprise');
+must(worker, 'page_publications', 'persistência de publicações Supabase no Enterprise');
+must(rollbackWorker, "database: 'Supabase Postgres'", 'rollback V81 permanece identificável durante a transição');
 
 for (const file of [
   'public/editor-runtime-v87.js',
@@ -112,8 +120,8 @@ for (const file of [
   execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
 }
 
-if (!Number.isInteger(version) || version < 81) throw new Error(`QA V81: release lógica inválida ${version}`);
-if (pkg.version !== `2.1.${version}`) throw new Error(`QA V81: package precisa acompanhar VERSION; recebido ${pkg.version}`);
+if (!Number.isInteger(version) || version < 81) throw new Error(`QA Enterprise: release lógica inválida ${version}`);
+if (pkg.version !== `2.1.${version}`) throw new Error(`QA Enterprise: package precisa acompanhar VERSION; recebido ${pkg.version}`);
 
-console.log(`QA V80/V81 na release ${release} OK — V86/V87 preservadas, observers filtrados, Marketing sem polling por DOM e runtimes contextuais verificados.`);
+console.log(`QA sistema Enterprise na release ${release} OK — backend modular oficial, rollback V81, V86/V87, observers e Marketing contextual verificados.`);
 process.exit(0);
