@@ -19,7 +19,19 @@ globalThis.fetch = async (input, init = {}) => {
   const headers = requestHeaders(input, init);
   const method = init.method || (input instanceof Request ? input.method : 'GET');
   const authorization = headers.get('authorization') || '';
-  calls.push({ pathname: url.pathname, search: url.search, method, authorization, body: String(init.body || '') });
+  calls.push({ host: url.hostname, pathname: url.pathname, search: url.search, method, authorization, body: String(init.body || '') });
+
+  if (url.hostname === 'api.pwnedpasswords.com' && url.pathname.startsWith('/range/')) {
+    const prefix = url.pathname.split('/').pop();
+    assert.equal(headers.get('add-padding'), 'true', 'consulta Pwned Passwords deve usar padding/k-anonymity');
+    if (prefix === 'CBFDA') {
+      return new Response('C6008F9CAB4083784CBD1874F76618D2A97:42000\nAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:0', { status: 200 });
+    }
+    if (prefix === '01B30') {
+      return new Response('temporarily unavailable', { status: 503 });
+    }
+    return new Response('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA:0\nBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB:0', { status: 200 });
+  }
 
   if (url.pathname === '/auth/v1/user' && method === 'GET') {
     if (authorization === 'Bearer valid-account-access') {
@@ -42,7 +54,7 @@ globalThis.fetch = async (input, init = {}) => {
     return json({ id: 'qa-auth-user', email: 'qa@example.invalid' });
   }
 
-  throw new Error(`Requisição não simulada no QA de conta: ${method} ${url.pathname}${url.search}`);
+  throw new Error(`Requisição não simulada no QA de conta: ${method} ${url.hostname}${url.pathname}${url.search}`);
 };
 
 const env = {
@@ -124,6 +136,36 @@ const weakPassword = await worker.fetch(new Request('https://catalog.example.tes
 }), env);
 assert.equal(weakPassword.status, 400, 'senha curta deve ser rejeitada');
 
+const putBeforePwned = calls.filter(call => call.pathname === '/auth/v1/user' && call.method === 'PUT').length;
+const pwnedPassword = await worker.fetch(new Request('https://catalog.example.test/api/auth/account/password', {
+  method: 'PUT',
+  headers: {
+    origin: 'https://catalog.example.test',
+    cookie: '__Host-asteryon_access=valid-account-access',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({ password: 'password123' }),
+}), env);
+assert.equal(pwnedPassword.status, 400, 'senha conhecida em vazamentos deve ser rejeitada');
+assert.equal((await pwnedPassword.json()).error.code, 'PASSWORD_PWNED');
+assert.equal(
+  calls.filter(call => call.pathname === '/auth/v1/user' && call.method === 'PUT').length,
+  putBeforePwned,
+  'senha vazada não pode chegar à atualização do Supabase',
+);
+
+const unavailableScreening = await worker.fetch(new Request('https://catalog.example.test/api/auth/account/password', {
+  method: 'PUT',
+  headers: {
+    origin: 'https://catalog.example.test',
+    cookie: '__Host-asteryon_access=valid-account-access',
+    'content-type': 'application/json',
+  },
+  body: JSON.stringify({ password: '1234567890' }),
+}), env);
+assert.equal(unavailableScreening.status, 503, 'indisponibilidade da triagem não pode aceitar senha sem verificação');
+assert.equal((await unavailableScreening.json()).error.code, 'PASSWORD_SCREENING_UNAVAILABLE');
+
 const updated = await worker.fetch(new Request('https://catalog.example.test/api/auth/account/password', {
   method: 'PUT',
   headers: {
@@ -133,7 +175,7 @@ const updated = await worker.fetch(new Request('https://catalog.example.test/api
   },
   body: JSON.stringify({ password: 'NovaSenhaQA123!' }),
 }), env);
-assert.equal(updated.status, 200, 'sessão válida deve conseguir alterar senha');
+assert.equal(updated.status, 200, 'senha não vazada em sessão válida deve ser aceita');
 assert.equal((await updated.json()).ok, true);
 
 const confirmHtml = fs.readFileSync('public/auth/confirmar.html', 'utf8');
@@ -150,7 +192,8 @@ assert.match(browserJs, /\/api\/auth\/account\/password/);
 assert.match(browserJs, /history\.replaceState/, 'fragmento com tokens deve ser removido da barra de endereço');
 assert.doesNotMatch(confirmHtml + resetHtml + browserJs, /SUPABASE_SECRET|SERVICE_ROLE|sb_secret_/i, 'frontend não pode conter segredo administrativo');
 
+assert.ok(calls.some(call => call.host === 'api.pwnedpasswords.com' && call.pathname.startsWith('/range/')), 'triagem deve usar Pwned Passwords por prefixo de hash');
 assert.ok(calls.some(call => call.pathname === '/auth/v1/recover' && call.search.includes('redefinir-senha.html')), 'recuperação deve redirecionar para a tela dedicada');
-assert.ok(calls.some(call => call.pathname === '/auth/v1/user' && call.method === 'PUT'), 'troca de senha deve usar sessão autenticada no Supabase Auth');
+assert.ok(calls.some(call => call.pathname === '/auth/v1/user' && call.method === 'PUT'), 'troca de senha segura deve usar sessão autenticada no Supabase Auth');
 
-console.log('QA V89 conta: confirmação, recuperação, redirect dedicado e troca autenticada de senha validados.');
+console.log('QA V90 conta: confirmação, recuperação, k-anonymity de senha vazada e troca autenticada validados.');
