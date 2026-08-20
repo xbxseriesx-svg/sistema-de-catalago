@@ -196,10 +196,12 @@ test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháve
   const preview = page.locator('#laurencini-template-preview-v69');
   await expect(preview).toBeVisible({ timeout: 12_000 });
   await expect(preview.locator('.ltp-shell')).toBeVisible({ timeout: 12_000 });
-  await expect(preview.getByText('Um catálogo completo para apresentar a força da Laurencini.', { exact: true })).toBeVisible();
+  const original = 'Um catálogo completo para apresentar a força da Laurencini.';
+  await expect(preview.getByText(original, { exact: true })).toBeVisible();
   await preview.getByRole('button', { name: 'Aplicar este modelo' }).click();
   await expect(preview).toBeHidden({ timeout: 12_000 });
-  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.asteryonV93VisualParity || ''), { timeout: 15_000 }).toBe('approved');
+  await expect(page.locator('[data-node-id]').filter({ hasText: original }).first()).toBeVisible({ timeout: 12_000 });
+  await expect(page.locator('[data-node-id]').filter({ hasText: 'Produto QA 1' }).first()).toBeVisible({ timeout: 12_000 });
 
   const blank = page.getByRole('button', { name: /Começar com página em branco/i });
   await blank.scrollIntoViewIfNeeded();
@@ -208,7 +210,6 @@ test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháve
   expect(overflow).toBeLessThanOrEqual(2);
 
   await closeOpenSidebarWithBackdrop(page, testInfo);
-  const original = 'Um catálogo completo para apresentar a força da Laurencini.';
   const heroText = page.getByText(original, { exact: true }).first();
   await expect(heroText).toBeVisible({ timeout: 10_000 });
   await heroText.click({ force: true });
