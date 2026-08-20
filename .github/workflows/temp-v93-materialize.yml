@@ -1,0 +1,43 @@
+name: TEMP V93 materialize filled preview
+
+on:
+  push:
+    branches:
+      - audit/v93-filled-preview-source-20260820
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: audit/v93-filled-preview-source-20260820
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Materializar V93 corrente
+        run: node scripts/patch-v93-filled-preview.mjs
+      - name: Validar sintaxe essencial
+        run: |
+          node --check public/preview-editor-v93-source.js
+          node --check public/preview-editor-v93-visual-gate.js
+          node --check public/preview-editor-v93-team4.js
+          node --check scripts/qa-preview-editor-v93.mjs
+          node --check tests/e2e/preview-editor-v93-filled-source.spec.mjs
+      - name: Remover workflow temporário e gravar materialização
+        run: |
+          rm -f .github/workflows/temp-v93-materialize.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'Sem alterações para materializar.'
+          else
+            git commit -m 'build(v93): materialize filled preview current templates [skip ci]'
+            git push origin HEAD:audit/v93-filled-preview-source-20260820
+          fi
