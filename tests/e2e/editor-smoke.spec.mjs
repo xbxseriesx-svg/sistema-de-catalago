@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
+import { buildModeloOficial } from '../../scripts/modelo-oficial.mjs';
 
 function installApiMocks(page) {
+  const modeloOficial = buildModeloOficial();
   return page.route('**/api/**', async route => {
     const request = route.request();
     const url = new URL(request.url());
@@ -52,7 +54,7 @@ function installApiMocks(page) {
       return json({ ok: true, page: { slug: 'home', title: 'Home', versionId: 'supabase-v1', versionNumber: 1, publishedAt: new Date().toISOString(), nodes: [] } });
     }
 
-    if (path.includes('/templates')) return json({ ok: true, templates: [] });
+    if (path.includes('/templates')) return json({ ok: true, templates: [modeloOficial] });
     if (path.includes('/snapshots')) return json({ ok: true, snapshots: [] });
     if (path.includes('/publications')) return json({ ok: true, publications: [] });
 
@@ -159,7 +161,7 @@ test('Estrutura oferece criação manual de Departamento sem exigir pai', async 
   expect(errors).toEqual([]);
 });
 
-test('todos os modelos prontos permitem selecionar e duplicar elemento do canvas', async ({ page }, testInfo) => {
+test('todos os modelos, inclusive Modelo Oficial, permitem selecionar e duplicar elemento do canvas', async ({ page }, testInfo) => {
   await installApiMocks(page);
   const errors = collectRuntimeErrors(page);
   page.on('dialog', dialog => dialog.accept());
@@ -179,6 +181,7 @@ test('todos os modelos prontos permitem selecionar e duplicar elemento do canvas
     ['Distribuidora União • Figma B2B', 'O parceiro de distribuição que o seu negócio confia.'],
     ['Catálogo Hierárquico B2B', 'CATÁLOGO HIERÁRQUICO B2B'],
     ['Vitrine Atacado Pro', 'Seu mix comercial em destaque'],
+    ['Modelo Oficial', 'Catálogo inteligente para negócios que querem crescer.'],
   ];
 
   for (const [modelName, uniqueText] of cases) {
