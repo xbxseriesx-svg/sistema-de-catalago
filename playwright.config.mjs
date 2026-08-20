@@ -8,7 +8,12 @@ export default defineConfig({
   retries: 1,
   reporter: [['list']],
   use: {
-    baseURL: 'http://127.0.0.1:8787',
+    // O frontend trata localhost/127.0.0.1 como modo local. O hostname asteryon.test
+    // ativa o fluxo cloud e é mapeado pelo próprio Chromium para 127.0.0.1, sem DNS.
+    baseURL: 'http://asteryon.test:8787',
+    launchOptions: {
+      args: ['--host-resolver-rules=MAP asteryon.test 127.0.0.1,EXCLUDE localhost'],
+    },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -18,9 +23,9 @@ export default defineConfig({
     { name: 'chromium-mobile', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: 'npx wrangler dev --ip 127.0.0.1 --port 8787 --local',
-    url: 'http://127.0.0.1:8787',
+    command: 'node scripts/serve-e2e-static-v89.mjs',
+    url: 'http://127.0.0.1:8787/__e2e_health',
     reuseExistingServer: false,
-    timeout: 120_000,
+    timeout: 30_000,
   },
 });
