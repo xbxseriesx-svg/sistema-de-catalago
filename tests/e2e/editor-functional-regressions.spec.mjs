@@ -85,17 +85,20 @@ async function closeOpenSidebarWithBackdrop(page, testInfo) {
   await expect(openSidebar).toBeVisible();
   const viewport = page.viewportSize();
   const sidebarBox = await openSidebar.boundingBox();
+  const sidebarSide = await openSidebar.getAttribute('data-asteryon-editor-sidebar');
   expect(viewport).not.toBeNull();
   expect(sidebarBox).not.toBeNull();
-  const sidebarOnLeft = sidebarBox.x < viewport.width / 2;
-  const x = sidebarOnLeft ? Math.min(viewport.width - 8, sidebarBox.x + sidebarBox.width + 8) : Math.max(8, sidebarBox.x - 8);
+  expect(['left', 'right']).toContain(sidebarSide);
+  const x = sidebarSide === 'left'
+    ? Math.min(viewport.width - 8, sidebarBox.x + sidebarBox.width + 8)
+    : Math.max(8, sidebarBox.x - 8);
   const y = Math.min(viewport.height - 16, Math.max(16, sidebarBox.y + 80));
   const hitBackdrop = await page.evaluate(({ x, y }) => {
     const hit = document.elementFromPoint(x, y);
     const backdrop = document.querySelector('[data-asteryon-sidebar-backdrop]');
     return !!backdrop && (hit === backdrop || backdrop.contains(hit));
   }, { x, y });
-  expect(hitBackdrop, `Backdrop não possui área clicável fora do drawer em (${x}, ${y}).`).toBe(true);
+  expect(hitBackdrop, `Backdrop não possui área clicável fora do drawer ${sidebarSide} em (${x}, ${y}).`).toBe(true);
   await page.mouse.click(x, y);
   await expect(page.locator('[data-asteryon-editor-sidebar][data-open="true"]')).toHaveCount(0);
   await expect(backdrop).toBeHidden();
