@@ -28,9 +28,7 @@ async function installMocks(page) {
     const path = new URL(request.url()).pathname;
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json; charset=utf-8', body: JSON.stringify(body) });
 
-    if (path === '/api/auth/status') {
-      return json({ ok: true, needsBootstrap: false, user: { id: 'qa-user', companyId: 'cmp_asteryon', email: 'qa@example.invalid', name: 'QA', role: 'SDM' } });
-    }
+    if (path === '/api/auth/status') return json({ ok: true, needsBootstrap: false, user: { id: 'qa-user', companyId: 'cmp_asteryon', email: 'qa@example.invalid', name: 'QA', role: 'SDM' } });
 
     if (path === '/api/admin/catalog' || path === '/api/public/catalog') {
       return json({ ok: true, catalog: {
@@ -45,29 +43,21 @@ async function installMocks(page) {
       } });
     }
 
-    if (path === '/api/admin/brands' || path === '/api/public/brands') {
-      return json({ ok: true, brands: [{ id: 'brand-qa', name: 'Marca QA', slug: 'marca-qa', status: 'active' }] });
-    }
+    if (path === '/api/admin/brands' || path === '/api/public/brands') return json({ ok: true, brands: [{ id: 'brand-qa', name: 'Marca QA', slug: 'marca-qa', status: 'active' }] });
 
     if (path === '/api/admin/hierarchy' && request.method() === 'POST') {
       const payload = request.postDataJSON();
       hierarchyCreates.push(structuredClone(payload));
-      return json({ ok: true, id: 'hier-created-qa' });
+      return json({ ok: true, node: { id: 'hier-created-qa', ...payload, status: 'active' } });
     }
 
     if (path === '/api/admin/marketing' || path === '/api/public/marketing') {
-      if (request.method() === 'PUT') {
-        const body = request.postDataJSON();
-        currentMarketing = structuredClone(body.marketing);
-      }
+      if (request.method() === 'PUT') currentMarketing = structuredClone(request.postDataJSON().marketing);
       return json({ ok: true, marketing: currentMarketing });
     }
 
     if (path === '/api/admin/pages/home/draft') {
-      if (request.method() === 'PUT') {
-        const body = request.postDataJSON();
-        currentNodes = structuredClone(body.nodes || currentNodes);
-      }
+      if (request.method() === 'PUT') currentNodes = structuredClone(request.postDataJSON().nodes || currentNodes);
       return json({ ok: true, page: { id: 'page-home', slug: 'home', title: 'Home QA', nodes: currentNodes, revision: 1, updatedAt: new Date().toISOString() } });
     }
 
@@ -75,7 +65,6 @@ async function installMocks(page) {
     if (path === '/api/admin/templates') return json({ ok: true, templates: [] });
     if (path === '/api/admin/templates/seed') return json({ ok: true, templates: [] });
     if (path === '/api/public/pages/home') return json({ ok: true, page: { slug: 'home', title: 'Home QA', versionId: 'qa-v1', versionNumber: 1, publishedAt: new Date().toISOString(), nodes: currentNodes } });
-
     return json({ ok: true });
   });
 
@@ -97,8 +86,29 @@ async function openLeftPanel(page, testInfo) {
 async function closeOpenSidebarWithBackdrop(page, testInfo) {
   if (!testInfo.project.name.includes('mobile')) return;
   const backdrop = page.locator('[data-asteryon-sidebar-backdrop]');
+  const openSidebar = page.locator('[data-asteryon-editor-sidebar][data-open="true"]').first();
   await expect(backdrop).toBeVisible();
-  await backdrop.click({ position: { x: 8, y: 8 } });
+  await expect(openSidebar).toBeVisible();
+
+  const viewport = page.viewportSize();
+  const sidebarBox = await openSidebar.boundingBox();
+  expect(viewport).not.toBeNull();
+  expect(sidebarBox).not.toBeNull();
+
+  const sidebarOnLeft = sidebarBox.x < viewport.width / 2;
+  const x = sidebarOnLeft
+    ? Math.min(viewport.width - 8, sidebarBox.x + sidebarBox.width + 8)
+    : Math.max(8, sidebarBox.x - 8);
+  const y = Math.min(viewport.height - 16, Math.max(16, sidebarBox.y + 80));
+
+  const hitBackdrop = await page.evaluate(({ x, y }) => {
+    const hit = document.elementFromPoint(x, y);
+    const backdrop = document.querySelector('[data-asteryon-sidebar-backdrop]');
+    return !!backdrop && (hit === backdrop || backdrop.contains(hit));
+  }, { x, y });
+  expect(hitBackdrop, `Backdrop não possui área clicável fora do drawer em (${x}, ${y}).`).toBe(true);
+
+  await page.mouse.click(x, y);
   await expect(page.locator('[data-asteryon-editor-sidebar][data-open="true"]')).toHaveCount(0);
   await expect(backdrop).toBeHidden();
 }
@@ -107,15 +117,12 @@ test('cadastro de Produto usa Departamento dinâmico da hierarquia e filtra Seç
   await installMocks(page);
   await page.goto('/admin', { waitUntil: 'networkidle' });
   await openLeftPanel(page, testInfo);
-
   await expect(page.getByText('Gestão do Catálogo').first()).toBeVisible();
   await page.getByRole('button', { name: /^Produtos$/i }).first().click();
-
   const department = page.locator('label').filter({ hasText: 'Departamento *' }).locator('select');
   await expect(department).toBeVisible();
   await expect(department.locator('option')).toContainText(['Selecione', 'QA Departamento Dinâmico']);
   await department.selectOption({ label: 'QA Departamento Dinâmico' });
-
   const section = page.locator('label').filter({ hasText: 'Seção *' }).locator('select');
   await expect(section.locator('option')).toContainText(['Selecione', 'QA Seção Dinâmica']);
   expect(await department.inputValue()).toBe('QA Departamento Dinâmico');
@@ -125,22 +132,18 @@ test('Estrutura cria Departamento manual sem exigir item pai', async ({ page }, 
   const mock = await installMocks(page);
   await page.goto('/admin', { waitUntil: 'networkidle' });
   await openLeftPanel(page, testInfo);
-
   await page.getByRole('button', { name: /^Estrutura$/i }).first().click();
   const newDepartment = page.getByRole('button', { name: /^Novo departamento$/i }).first();
   await expect(newDepartment).toBeVisible();
   await newDepartment.click();
-
   await expect(page.getByText('Departamento superior', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Seção superior', { exact: true })).toHaveCount(0);
   const name = page.getByPlaceholder('Ex.: Food Service').first();
   await expect(name).toBeVisible();
   await name.fill('QA Novo Departamento');
   await page.getByRole('button', { name: /^Salvar$/i }).first().click();
-
   await expect.poll(() => mock.hierarchyCreates.length).toBe(1);
-  expect(mock.hierarchyCreates[0]).toMatchObject({ level: 'departamento', name: 'QA Novo Departamento' });
-  expect(String(mock.hierarchyCreates[0].parentId || '')).toBe('');
+  expect(mock.hierarchyCreates[0]).toEqual(expect.objectContaining({ level: 'departamento', name: 'QA Novo Departamento', parentId: null }));
   await expect(page.getByText('Configurações salvas com sucesso.')).toBeVisible();
 });
 
@@ -149,29 +152,16 @@ test('Marketing mobile fecha drawer/backdrop e devolve interação ao canvas', a
   await installMocks(page);
   await page.goto('/admin', { waitUntil: 'networkidle' });
   await openLeftPanel(page, testInfo);
-
   await page.getByRole('button', { name: /^Marketing$/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Marketing' })).toBeVisible();
   await expect(page.getByText('SUPABASE OK')).toBeVisible();
-
   const bannerTab = page.getByRole('button', { name: /Banner/i }).first();
   await expect(bannerTab).toBeVisible();
   await bannerTab.click();
   await expect(page.getByText('Banner principal')).toBeVisible();
-
   await closeOpenSidebarWithBackdrop(page, testInfo);
-
   const backdropDisplay = await page.locator('[data-asteryon-sidebar-backdrop]').evaluate(el => getComputedStyle(el).display);
   expect(backdropDisplay).toBe('none');
-  const intercepted = await page.evaluate(() => {
-    const backdrop = document.querySelector('[data-asteryon-sidebar-backdrop]');
-    if (!backdrop) return false;
-    const rect = document.querySelector('#root')?.getBoundingClientRect();
-    if (!rect) return false;
-    const hit = document.elementFromPoint(Math.max(1, rect.width / 2), Math.max(1, rect.height / 2));
-    return hit === backdrop || backdrop.contains(hit);
-  });
-  expect(intercepted).toBe(false);
 });
 
 test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháveis sem overflow', async ({ page }, testInfo) => {
@@ -179,41 +169,32 @@ test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháve
   await installMocks(page);
   await page.goto('/admin', { waitUntil: 'networkidle' });
   await openLeftPanel(page, testInfo);
-
   await page.getByRole('button', { name: /^Modelos$/i }).first().click();
   await expect(page.getByRole('heading', { name: 'Modelos prontos' })).toBeVisible();
   const apply = page.getByRole('button', { name: 'Aplicar modelo' }).first();
   await expect(apply).toBeVisible();
-
   page.once('dialog', dialog => dialog.accept());
   await apply.click();
   await expect(page.getByText(/Modelo aplicado/i)).toBeVisible();
-
   const blank = page.getByRole('button', { name: /Começar com página em branco/i });
   await blank.scrollIntoViewIfNeeded();
   await expect(blank).toBeVisible();
-
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(2);
 
-  // Fecha o painel de modelos para acessar o canvas e prova que o template não
-  // está apenas "aplicado": um nó real precisa ser selecionável e editável.
   await closeOpenSidebarWithBackdrop(page, testInfo);
   const heroText = page.getByText('OFERTAS QUE MOVEM O SEU NEGÓCIO', { exact: true }).first();
   await expect(heroText).toBeVisible({ timeout: 10_000 });
   await heroText.click({ force: true });
-
   await openSidebar(page, testInfo, 'right');
   const right = page.locator('[data-asteryon-editor-sidebar="right"]');
   await expect(right).toHaveAttribute('data-open', 'true');
   const contentField = right.locator('label').filter({ hasText: /^Conteúdo$/ }).locator('textarea').first();
   await expect(contentField).toBeVisible();
   await expect(contentField).toHaveValue('OFERTAS QUE MOVEM O SEU NEGÓCIO');
-
   const edited = 'QA TEMPLATE TOTALMENTE EDITÁVEL';
   await contentField.fill(edited);
   await expect(page.getByText(edited, { exact: true }).first()).toBeVisible();
   await expect(page.getByText('OFERTAS QUE MOVEM O SEU NEGÓCIO', { exact: true })).toHaveCount(0);
-
   await closeOpenSidebarWithBackdrop(page, testInfo);
 });
