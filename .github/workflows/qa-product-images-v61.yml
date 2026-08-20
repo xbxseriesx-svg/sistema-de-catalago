@@ -61,7 +61,7 @@ jobs:
       - name: Instalar dependências
         run: npm ci --ignore-scripts
 
-      - name: Executar auditoria integral e regressões
+      - name: Executar auditoria integral e regressões do Worker
         run: npm test
 
   e2e:
@@ -86,7 +86,7 @@ jobs:
           npm install --no-save --package-lock=false @playwright/test@1.62.0
           npx playwright install --with-deps chromium
 
-      - name: Executar E2E real em Chromium
+      - name: Executar E2E de UI em Chromium
         run: npx playwright test --config=playwright.config.mjs
 
       - name: Publicar evidências em caso de falha
