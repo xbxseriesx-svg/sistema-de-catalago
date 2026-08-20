@@ -1,0 +1,131 @@
+name: V89 — E2E remoto no preview QA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - qa/v89-functional-e2e-real
+    paths:
+      - 'tests/e2e-functional/remote-*.spec.mjs'
+      - 'playwright.remote-functional.config.mjs'
+      - '.github/workflows/e2e-remote-functional-v89.yml'
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: v89-e2e-remote-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  remote-functional:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      QA_E2E_BASE_URL: https://qa-v89-functional-e2e-real-sistema-de-catalago.xbxseriesx.workers.dev
+      QA_E2E_EMAIL: paulohenriquepmelo@gmail.com
+      QA_E2E_PASSWORD: ${{ secrets.QA_E2E_PASSWORD }}
+    steps:
+      - name: Publicar status pendente
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          PAYLOAD=$(jq -n --arg target_url "$RUN_URL" '{state:"pending",context:"qa/e2e-remote",description:"E2E remoto do preview em execução",target_url:$target_url}')
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -d "$PAYLOAD" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Validar Secret QA sem exibir valor
+        shell: bash
+        run: |
+          if [ -z "$QA_E2E_PASSWORD" ]; then
+            echo 'QA_E2E_PASSWORD ausente.' >&2
+            exit 1
+          fi
+          echo 'Credencial QA disponível.'
+
+      - name: Aguardar preview Cloudflare V89
+        shell: bash
+        run: |
+          ready=0
+          for attempt in $(seq 1 48); do
+            code=$(curl --silent --show-error --output /tmp/health.json --write-out '%{http_code}' "$QA_E2E_BASE_URL/api/health" || true)
+            if [ "$code" = '200' ] && grep -q '"version":"V89"' /tmp/health.json; then
+              echo "Preview V89 disponível na tentativa $attempt."
+              ready=1
+              break
+            fi
+            echo "Preview ainda indisponível (tentativa $attempt, HTTP $code)."
+            sleep 5
+          done
+          if [ "$ready" != '1' ]; then
+            echo 'Preview Cloudflare QA não ficou disponível a tempo.' >&2
+            [ -f /tmp/health.json ] && cat /tmp/health.json || true
+            exit 1
+          fi
+
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts
+
+      - name: Instalar Playwright
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.62.0
+          npx playwright install --with-deps chromium
+
+      - name: Executar E2E remoto sem mocks
+        run: npx playwright test --config=playwright.remote-functional.config.mjs
+
+      - name: Publicar evidências em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-remote-functional-v89
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+
+      - name: Publicar status de sucesso
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          PAYLOAD=$(jq -n --arg target_url "$RUN_URL" '{state:"success",context:"qa/e2e-remote",description:"Preview QA: login e leituras admin reais aprovados",target_url:$target_url}')
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -d "$PAYLOAD" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
+
+      - name: Publicar status de falha
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          RUN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          PAYLOAD=$(jq -n --arg target_url "$RUN_URL" '{state:"failure",context:"qa/e2e-remote",description:"E2E remoto falhou; consultar run/evidências",target_url:$target_url}')
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -d "$PAYLOAD" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
