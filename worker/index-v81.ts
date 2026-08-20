@@ -1,4 +1,5 @@
 import worker from './index-v71';
+import { handleHierarchyRoute } from './modules/hierarchy-v90';
 
 type Env = {
   ASSETS: Fetcher;
@@ -237,6 +238,15 @@ export default {
         }
         if (!membership) return finish(fail('Sessão sem acesso ativo a esta empresa', 403, 'COMPANY_FORBIDDEN'));
         if (!(await scopedWriteExists(path, effectiveReq.method, env))) return finish(fail('Registro não encontrado nesta empresa', 404, 'NOT_FOUND'));
+
+        const hierarchyResponse = await handleHierarchyRoute(
+          effectiveReq,
+          env,
+          path,
+          COMPANY_ID,
+          { id: clean(membership.user?.id), role: clean(membership.membership?.role) },
+        );
+        if (hierarchyResponse) return finish(hierarchyResponse);
       } else if (path === '/api/auth/status' && cookie(req, REFRESH_COOKIE)) {
         const membership = await companyMembership(effectiveReq, env);
         if (!membership) {
