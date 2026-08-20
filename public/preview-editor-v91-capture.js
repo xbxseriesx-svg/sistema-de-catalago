@@ -53,13 +53,30 @@
     return !S.transparent(bg) || image || border || (computed.boxShadow && computed.boxShadow !== 'none');
   }
 
-  function textCandidate(element) {
+  function rawTextCandidate(element) {
+    if (!(element instanceof HTMLElement)) return false;
     const tag = element.tagName;
     if (['SCRIPT','STYLE','SVG','PATH','IMG','INPUT','TEXTAREA','SELECT','OPTION'].includes(tag)) return false;
     const text = S.clean(element.textContent);
     if (!text) return false;
-    if (['H1','H2','H3','H4','H5','H6','P','SPAN','STRONG','SMALL','LABEL','LI','A','BUTTON'].includes(tag)) return !element.querySelector('img,input,textarea,select');
+    if (['H1','H2','H3','H4','H5','H6','P','SPAN','STRONG','SMALL','LABEL','LI','A','BUTTON'].includes(tag)) {
+      return !element.querySelector('img,input,textarea,select');
+    }
     return tag === 'DIV' && element.childElementCount === 0;
+  }
+
+  // A captura encerra a descida assim que transforma um bloco textual em nó.
+  // A fingerprint precisa usar exatamente a mesma unidade visual, senão pai + filho
+  // são contados duas vezes e geram missingTexts falso. A grade de marcas possui
+  // conversor semântico próprio e é validada separadamente por logo + nome.
+  function textCandidate(element) {
+    if (!rawTextCandidate(element) || element.closest('.ltp-brand-grid')) return false;
+    let parent = element.parentElement;
+    while (parent && !parent.classList.contains('ltp-shell')) {
+      if (rawTextCandidate(parent)) return false;
+      parent = parent.parentElement;
+    }
+    return true;
   }
 
   function findBrandForCard(card) {
@@ -82,7 +99,7 @@
   function brandCard(card, index, duplicate, step, width, height) {
     const brand = findBrandForCard(card);
     const id = S.brandId(brand);
-    const name = S.clean(brand?.name || card.querySelector('img')?.alt || card.textContent || `Marca ${index + 1}`);
+    const name = S.clean(brand?.name || card.querySelector('img')?.alt || card.querySelector('strong')?.textContent || card.textContent || `Marca ${index + 1}`);
     const logo = S.brandLogo(brand) || S.clean(card.querySelector('img')?.getAttribute('src'));
     const box = { x: S.round(index * step), y: 0, width, height, responsive: S.responsive(index * step, 0, width, height) };
     const group = node('group', `${name} • marca${duplicate ? ' loop' : ''}`, box, {
@@ -234,6 +251,10 @@
     return { modelName, shell, nodes: [page] };
   }
 
+  function brandNameFromElement(card) {
+    return S.normalize(card.querySelector('img')?.getAttribute('alt') || card.querySelector('strong')?.textContent || card.textContent);
+  }
+
   function sourceFingerprint(shell) {
     const images = [...shell.querySelectorAll('img')]
       .filter((item) => visible(item) && !item.closest('[data-asteryon-carousel-copy="v90"]'))
@@ -244,11 +265,17 @@
     const brandLogos = [...shell.querySelectorAll('.ltp-brand img')]
       .filter((item) => visible(item) && !item.closest('[data-asteryon-carousel-copy="v90"]'))
       .map((item) => S.absoluteUrl(item.getAttribute('src'))).filter(Boolean);
-    return { images: [...new Set(images)], texts: [...new Set(texts)], brandLogos: [...new Set(brandLogos)] };
+    const brandNames = [...shell.querySelectorAll('.ltp-brand')]
+      .filter((item) => visible(item) && !item.closest('[data-asteryon-carousel-copy="v90"]'))
+      .map(brandNameFromElement).filter(Boolean);
+    return {
+      images: [...new Set(images)], texts: [...new Set(texts)],
+      brandLogos: [...new Set(brandLogos)], brandNames: [...new Set(brandNames)],
+    };
   }
 
   function targetFingerprint(nodes) {
-    const images = [], texts = [], brandLogos = [];
+    const images = [], texts = [], brandLogos = [], brandNames = [];
     let total = 0, editable = 0, unlocked = 0;
     function walk(item) {
       if (!item) return;
@@ -260,10 +287,17 @@
         if (item.props.brandLogoAuto) brandLogos.push(S.absoluteUrl(item.props.src));
       }
       if ((item.type === 'text' || item.type === 'button') && item.props?.text) texts.push(S.normalize(item.props.text));
+      if (item.props?.brandName && (item.props?.catalogEntity === 'brand' || item.props?.carouselBrand || item.props?.brandLogoAuto)) {
+        brandNames.push(S.normalize(item.props.brandName));
+      }
       (item.children || []).forEach(walk);
     }
     (nodes || []).forEach(walk);
-    return { images: [...new Set(images)], texts: [...new Set(texts)], brandLogos: [...new Set(brandLogos)], total, editable, unlocked };
+    return {
+      images: [...new Set(images)], texts: [...new Set(texts)],
+      brandLogos: [...new Set(brandLogos)], brandNames: [...new Set(brandNames)],
+      total, editable, unlocked,
+    };
   }
 
   function validate(result) {
@@ -272,14 +306,24 @@
     const missingImages = source.images.filter((item) => !target.images.includes(item));
     const missingTexts = source.texts.filter((item) => !target.texts.includes(item));
     const missingBrandLogos = source.brandLogos.filter((item) => !target.brandLogos.includes(item));
+    const missingBrandNames = source.brandNames.filter((item) => !target.brandNames.includes(item));
     const ok = target.total > 10 && target.editable === target.total && target.unlocked === target.total
-      && missingImages.length === 0 && missingTexts.length === 0 && missingBrandLogos.length === 0;
+      && missingImages.length === 0 && missingTexts.length === 0
+      && missingBrandLogos.length === 0 && missingBrandNames.length === 0;
     return {
       version: '91', modelName: result.modelName, ok,
       rule: 'Editor inicial deve ser Ctrl+C/Ctrl+V do Preview Final preenchido.',
-      source: { images: source.images.length, texts: source.texts.length, brandLogos: source.brandLogos.length },
-      target: { nodes: target.total, editable: target.editable, unlocked: target.unlocked, images: target.images.length, texts: target.texts.length, brandLogos: target.brandLogos.length },
-      missingImages, missingTexts, missingBrandLogos, checkedAt: new Date().toISOString(),
+      source: {
+        images: source.images.length, texts: source.texts.length,
+        brandLogos: source.brandLogos.length, brandNames: source.brandNames.length,
+      },
+      target: {
+        nodes: target.total, editable: target.editable, unlocked: target.unlocked,
+        images: target.images.length, texts: target.texts.length,
+        brandLogos: target.brandLogos.length, brandNames: target.brandNames.length,
+      },
+      missingImages, missingTexts, missingBrandLogos, missingBrandNames,
+      checkedAt: new Date().toISOString(),
     };
   }
 
@@ -319,6 +363,6 @@
   document.addEventListener('click', handleApply, true);
   window.__ASTERYON_V91_CAPTURE__ = Object.freeze({
     rule: 'Preview Final preenchido é a fonte do modelo de edição; falha volta ao Grupo 1.',
-    validate: 'imagens + logos + textos + nós destravados/editáveis devem fechar sem diferença',
+    validate: 'imagens + logos + nomes de marcas + textos atômicos + nós destravados/editáveis devem fechar sem diferença',
   });
 })();

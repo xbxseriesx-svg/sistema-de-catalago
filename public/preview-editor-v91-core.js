@@ -23,6 +23,7 @@
     report: null,
     initialParityChecked: false,
     idSequence: 0,
+    previewApplyPending: null,
   };
 
   const clean = (value) => String(value ?? '').trim();
@@ -205,6 +206,23 @@
     return value;
   }
 
+  function requestMeta(args) {
+    const input = args[0];
+    const init = args[1] || {};
+    return {
+      url: String(typeof input === 'string' ? input : input?.url || ''),
+      method: normalize(init.method || (input instanceof Request ? input.method : 'GET')).toUpperCase(),
+    };
+  }
+
+  function isDraftUrl(url) {
+    try {
+      return /^\/api\/admin\/pages\/[^/]+\/draft$/.test(new URL(url, location.href).pathname);
+    } catch {
+      return /\/api\/admin\/pages\/[^/?]+\/draft(?:\?|$)/.test(String(url));
+    }
+  }
+
   function rewriteRequest(args) {
     const input = args[0];
     const init = args[1];
@@ -213,9 +231,52 @@
     if (!body.startsWith('{') && !body.startsWith('[')) return args;
     try {
       const payload = JSON.parse(body);
+      const meta = requestMeta(args);
+      const pending = state.previewApplyPending;
+      if (
+        pending && !pending.rewritten && meta.method === 'PUT' && isDraftUrl(meta.url)
+        && Date.now() - pending.stagedAt <= 10_000 && Array.isArray(state.capturedNodes) && state.capturedNodes.length
+        && payload && typeof payload === 'object' && !Array.isArray(payload)
+      ) {
+        payload.nodes = state.capturedNodes;
+        pending.rewritten = true;
+        pending.rewrittenAt = Date.now();
+        pending.draftUrl = meta.url;
+      }
       rewriteLinkedNodes(payload);
       return [input, { ...init, body: JSON.stringify(payload) }];
     } catch { return args; }
+  }
+
+  function stagePreviewApply(event) {
+    state.previewApplyPending = {
+      stagedAt: Date.now(),
+      modelName: clean(event?.detail?.modelName || state.report?.modelName),
+      rewritten: false,
+    };
+  }
+
+  function finishPreviewApply(response, meta) {
+    const pending = state.previewApplyPending;
+    if (!pending?.rewritten || meta.method !== 'PUT' || !isDraftUrl(meta.url)) return;
+    state.previewApplyPending = null;
+    const detail = {
+      modelName: pending.modelName,
+      draftUrl: meta.url,
+      status: response.status,
+      persisted: response.ok,
+      completedAt: new Date().toISOString(),
+    };
+    window.dispatchEvent(new CustomEvent(
+      response.ok ? 'asteryon:preview-final-persisted-v91' : 'asteryon:preview-final-persist-failed-v91',
+      { detail },
+    ));
+    if (response.ok) {
+      // O React mantém uma cópia própria do template e pode continuar exibindo a
+      // árvore anterior. Recarregar faz o editor consumir o draft que acabou de ser
+      // persistido com expectedRevision preservado pelo handler original.
+      window.setTimeout(() => location.reload(), 120);
+    }
   }
 
   function installFetchBridge() {
@@ -224,11 +285,12 @@
     const previousFetch = window.fetch.bind(window);
     window.fetch = async (...rawArgs) => {
       const args = rewriteRequest(rawArgs);
+      const meta = requestMeta(args);
       const response = await previousFetch(...args);
+      finishPreviewApply(response, meta);
       try {
-        const input = args[0];
-        const url = typeof input === 'string' ? input : input?.url || '';
-        const method = normalize(args[1]?.method || (input instanceof Request ? input.method : 'GET')).toUpperCase();
+        const method = meta.method;
+        const url = meta.url;
         if (method !== 'GET') return response;
         if (String(url).includes('/api/admin/templates')) {
           const payload = await response.clone().json();
@@ -253,6 +315,7 @@
     replaceTemplateNodes, rewriteLinkedNodes, isEditor,
   });
 
+  window.addEventListener('asteryon:preview-final-copied-v91', stagePreviewApply);
   installFetchBridge();
   window.__ASTERYON_V91_STATE__ = state;
 })();
