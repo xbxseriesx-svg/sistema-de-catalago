@@ -35,20 +35,27 @@ async function openPanel(page, projectName) {
   await expect(heading).toBeVisible({ timeout: 15_000 });
 }
 
-async function gesture(page, box, dx, dy, mobile) {
-  const startX = box.x + Math.min(30, Math.max(3, box.width / 3));
-  const startY = box.y + Math.min(16, Math.max(3, box.height / 2));
-  const endX = startX + dx; const endY = startY + dy;
-  if (!mobile) {
-    await page.mouse.move(startX, startY); await page.mouse.down(); await page.mouse.move(endX, endY, { steps: 6 }); await page.mouse.up(); return;
-  }
-  const session = await page.context().newCDPSession(page);
-  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: startX, y: startY, id: 1, radiusX: 2, radiusY: 2, force: 1 }] });
-  for (let step = 1; step <= 6; step += 1) {
-    await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: startX + (dx * step / 6), y: startY + (dy * step / 6), id: 1, radiusX: 2, radiusY: 2, force: 1 }] });
-  }
-  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-  await session.detach();
+async function pointerGesture(page, selector, dx, dy, pointerType) {
+  await page.evaluate(async ({ selector, dx, dy, pointerType }) => {
+    const target = document.querySelector(selector);
+    if (!(target instanceof HTMLElement)) throw new Error(`Handle não encontrado: ${selector}`);
+    const box = target.getBoundingClientRect();
+    const startX = box.left + Math.min(30, Math.max(3, box.width / 3));
+    const startY = box.top + Math.min(16, Math.max(3, box.height / 2));
+    const init = { bubbles: true, cancelable: true, pointerId: 17, pointerType, isPrimary: true, width: 2, height: 2, pressure: .5 };
+    target.dispatchEvent(new PointerEvent('pointerdown', { ...init, clientX: startX, clientY: startY, buttons: 1, button: 0 }));
+    for (let step = 1; step <= 6; step += 1) {
+      window.dispatchEvent(new PointerEvent('pointermove', {
+        ...init,
+        clientX: startX + (dx * step / 6),
+        clientY: startY + (dy * step / 6),
+        buttons: 1,
+        button: -1,
+      }));
+      await new Promise(resolve => requestAnimationFrame(resolve));
+    }
+    window.dispatchEvent(new PointerEvent('pointerup', { ...init, clientX: startX + dx, clientY: startY + dy, buttons: 0, button: 0 }));
+  }, { selector, dx, dy, pointerType });
 }
 
 test('Marketing move, redimensiona, persiste e exclui no canvas', async ({ page }, testInfo) => {
@@ -58,12 +65,15 @@ test('Marketing move, redimensiona, persiste e exclui no canvas', async ({ page 
   await installMocks(page, state); await page.goto('/admin', { waitUntil: 'networkidle' }); await openPanel(page, testInfo.project.name); await page.getByRole('button', { name: /^Marketing$/i }).first().click();
 
   const object = page.locator('[data-marketing-hotfix="true"]'); await expect(object).toBeVisible({ timeout: 15_000 }); await expect(object).toHaveCSS('left', '24px'); await expect(object).toHaveCSS('top', '36px');
-  const toolbar = object.locator('[data-marketing-drag-handle="true"]'); const toolbarBox = await toolbar.boundingBox(); expect(toolbarBox).not.toBeNull();
-  await expect(toolbar).toHaveCSS('touch-action', 'none'); await gesture(page, toolbarBox, 65, 40, mobile); await expect.poll(() => state.saves.length).toBeGreaterThan(0);
+  const toolbar = object.locator('[data-marketing-drag-handle="true"]'); await expect(toolbar).toHaveCSS('touch-action', 'none');
+  await pointerGesture(page, '[data-marketing-drag-handle="true"]', 65, 40, mobile ? 'touch' : 'mouse');
+  await expect.poll(() => state.saves.length).toBeGreaterThan(0);
   const moved = state.saves.at(-1).layout; expect(moved.x).toBeGreaterThan(24); expect(moved.y).toBeGreaterThan(36);
 
-  const resize = object.locator('[data-marketing-resize="se"]'); const resizeBox = await resize.boundingBox(); expect(resizeBox).not.toBeNull(); await expect(resize).toHaveCSS('touch-action', 'none');
-  const savesBeforeResize = state.saves.length; await gesture(page, resizeBox, 80, 50, mobile); await expect.poll(() => state.saves.length).toBeGreaterThan(savesBeforeResize);
+  const resize = object.locator('[data-marketing-resize="se"]'); await expect(resize).toHaveCSS('touch-action', 'none');
+  const savesBeforeResize = state.saves.length;
+  await pointerGesture(page, '[data-marketing-resize="se"]', 80, 50, mobile ? 'touch' : 'mouse');
+  await expect.poll(() => state.saves.length).toBeGreaterThan(savesBeforeResize);
   const resized = state.saves.at(-1).layout; expect(resized.width).toBeGreaterThan(moved.width); expect(resized.height).toBeGreaterThan(moved.height);
 
   const savesBeforeDelete = state.saves.length; await object.getByRole('button', { name: 'Excluir' }).click(); await expect.poll(() => state.saves.length).toBeGreaterThan(savesBeforeDelete);
