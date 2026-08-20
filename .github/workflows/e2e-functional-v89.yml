@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 concurrency:
   group: v89-e2e-functional-${{ github.ref }}
@@ -30,6 +31,19 @@ jobs:
       QA_E2E_EMAIL: paulohenriquepmelo@gmail.com
       QA_E2E_PASSWORD: ${{ secrets.QA_E2E_PASSWORD }}
     steps:
+      - name: Publicar status pendente
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -d '{"state":"pending","context":"qa/e2e-functional","description":"E2E funcional real em execução"}' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -99,3 +113,31 @@ jobs:
             playwright-report/
             test-results/
           if-no-files-found: ignore
+
+      - name: Publicar status de sucesso
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -d '{"state":"success","context":"qa/e2e-functional","description":"Login, sessão, refresh e logout reais aprovados"}' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
+
+      - name: Publicar status de falha
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            -d '{"state":"failure","context":"qa/e2e-functional","description":"E2E funcional real falhou; consultar evidências"}' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
