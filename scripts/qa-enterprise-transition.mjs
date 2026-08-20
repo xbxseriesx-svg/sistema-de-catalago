@@ -34,6 +34,20 @@ if (!wrangler.includes('"SUPABASE_URL"')) fail('wrangler.jsonc sem SUPABASE_URL.
 if (!wrangler.includes('"SUPABASE_PUBLISHABLE_KEY"')) fail('wrangler.jsonc sem SUPABASE_PUBLISHABLE_KEY.');
 if (/\bD1\b|d1_databases|\bR2\b|r2_buckets/.test(wrangler)) fail('wrangler.jsonc reintroduziu binding D1/R2 na arquitetura oficial.');
 else ok('Wrangler permanece na arquitetura Supabase sem D1/R2.');
+if (!wrangler.includes('"main": "worker/app/index.ts"')) fail('wrangler.jsonc ainda não aponta para o entrypoint Enterprise modular.');
+else ok('Wrangler oficial aponta para worker/app/index.ts.');
+
+let rollback = '';
+try {
+  rollback = await readFile('wrangler.legacy-rollback.jsonc', 'utf8');
+} catch {
+  fail('wrangler.legacy-rollback.jsonc ausente; rollback explícito é obrigatório durante a transição.');
+}
+if (rollback) {
+  if (!rollback.includes('"main": "worker/index-v81.ts"')) fail('rollback legado não aponta para o último Worker oficial anterior.');
+  else ok('rollback legado explícito preservado em worker/index-v81.ts.');
+  if (/\bD1\b|d1_databases|\bR2\b|r2_buckets/.test(rollback)) fail('rollback reintroduziu binding D1/R2.');
+}
 
 // Durante a reconstrução os Workers antigos permanecem somente como baseline/rollback.
 // Este gate impede que novas camadas versionadas sejam acrescentadas à dívida existente.
