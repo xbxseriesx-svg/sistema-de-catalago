@@ -1,0 +1,8 @@
+ASTERYON Catálogo — V92 produção verificada
+Verificado em UTC: 2026-08-20T17:41:03Z
+Endpoint: https://sistema-de-catalago.xbxseriesx.workers.dev
+Health: {"ok":true,"service":"sistema-de-catalago","version":"V92","database":"Supabase Postgres","storage":"Supabase Storage","d1":false}
+Admin: ASTERYON Editor V92
+Asset: preview-editor-v92-team4.js?v=92
+Bundle: index-V60Excel.js?v=92
+Resultado: PRODUÇÃO V92 CONFIRMADA
