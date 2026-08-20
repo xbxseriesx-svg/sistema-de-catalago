@@ -1,4 +1,4 @@
-# ASTERYON Catálogo — V89
+# ASTERYON Catálogo — V91
 
 Versão oficial do catálogo ASTERYON com dados e mídias no **Supabase** e aplicação publicada na **Cloudflare** a partir do repositório GitHub.
 
@@ -17,15 +17,15 @@ Versão oficial do catálogo ASTERYON com dados e mídias no **Supabase** e apli
 - Worker: `sistema-de-catalago`
 - Supabase Project ID: `bjcfknhiwjxznxydvmzt`
 - Entry point: `worker/index-v81.ts`
-- Versão da aplicação: `2.1.89`
+- Versão da aplicação: `2.1.91`
 
-## Release atual — V89
+## Release atual — V91
 
-A V89 é a release lógica atual. O nome físico `worker/index-v81.ts` é mantido por compatibilidade e histórico, sem renomear a cadeia antiga apenas por estética.
+A V91 é a release lógica atual. O nome físico `worker/index-v81.ts` é mantido por compatibilidade e histórico, sem renomear a cadeia antiga apenas por estética.
 
-A V89 inclui hardening de sessão, HMAC dedicado para imagens remotas, proteção SSRF/DNS, baseline Supabase versionado, proteção de drafts, restrição das RPCs mutáveis de páginas e QA/E2E ampliado. A rodada funcional V89 também adiciona regressão para impedir leitura direta anônima entre tenants nas tabelas públicas servidas pelo Worker.
+A V91 preserva o hardening de segurança consolidado na V89 e a resolução de templates da V90, acrescentando a regra de paridade entre **Preview Final preenchido** e **Editor inicial**, sincronização de logos vinculados às marcas, edição de fundos/gradientes, validação independente antes da publicação e cache-busting coerente com a release V91.
 
-As fontes funcionais de versão que devem permanecer coerentes são `VERSION`, `package.json`, `/api/health` e este README.
+As fontes funcionais de versão que devem permanecer coerentes são `VERSION`, `package.json`, `package-lock.json`, `/api/health`, `public/index.html`, o runtime loader e este README.
 
 ## Preview completo dos templates — V69
 
@@ -247,7 +247,7 @@ npm ci
 npm test
 ```
 
-O QA atual da V89 preserva as regressões históricas de V61–V88 e acrescenta validações de autenticação/refresh, segurança de imagens remotas, baseline Supabase, E2E desktop/mobile, isolamento anônimo entre tenants e coerência de versionamento. Testes mockados continuam úteis para smoke de UI, mas não substituem a prova funcional com persistência real.
+O QA atual da V91 preserva as regressões históricas de V61–V90 e acrescenta validações da paridade Preview Final → Editor, sincronização de logos de marcas, cache V91, autenticação/refresh, segurança de imagens remotas, baseline Supabase, E2E desktop/mobile, isolamento anônimo entre tenants e coerência de versionamento. Testes mockados continuam úteis para smoke de UI, mas não substituem a prova funcional com persistência real.
 
 ## Recuperação
 

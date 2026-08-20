@@ -1,4 +1,4 @@
-name: QA catálogo V81 — auditoria integral
+name: QA catálogo V91 — auditoria integral
 
 on:
   workflow_dispatch:
@@ -17,6 +17,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'VERSION'
+      - 'README.md'
       - 'scripts/**'
       - 'tests/**'
       - 'playwright.config.mjs'
@@ -32,6 +33,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'VERSION'
+      - 'README.md'
       - 'scripts/**'
       - 'tests/**'
       - 'playwright.config.mjs'
@@ -41,7 +43,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: catalogo-v81-qa-${{ github.ref }}
+  group: catalogo-v91-qa-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -96,7 +98,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-v89
+          name: playwright-report-v91
           path: |
             playwright-report/
             test-results/

@@ -62,29 +62,29 @@
     window.setTimeout(callback, timeout);
   }
 
-  const COMMON = ['/responsive-v67.js?v=89&perf=88'];
+  const COMMON = ['/responsive-v67.js?v=91&perf=88'];
   const PUBLIC = [
-    '/product-modal-v66.js?v=89',
-    '/public-global-search-v78.js?v=89',
-    '/public-entity-popups-v81.js?v=89',
-    '/public-brand-popup-fix-v83.js?v=89',
-    '/public-entity-popup-guard-v81.js?v=89',
+    '/product-modal-v66.js?v=91',
+    '/public-global-search-v78.js?v=91',
+    '/public-entity-popups-v81.js?v=91',
+    '/public-brand-popup-fix-v83.js?v=91',
+    '/public-entity-popup-guard-v81.js?v=91',
   ];
-  const ADMIN_CORE = ['/system-runtime-v81.js?v=89&perf=88'];
-  const ADMIN_MANAGEMENT = ['/system-runtime-v80.js?v=89&perf=88'];
+  const ADMIN_CORE = ['/system-runtime-v81.js?v=91&perf=88'];
+  const ADMIN_MANAGEMENT = ['/system-runtime-v80.js?v=91&perf=88'];
   const ADMIN_BRANDS = [
-    '/brand-image-search-v70.js?v=89&perf=88',
-    '/brand-image-search-v72.js?v=89&perf=88',
+    '/brand-image-search-v70.js?v=91&perf=88',
+    '/brand-image-search-v72.js?v=91&perf=88',
   ];
   const ADMIN_IMPORT = [
-    '/import-images-tab-fix.js?v=89',
-    '/import-progress-v62.js?v=89',
-    '/import-progress-fetch-v62.js?v=89',
+    '/import-images-tab-fix.js?v=91',
+    '/import-progress-v62.js?v=91',
+    '/import-progress-fetch-v62.js?v=91',
   ];
 
-  const loadMarketing = () => loadScript('/marketing-canvas-hotfix.js?v=89&perf=88');
-  const loadTemplatePreview = () => loadScript('/template-preview-v69.js?v=89&perf=88');
-  const loadProductModal = () => loadScript('/product-modal-v66.js?v=89');
+  const loadMarketing = () => loadScript('/marketing-canvas-hotfix.js?v=91&perf=88');
+  const loadTemplatePreview = () => loadScript('/template-preview-v69.js?v=91&perf=88');
+  const loadProductModal = () => loadScript('/product-modal-v66.js?v=91');
 
   const isManagementText = (text) => [
     'gestao do catalogo',

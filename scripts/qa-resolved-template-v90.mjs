@@ -2,14 +2,19 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 
-const [html, bridge, preview] = await Promise.all([
+const [html, bridge, preview, versionText] = await Promise.all([
   readFile('public/index.html', 'utf8'),
   readFile('public/resolved-template-v90.js', 'utf8'),
   readFile('public/template-preview-v69.js', 'utf8'),
+  readFile('VERSION', 'utf8'),
 ]);
+const version = Number(versionText.trim());
+assert.ok(Number.isInteger(version) && version >= 90, 'Release lógica precisa preservar a ponte V90.');
 
-assert.match(html, /resolved-template-v90\.js\?v=89/,
-  'A ponte V90 precisa carregar antes do bundle na release V89.');
+assert.match(html, new RegExp(`resolved-template-v90\\.js\\?v=${version}`),
+  `A ponte V90 precisa carregar antes do bundle usando cache da release atual V${version}.`);
+assert.doesNotMatch(html, /resolved-template-v90\.js\?v=89/,
+  'A ponte V90 não pode permanecer presa ao cache V89 após uma release posterior.');
 assert.ok(
   html.indexOf('/resolved-template-v90.js') < html.indexOf('/assets/index-V60Excel.js'),
   'A ponte V90 precisa ser instalada antes do bundle principal para interceptar a carga dos modelos.',
@@ -50,4 +55,4 @@ assert.match(preview, /data-ltp-apply/,
 
 execFileSync(process.execPath, ['--check', 'public/resolved-template-v90.js'], { stdio: 'pipe' });
 
-console.log('QA V90 Preview Final -> Editor editável + carrossel de marcas: OK');
+console.log(`QA V90 na release V${version}: Preview Final -> Editor editável + carrossel de marcas: OK`);
