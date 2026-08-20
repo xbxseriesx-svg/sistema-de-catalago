@@ -43,7 +43,7 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Validar arquitetura modular em reconstrução
         run: node scripts/qa-enterprise-backend.mjs
-      - name: Compilar e executar regressão automatizada atual
+      - name: Compilar e executar regressão automatizada com Enterprise oficial
         run: npm test
 
   team2:
@@ -63,18 +63,19 @@ jobs:
         run: npm run prepare:bundle
       - name: TypeScript
         run: npm run check
-      - name: Gerar baseline V94 no caminho dos testes históricos
+      - name: Gerar rollback V81 no caminho dos testes históricos
         run: |
-          npx wrangler deploy --dry-run --outdir .wrangler-dry-run
-          node scripts/prepare-worker-qa.mjs
-      - name: Compilar Worker Enterprise candidato no Wrangler
-        run: npx wrangler deploy --dry-run --config wrangler.enterprise.jsonc --outdir .wrangler-enterprise-audit
+          npx wrangler deploy --dry-run --config wrangler.legacy-rollback.jsonc --outdir .wrangler-legacy-rollback-audit
+      - name: Compilar Worker Enterprise oficial no Wrangler
+        run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-audit
       - name: Revalidar independência do backend novo
         run: node scripts/qa-enterprise-backend.mjs
       - name: Validar contratos de segurança Enterprise
         run: node scripts/qa-enterprise-security-contracts.mjs
-      - name: Segurança histórica, SSRF e isolamento por tenant
+      - name: Segurança histórica, SSRF e isolamento por tenant no Enterprise oficial
         run: |
+          npx wrangler deploy --dry-run --outdir .wrangler-dry-run
+          node scripts/prepare-worker-qa.mjs
           node scripts/qa-security-v89.mjs
           node scripts/qa-remote-image-ssrf-v89.mjs
           node scripts/qa-tenant-isolation-v89.mjs
@@ -128,8 +129,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Preparar aplicação do mesmo commit
         run: npm run prepare:bundle
-      - name: Compilar novamente o Worker Enterprise em runner independente
-        run: npx wrangler deploy --dry-run --config wrangler.enterprise.jsonc --outdir .wrangler-enterprise-team4
+      - name: Compilar novamente o Worker Enterprise oficial
+        run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-team4
       - name: Instalar Chromium independente
         run: |
           npm install --no-save @playwright/test@1.55.0
@@ -168,10 +169,10 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Preparar exatamente os assets de release
         run: npm run prepare:bundle
-      - name: Baseline — validar Worker oficial V94 sem publicar
-        run: npx wrangler deploy --dry-run --outdir .wrangler-v94-baseline
-      - name: Candidato — validar Worker Enterprise sem publicar
-        run: npx wrangler deploy --dry-run --config wrangler.enterprise.jsonc --outdir .wrangler-enterprise-dry-run
+      - name: Rollback — validar Worker V81 sem publicar
+        run: npx wrangler deploy --dry-run --config wrangler.legacy-rollback.jsonc --outdir .wrangler-legacy-rollback
+      - name: Oficial — validar Worker Enterprise sem publicar
+        run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-dry-run
       - name: Revalidar metadados, segurança e limpeza transitória
         run: |
           node scripts/qa-version-v94.mjs
@@ -184,7 +185,7 @@ jobs:
         with:
           name: enterprise-equipe5-wrangler-dry-runs
           path: |
-            .wrangler-v94-baseline/
+            .wrangler-legacy-rollback/
             .wrangler-enterprise-dry-run/
           if-no-files-found: error
           include-hidden-files: true
