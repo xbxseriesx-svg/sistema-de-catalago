@@ -1,4 +1,4 @@
-# ASTERYON Catálogo — V92
+# ASTERYON Catálogo — V94
 
 Versão oficial do catálogo ASTERYON com dados e mídias no **Supabase** e aplicação publicada na **Cloudflare** a partir do repositório GitHub.
 
@@ -17,24 +17,24 @@ Versão oficial do catálogo ASTERYON com dados e mídias no **Supabase** e apli
 - Worker: `sistema-de-catalago`
 - Supabase Project ID: `bjcfknhiwjxznxydvmzt`
 - Entry point: `worker/index-v81.ts`
-- Versão da aplicação: `2.1.92`
+- Versão da aplicação: `2.1.94`
 
-## Release atual — V92
+## Release atual — V94
 
-A V92 é a release lógica atual. O nome físico `worker/index-v81.ts` é mantido por compatibilidade e histórico, sem renomear a cadeia antiga apenas por estética.
+A V94 é a release lógica atual. O nome físico `worker/index-v81.ts` é mantido por compatibilidade e histórico, sem renomear a cadeia antiga apenas por estética.
 
-A V92 preserva o hardening de segurança consolidado na V89 e as camadas V90/V91, corrige a captura integral de cards de marcas sem logo no fluxo **Preview Final preenchido → Editor**, força cache-busting V92 e adiciona a **Equipe 4** como auditor independente da Equipe 3 antes da aplicação e depois da renderização no editor.
+A V94 preserva integralmente a arquitetura V93 de **Prévia preenchida → Editor**, os gates das Equipes 3/4 e o hardening anterior, e corrige a lentidão reintroduzida no Editor por observers globais de compatibilidade. A camada V91 deixa de observar mudanças de `style/class/src` durante drag/resize, a camada V93 filtra mutações não relacionadas a Modelos e os pollings de paridade encerram assim que a auditoria é aprovada.
 
 As fontes funcionais de versão que devem permanecer coerentes são `VERSION`, `package.json`, `package-lock.json`, `/api/health`, `public/index.html`, o runtime loader e este README.
 
-### Gate das 4 equipes — V92
+### Gate das 4 equipes — V94
 
-- **Equipe 1:** reproduz a falha e corrige a causa raiz no código.
-- **Equipe 2:** revisa a correção linha a linha e procura efeitos colaterais.
-- **Equipe 3:** executa validação de equivalência Preview Final → árvore editável → Editor renderizado.
-- **Equipe 4:** audita independentemente as evidências da Equipe 3 e pode bloquear aplicação e publicação.
-- Regra de release: somente **Equipe 3 APROVADA + Equipe 4 APROVADA** permitem liberar o modelo.
-- O E2E obrigatório da V92 percorre o botão real **Pré-visualizar modelo completo → Aplicar este modelo**, incluindo marca sem logo e o texto **Marca do catálogo**, caso que provocava o alerta de equivalência na V91.
+- **Equipe 1:** reproduz a lentidão, mede os observers/pollings e corrige a causa raiz no código.
+- **Equipe 2:** revisa a correção linha a linha e procura regressões de template, autosave, drag/resize e segurança.
+- **Equipe 3:** executa as 8 templates em desktop/mobile, exige paridade visual e aplica 200 mudanças consecutivas de `style` no canvas para provar que o observer global não volta a trabalhar durante edição.
+- **Equipe 4:** repete independentemente as evidências da Equipe 3 e pode bloquear aplicação, publicação e produção.
+- Regra de release: somente **Equipe 3 APROVADA + Equipe 4 APROVADA** permitem liberar.
+- A V94 não reduz nenhum gate V93: textos, produtos, geometria, proporções e carrossel animado continuam auditados.
 
 ## Preview completo dos templates — V69
 
@@ -256,7 +256,7 @@ npm ci
 npm test
 ```
 
-O QA atual da V92 preserva as regressões históricas de V61–V91 e acrescenta o gate independente da Equipe 4, o E2E do fluxo real **Pré-visualizar modelo completo → Aplicar este modelo**, cobertura para marcas sem logo, paridade Preview Final → Editor, cache V92, autenticação/refresh, segurança de imagens remotas, baseline Supabase, E2E desktop/mobile, isolamento anônimo entre tenants e coerência de versionamento. Testes mockados continuam úteis para smoke de UI, mas não substituem a prova funcional com persistência real.
+O QA atual da V94 preserva as regressões históricas V61–V93, o fluxo real **Pré-visualizar modelo completo → Aplicar este modelo**, a paridade Preview preenchido → Editor, a auditoria independente da Equipe 4, autenticação/refresh, segurança de imagens remotas, baseline Supabase, isolamento entre tenants e coerência de versionamento. A V94 acrescenta verificação estática dos observers/pollings e um stress E2E de 200 mudanças de estilo no canvas, repetido em desktop e mobile. Testes mockados continuam úteis para smoke e regressão de UI, mas não substituem prova funcional com persistência real.
 
 ## Recuperação
 
