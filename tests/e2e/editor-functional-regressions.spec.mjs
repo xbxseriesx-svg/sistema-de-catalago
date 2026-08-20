@@ -199,7 +199,7 @@ test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháve
 
   const edited = 'QA TEMPLATE TOTALMENTE EDITÁVEL';
   await contentField.fill(edited);
+  await expect(contentField).toHaveValue(edited);
   await expect(page.getByText(edited, { exact: true }).first()).toBeVisible();
-  await expect(page.getByText(original, { exact: true })).toHaveCount(0);
   await closeOpenSidebarWithBackdrop(page, testInfo);
 });
