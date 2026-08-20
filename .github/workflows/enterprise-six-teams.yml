@@ -50,7 +50,7 @@ jobs:
     name: Equipe 2 — Auditoria Técnica e Segurança
     needs: team1
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -63,6 +63,8 @@ jobs:
         run: npm run prepare:bundle
       - name: TypeScript
         run: npm run check
+      - name: Compilar Worker Enterprise candidato no Wrangler
+        run: npx wrangler deploy --dry-run --config wrangler.enterprise.jsonc --outdir .wrangler-enterprise-audit
       - name: Revalidar independência do backend novo
         run: node scripts/qa-enterprise-backend.mjs
       - name: Validar contratos de segurança Enterprise
@@ -122,6 +124,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Preparar aplicação do mesmo commit
         run: npm run prepare:bundle
+      - name: Compilar novamente o Worker Enterprise em runner independente
+        run: npx wrangler deploy --dry-run --config wrangler.enterprise.jsonc --outdir .wrangler-enterprise-team4
       - name: Instalar Chromium independente
         run: |
           npm install --no-save @playwright/test@1.55.0
@@ -140,6 +144,7 @@ jobs:
           path: |
             test-results/
             playwright-report/
+            .wrangler-enterprise-team4/
           if-no-files-found: ignore
           retention-days: 14
 
@@ -147,7 +152,7 @@ jobs:
     name: Equipe 5 — DevOps e Release Readiness
     needs: team4
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -158,8 +163,10 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Preparar exatamente os assets de release
         run: npm run prepare:bundle
-      - name: Validar Cloudflare Worker sem publicar
-        run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-dry-run
+      - name: Baseline — validar Worker oficial V94 sem publicar
+        run: npx wrangler deploy --dry-run --outdir .wrangler-v94-baseline
+      - name: Candidato — validar Worker Enterprise sem publicar
+        run: npx wrangler deploy --dry-run --config wrangler.enterprise.jsonc --outdir .wrangler-enterprise-dry-run
       - name: Revalidar metadados, segurança e limpeza transitória
         run: |
           node scripts/qa-version-v94.mjs
@@ -167,10 +174,12 @@ jobs:
           node scripts/qa-enterprise-transition.mjs
           node scripts/qa-enterprise-backend.mjs
           node scripts/qa-enterprise-security-contracts.mjs
-      - name: Artefato de dry-run para inspeção
+      - name: Artefatos de dry-run para inspeção
         uses: actions/upload-artifact@v4
         with:
-          name: enterprise-equipe5-wrangler-dry-run
-          path: .wrangler-enterprise-dry-run/
+          name: enterprise-equipe5-wrangler-dry-runs
+          path: |
+            .wrangler-v94-baseline/
+            .wrangler-enterprise-dry-run/
           if-no-files-found: error
           retention-days: 14
