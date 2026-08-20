@@ -82,20 +82,24 @@ async function installMocks(page) {
   return { hierarchyCreates };
 }
 
-async function openLeftPanel(page, testInfo) {
+async function openSidebar(page, testInfo, side) {
   if (!testInfo.project.name.includes('mobile')) return;
-  const panelButton = page.locator('[data-asteryon-mobile-toolbar] button[data-side="left"]');
-  await expect(panelButton).toBeVisible();
-  await panelButton.click();
-  await expect(page.locator('[data-asteryon-editor-sidebar="left"]')).toHaveAttribute('data-open', 'true');
+  const button = page.locator(`[data-asteryon-mobile-toolbar] button[data-side="${side}"]`);
+  await expect(button).toBeVisible();
+  await button.click();
+  await expect(page.locator(`[data-asteryon-editor-sidebar="${side}"]`)).toHaveAttribute('data-open', 'true');
 }
 
-async function closeLeftPanelWithBackdrop(page, testInfo) {
+async function openLeftPanel(page, testInfo) {
+  return openSidebar(page, testInfo, 'left');
+}
+
+async function closeOpenSidebarWithBackdrop(page, testInfo) {
   if (!testInfo.project.name.includes('mobile')) return;
   const backdrop = page.locator('[data-asteryon-sidebar-backdrop]');
   await expect(backdrop).toBeVisible();
   await backdrop.click({ position: { x: 8, y: 8 } });
-  await expect(page.locator('[data-asteryon-editor-sidebar="left"]')).toHaveAttribute('data-open', 'false');
+  await expect(page.locator('[data-asteryon-editor-sidebar][data-open="true"]')).toHaveCount(0);
   await expect(backdrop).toBeHidden();
 }
 
@@ -155,7 +159,7 @@ test('Marketing mobile fecha drawer/backdrop e devolve interação ao canvas', a
   await bannerTab.click();
   await expect(page.getByText('Banner principal')).toBeVisible();
 
-  await closeLeftPanelWithBackdrop(page, testInfo);
+  await closeOpenSidebarWithBackdrop(page, testInfo);
 
   const backdropDisplay = await page.locator('[data-asteryon-sidebar-backdrop]').evaluate(el => getComputedStyle(el).display);
   expect(backdropDisplay).toBe('none');
@@ -170,7 +174,7 @@ test('Marketing mobile fecha drawer/backdrop e devolve interação ao canvas', a
   expect(intercepted).toBe(false);
 });
 
-test('Modelos no mobile permanecem roláveis, aplicáveis e fecháveis sem overflow', async ({ page }, testInfo) => {
+test('Modelos no mobile permanecem roláveis, aplicáveis, editáveis e fecháveis sem overflow', async ({ page }, testInfo) => {
   test.skip(!testInfo.project.name.includes('mobile'), 'Validação específica de Modelos no mobile.');
   await installMocks(page);
   await page.goto('/admin', { waitUntil: 'networkidle' });
@@ -192,5 +196,24 @@ test('Modelos no mobile permanecem roláveis, aplicáveis e fecháveis sem overf
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(2);
 
-  await closeLeftPanelWithBackdrop(page, testInfo);
+  // Fecha o painel de modelos para acessar o canvas e prova que o template não
+  // está apenas "aplicado": um nó real precisa ser selecionável e editável.
+  await closeOpenSidebarWithBackdrop(page, testInfo);
+  const heroText = page.getByText('OFERTAS QUE MOVEM O SEU NEGÓCIO', { exact: true }).first();
+  await expect(heroText).toBeVisible({ timeout: 10_000 });
+  await heroText.click({ force: true });
+
+  await openSidebar(page, testInfo, 'right');
+  const right = page.locator('[data-asteryon-editor-sidebar="right"]');
+  await expect(right).toHaveAttribute('data-open', 'true');
+  const contentField = right.locator('label').filter({ hasText: /^Conteúdo$/ }).locator('textarea').first();
+  await expect(contentField).toBeVisible();
+  await expect(contentField).toHaveValue('OFERTAS QUE MOVEM O SEU NEGÓCIO');
+
+  const edited = 'QA TEMPLATE TOTALMENTE EDITÁVEL';
+  await contentField.fill(edited);
+  await expect(page.getByText(edited, { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('OFERTAS QUE MOVEM O SEU NEGÓCIO', { exact: true })).toHaveCount(0);
+
+  await closeOpenSidebarWithBackdrop(page, testInfo);
 });
