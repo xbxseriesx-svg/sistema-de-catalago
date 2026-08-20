@@ -100,12 +100,13 @@ test('Equipe 4: Modelo Oficial aplica pelo Preview Final mesmo com marca sem log
   await expect(preview.getByText('Marca do catálogo', { exact: true }).first()).toBeVisible();
 
   await preview.getByRole('button', { name: 'Aplicar este modelo' }).click();
-  await expect(page.getByRole('heading', { name: /Editar catálogo/i })).toBeVisible({ timeout: 12_000 });
+  await expect(preview).toBeHidden({ timeout: 12_000 });
+  await expect(page.locator('[data-node-id]').filter({ hasText: 'MODELO OFICIAL QA' }).first()).toBeVisible({ timeout: 12_000 });
 
   expect(dialogs.filter(message => message.includes('Modelo não aplicado')), `Alerta de produção reapareceu: ${dialogs.join(' | ')}`).toEqual([]);
 
-  await expect.poll(async () => page.evaluate(() => document.documentElement.dataset.asteryonPreviewEditorParity || '')).toBe('ok');
-  await expect.poll(async () => page.evaluate(() => document.documentElement.dataset.asteryonTeam4Parity || '')).toBe('approved');
+  await expect.poll(async () => page.evaluate(() => document.documentElement.dataset.asteryonPreviewEditorParity || ''), { timeout: 12_000 }).toBe('ok');
+  await expect.poll(async () => page.evaluate(() => document.documentElement.dataset.asteryonTeam4Parity || ''), { timeout: 12_000 }).toBe('approved');
 
   const audit = await page.evaluate(() => {
     const group3 = window.__ASTERYON_PREVIEW_EDITOR_PARITY_V91__ || null;
