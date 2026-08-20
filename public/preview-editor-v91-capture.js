@@ -317,6 +317,11 @@
       const result = capture();
       const report = validate(result);
       if (!report.ok) return block(event, 'A cópia do Preview Final não passou na validação de equivalência.', report);
+      const team4Request = { result, group3Report: report, team4Report: null };
+      window.dispatchEvent(new CustomEvent('asteryon:team4-preflight-request-v92', { detail: team4Request }));
+      if (window.__ASTERYON_V92_GROUPS__ && team4Request.team4Report?.ok !== true) {
+        return block(event, 'A Equipe 4 reprovou a equivalência antes da substituição da árvore.', team4Request.team4Report);
+      }
       const refs = S.replaceTemplateNodes(result.modelName, result.nodes);
       if (!refs) return block(event, `O modelo "${result.modelName}" não está ligado à árvore usada pelo editor.`, { available: [...S.templateNodeRefs.keys()] });
       report.templateReferencesUpdated = refs;

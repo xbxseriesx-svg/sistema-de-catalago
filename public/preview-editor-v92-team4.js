@@ -126,9 +126,9 @@
       && Array.isArray(report.missingBrandLogos) && report.missingBrandLogos.length === 0;
   }
 
-  function verifyPreflight(group3Report) {
-    const shell = document.getElementById(PREVIEW_ID)?.querySelector('.ltp-shell');
-    const nodes = expectedNodes();
+  function verifyPreflight(group3Report, candidate = null) {
+    const shell = candidate?.shell || document.getElementById(PREVIEW_ID)?.querySelector('.ltp-shell');
+    const nodes = candidate?.nodes || expectedNodes();
     if (!(shell instanceof HTMLElement) || !nodes?.length) {
       const report = { version: '92', ok: false, reason: 'Preview ou árvore capturada indisponível para auditoria independente.' };
       state.preflight = report;
@@ -218,9 +218,14 @@
     alert('Publicação bloqueada pela Equipe 4: a validação independente do Preview Final e do Editor ainda não foi aprovada.');
   }
 
+  window.addEventListener('asteryon:team4-preflight-request-v92', (event) => {
+    state.group3Apply = event.detail?.group3Report || null;
+    const report = verifyPreflight(state.group3Apply, event.detail?.result || null);
+    if (event.detail) event.detail.team4Report = report;
+  });
   window.addEventListener('asteryon:preview-final-copied-v91', (event) => {
-    state.group3Apply = event.detail || null;
-    verifyPreflight(state.group3Apply);
+    state.group3Apply = event.detail || state.group3Apply || null;
+    if (!state.preflight) verifyPreflight(state.group3Apply);
   });
   window.addEventListener('asteryon:preview-editor-parity-v91', (event) => {
     state.group3Editor = event.detail || null;
