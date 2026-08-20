@@ -170,10 +170,6 @@
       if (element.classList.contains('ltp-brand-grid')) {
         return captureBrandCarousel(element, parentRect, sourceShellRect, sourceScale, zIndex, captureElement);
       }
-      if (element.closest('.ltp-brand-grid') && !element.classList.contains('ltp-brand-grid')) {
-        const grid = element.closest('.ltp-brand-grid');
-        if (grid !== element.parentElement) return null;
-      }
 
       const rect = element.getBoundingClientRect();
       const box = relativeBox(rect, parentRect, sourceScale);
