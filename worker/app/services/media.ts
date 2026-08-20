@@ -4,7 +4,6 @@ import { uid } from '../domain';
 import { clean, fail, ok } from '../http';
 import { requireUser } from '../auth/session';
 import { adminFetch, adminHeaders } from '../supabase';
-import { storageBackedPublicMedia } from './product-images';
 
 const MAX_MEDIA_BYTES = 25 * 1024 * 1024;
 
@@ -134,12 +133,7 @@ async function createMedia(req: Request, env: Env) {
     }),
   });
 
-  return ok({
-    mediaKey: id,
-    url: publicUrl,
-    deduplicated: false,
-    byteSize: bytes.length,
-  });
+  return ok({ mediaKey: id, url: publicUrl, deduplicated: false, byteSize: bytes.length });
 }
 
 async function deleteMedia(req: Request, env: Env, id: string) {
@@ -162,18 +156,25 @@ async function deleteMedia(req: Request, env: Env, id: string) {
 }
 
 export async function publicMedia(env: Env, id: string) {
-  const storage = await storageBackedPublicMedia(env, id);
-  if (storage) return storage;
+  const rows = await adminFetch(
+    env,
+    `/rest/v1/media_assets?id=eq.${encodeURIComponent(id)}&company_id=eq.${encodeURIComponent(COMPANY_ID)}&select=public_url,mime_type,metadata&limit=1`,
+  );
+  const item = Array.isArray(rows) ? rows[0] : null;
+  if (!item) return fail('Mídia não encontrada', 404, 'NOT_FOUND');
+
+  const target = clean(item.public_url);
+  if (target.startsWith('https://') || target.startsWith('http://')) {
+    return new Response(null, {
+      status: 302,
+      headers: { location: target, 'cache-control': 'public, max-age=300' },
+    });
+  }
 
   // Compatibilidade somente de leitura para registros históricos inline.
   // A arquitetura nova nunca cria metadata.dataBase64.
-  const rows = await adminFetch(
-    env,
-    `/rest/v1/media_assets?id=eq.${encodeURIComponent(id)}&company_id=eq.${encodeURIComponent(COMPANY_ID)}&select=mime_type,metadata&limit=1`,
-  );
-  const item = Array.isArray(rows) ? rows[0] : null;
   const encoded = clean(item?.metadata?.dataBase64);
-  if (!item || !encoded) return fail('Mídia não encontrada', 404, 'NOT_FOUND');
+  if (!encoded) return fail('Mídia não encontrada', 404, 'NOT_FOUND');
   let bytes: Uint8Array;
   try {
     bytes = bytesFromBase64(encoded);
@@ -189,16 +190,10 @@ export async function publicMedia(env: Env, id: string) {
 }
 
 export async function handleMediaRoute(req: Request, env: Env, path: string): Promise<Response | null> {
-  if (path === '/api/admin/media' && req.method === 'POST') {
-    return createMedia(req, env);
-  }
+  if (path === '/api/admin/media' && req.method === 'POST') return createMedia(req, env);
   const adminItem = path.match(/^\/api\/admin\/media\/([^/]+)$/);
-  if (adminItem && req.method === 'DELETE') {
-    return deleteMedia(req, env, decodeURIComponent(adminItem[1]));
-  }
+  if (adminItem && req.method === 'DELETE') return deleteMedia(req, env, decodeURIComponent(adminItem[1]));
   const publicItem = path.match(/^\/api\/public\/media\/([^/]+)$/);
-  if (publicItem && req.method === 'GET') {
-    return publicMedia(env, decodeURIComponent(publicItem[1]));
-  }
+  if (publicItem && req.method === 'GET') return publicMedia(env, decodeURIComponent(publicItem[1]));
   return null;
 }
