@@ -33,17 +33,19 @@ function errorMessage(payload: ApiEnvelope | null, status: number) {
 
 async function api<T extends ApiEnvelope>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  let body = init.body;
-  if (body && typeof body === "string" && !headers.has("content-type")) {
+  const body = init.body;
+  if (typeof body === "string" && body && !headers.has("content-type")) {
     headers.set("content-type", "application/json");
   }
-  const response = await fetch(path, {
+  const requestInit: RequestInit = {
     ...init,
-    body,
     headers,
     credentials: "include",
     cache: "no-store",
-  });
+  };
+  if (body !== undefined) requestInit.body = body;
+
+  const response = await fetch(path, requestInit);
   let payload: T | null = null;
   try { payload = await response.json() as T; } catch { payload = null; }
   if (!response.ok || payload?.ok === false) throw new Error(errorMessage(payload, response.status));
@@ -126,7 +128,7 @@ export async function loadRemoteDraft(): Promise<SavedEditorPayload | null> {
   return {
     schemaVersion: 5,
     doc,
-    resolution: (settings.resolutionPreset as ResolutionPreset) ?? "1080p",
+    resolution: (settings["resolutionPreset"] as ResolutionPreset | undefined) ?? "1080p",
     savedAt: data.page?.updatedAt ?? new Date().toISOString(),
   };
 }
@@ -166,7 +168,7 @@ export async function listRemoteSnapshots() {
   const data = await api<ApiEnvelope & { snapshots?: Array<Record<string, unknown>> }>(`/api/admin/pages/${PAGE_SLUG}/snapshots`);
   return (data.snapshots ?? []).map((item) => ({
     ...item,
-    created_at: item.createdAt ?? item.created_at,
+    created_at: item["createdAt"] ?? item["created_at"],
   }));
 }
 

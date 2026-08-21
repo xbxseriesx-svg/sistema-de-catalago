@@ -20,7 +20,10 @@ export function SessionControl() {
   const refresh = async () => {
     try {
       const session = await getSessionState();
-      setState({ email: session.session?.user.email, role: session.membership?.role });
+      setState({
+        email: session.session?.user.email ?? null,
+        role: session.membership?.role ?? "",
+      });
     } catch (error) {
       setState({ error: error instanceof Error ? error.message : "API indisponível" });
     }
@@ -36,7 +39,7 @@ export function SessionControl() {
     <button
       className="inline-flex h-7 items-center gap-1.5 rounded-md border border-ed-border px-2 text-[11px] text-ed-muted hover:text-ed-ink"
       onClick={async () => { await signOut(); await refresh(); }}
-      title={`${state.email} · ${state.role ?? "acesso ativo"}`}
+      title={`${state.email} · ${state.role || "acesso ativo"}`}
     >
       <LogOut size={13}/> Sair
     </button>

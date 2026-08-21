@@ -1,4 +1,24 @@
 type FrameLike = { x: number; y: number; width: number; height: number };
+type ResponsiveInput = Record<string, unknown> & {
+  desktop?: unknown;
+  tablet?: unknown;
+  mobile?: unknown;
+};
+type PersistedNodeInput = Record<string, unknown> & {
+  id?: unknown;
+  type?: unknown;
+  children?: unknown;
+  parentId?: unknown;
+  responsive?: unknown;
+  x?: unknown;
+  y?: unknown;
+  width?: unknown;
+  height?: unknown;
+};
+type PersistedDocumentInput = Record<string, unknown> & {
+  rootId?: unknown;
+  nodes?: unknown;
+};
 type NodeLike = Record<string, unknown> & {
   id: string;
   type: string;
@@ -16,7 +36,9 @@ function number(value: unknown, fallback = 0) {
 }
 
 function frame(value: unknown, fallback: FrameLike): FrameLike {
-  const input = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  const input = value && typeof value === "object" && !Array.isArray(value)
+    ? value as PersistedNodeInput
+    : {} as PersistedNodeInput;
   return {
     x: number(input.x, fallback.x),
     y: number(input.y, fallback.y),
@@ -25,7 +47,7 @@ function frame(value: unknown, fallback: FrameLike): FrameLike {
   };
 }
 
-function desktopFrame(node: Record<string, unknown>): FrameLike {
+function desktopFrame(node: PersistedNodeInput): FrameLike {
   return {
     x: number(node.x),
     y: number(node.y),
@@ -34,11 +56,11 @@ function desktopFrame(node: Record<string, unknown>): FrameLike {
   };
 }
 
-function normalizedResponsive(node: Record<string, unknown>) {
+function normalizedResponsive(node: PersistedNodeInput) {
   const base = desktopFrame(node);
-  const responsive = node.responsive && typeof node.responsive === "object"
-    ? node.responsive as Record<string, unknown>
-    : {};
+  const responsive = node.responsive && typeof node.responsive === "object" && !Array.isArray(node.responsive)
+    ? node.responsive as ResponsiveInput
+    : {} as ResponsiveInput;
   const desktop = frame(responsive.desktop, base);
   return {
     desktop,
@@ -48,7 +70,7 @@ function normalizedResponsive(node: Record<string, unknown>) {
 }
 
 function flattenRecursiveNode(
-  input: Record<string, unknown>,
+  input: PersistedNodeInput,
   parentId: string | null,
   output: Record<string, NodeLike>,
 ): string {
@@ -63,7 +85,7 @@ function flattenRecursiveNode(
     if (!child || typeof child !== "object" || Array.isArray(child)) {
       throw new Error(`Filho inválido em ${id}`);
     }
-    return String((child as Record<string, unknown>).id || "").trim();
+    return String((child as PersistedNodeInput).id || "").trim();
   });
 
   output[id] = {
@@ -79,18 +101,18 @@ function flattenRecursiveNode(
     children: childIds,
   } as NodeLike;
 
-  rawChildren.forEach((child) => flattenRecursiveNode(child as Record<string, unknown>, id, output));
+  rawChildren.forEach((child) => flattenRecursiveNode(child as PersistedNodeInput, id, output));
   return id;
 }
 
-function normalizeAlreadyFlat(input: Record<string, unknown>): DocumentLike | null {
+function normalizeAlreadyFlat(input: PersistedDocumentInput): DocumentLike | null {
   const rootId = String(input.rootId || "").trim();
   const rawNodes = input.nodes;
   if (!rootId || !rawNodes || typeof rawNodes !== "object" || Array.isArray(rawNodes)) return null;
   const nodes: Record<string, NodeLike> = {};
   for (const [key, raw] of Object.entries(rawNodes as Record<string, unknown>)) {
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new Error(`Nó normalizado inválido: ${key}`);
-    const node = raw as Record<string, unknown>;
+    const node = raw as PersistedNodeInput;
     const id = String(node.id || key).trim();
     if (!id) throw new Error("Nó normalizado sem id");
     const responsive = normalizedResponsive(node);
@@ -113,21 +135,17 @@ function normalizeAlreadyFlat(input: Record<string, unknown>): DocumentLike | nu
   return { rootId, nodes };
 }
 
-/**
- * Converte tanto o formato recursivo da V94 quanto o formato normalizado Enterprise
- * para o documento editável usado pela fonte React recuperada.
- */
 export function normalizePersistedDocument(input: unknown): DocumentLike | null {
   if (!input) return null;
   if (typeof input === "object" && !Array.isArray(input)) {
-    const normalized = normalizeAlreadyFlat(input as Record<string, unknown>);
+    const normalized = normalizeAlreadyFlat(input as PersistedDocumentInput);
     if (normalized) return normalized;
   }
   if (!Array.isArray(input) || input.length !== 1) return null;
   const root = input[0];
   if (!root || typeof root !== "object" || Array.isArray(root)) return null;
   const nodes: Record<string, NodeLike> = {};
-  const rootId = flattenRecursiveNode(root as Record<string, unknown>, null, nodes);
+  const rootId = flattenRecursiveNode(root as PersistedNodeInput, null, nodes);
   return { rootId, nodes };
 }
 
@@ -136,12 +154,11 @@ function recursiveNode(doc: DocumentLike, id: string, seen: Set<string>): Record
   const node = doc.nodes[id];
   if (!node) throw new Error(`Nó referenciado não encontrado: ${id}`);
   seen.add(id);
-  const responsive = node.responsive || {} as NodeLike["responsive"];
+  const responsive = node.responsive;
   const desktop = frame(responsive.desktop, desktopFrame(node));
   const tablet = frame(responsive.tablet, desktop);
   const mobile = frame(responsive.mobile, desktop);
-  const children = (Array.isArray(node.children) ? node.children : [])
-    .map((childId) => recursiveNode(doc, String(childId), seen));
+  const children = node.children.map((childId) => recursiveNode(doc, String(childId), seen));
   seen.delete(id);
 
   const {
@@ -163,13 +180,9 @@ function recursiveNode(doc: DocumentLike, id: string, seen: Set<string>): Record
   };
 }
 
-/**
- * Retorna o mesmo formato recursivo usado pela V94 em produção.
- * Isso mantém o rollback do frontend legado compatível mesmo depois de uma edição no novo editor.
- */
 export function serializeForLegacyStorage(input: unknown): Record<string, unknown>[] {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new Error("Documento inválido");
-  const doc = normalizeAlreadyFlat(input as Record<string, unknown>);
+  const doc = normalizeAlreadyFlat(input as PersistedDocumentInput);
   if (!doc) throw new Error("Documento normalizado inválido");
   return [recursiveNode(doc, doc.rootId, new Set())];
 }
@@ -183,7 +196,7 @@ export function hasCompleteResponsiveFrames(input: unknown) {
   const doc = normalizePersistedDocument(input);
   if (!doc) return false;
   return Object.values(doc.nodes).every((node) => DEVICES.every((device) => {
-    const item = node.responsive?.[device];
-    return !!item && [item.x, item.y, item.width, item.height].every(Number.isFinite);
+    const item = node.responsive[device];
+    return [item.x, item.y, item.width, item.height].every(Number.isFinite);
   }));
 }
