@@ -15,6 +15,59 @@ export function adminHeaders(env: Env, initial: HeadersInit = {}) {
   return headers;
 }
 
+export function publicHeaders(env: Env, initial: HeadersInit = {}) {
+  const key = clean(env.SUPABASE_PUBLISHABLE_KEY);
+  if (!key) throw new Error('SUPABASE_PUBLISHABLE_KEY não configurada');
+  const headers = new Headers(initial);
+  headers.set('apikey', key);
+  return headers;
+}
+
+async function parseResponse(response: Response) {
+  const text = await response.text();
+  if (!response.ok) throw new Error(`Supabase ${response.status}: ${text.slice(0, 500)}`);
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+export async function publicSupabase(env: Env, path: string, init: RequestInit = {}) {
+  const url = clean(env.SUPABASE_URL).replace(/\/+$/, '');
+  if (!url) throw new Error('SUPABASE_URL não configurada');
+  const headers = publicHeaders(env, init.headers);
+  if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
+  return parseResponse(await fetch(`${url}${path}`, { ...init, headers }));
+}
+
+export async function publicTable(
+  env: Env,
+  name: string,
+  query = '',
+  init: RequestInit = {},
+) {
+  return publicSupabase(env, `/rest/v1/${name}${query ? `?${query}` : ''}`, init);
+}
+
+export async function publicTableAll(
+  env: Env,
+  name: string,
+  query = '',
+  pageSize = 500,
+  maxRows = 10000,
+) {
+  const rows: any[] = [];
+  for (let offset = 0; offset < maxRows; offset += pageSize) {
+    const page = await publicTable(env, name, `${query}${query ? '&' : ''}limit=${pageSize}&offset=${offset}`);
+    if (!Array.isArray(page)) throw new Error(`Resposta pública inválida ao consultar ${name}`);
+    rows.push(...page);
+    if (page.length < pageSize) return rows;
+  }
+  throw new Error(`A consulta pública de ${name} excedeu o limite seguro de ${maxRows} registros`);
+}
+
 export async function supabase(
   env: Env,
   path: string,
@@ -33,15 +86,7 @@ export async function supabase(
   }
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
 
-  const response = await fetch(`${env.SUPABASE_URL}${path}`, { ...init, headers });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`Supabase ${response.status}: ${text.slice(0, 500)}`);
-  if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
+  return parseResponse(await fetch(`${env.SUPABASE_URL}${path}`, { ...init, headers }));
 }
 
 export async function table(
@@ -95,13 +140,5 @@ export async function tableByValues(
 export async function adminFetch(env: Env, path: string, init: RequestInit = {}) {
   const headers = adminHeaders(env, init.headers);
   if (init.body && !headers.has('content-type')) headers.set('content-type', 'application/json');
-  const response = await fetch(`${env.SUPABASE_URL}${path}`, { ...init, headers });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`Supabase ${response.status}: ${text.slice(0, 500)}`);
-  if (!text) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
-  }
+  return parseResponse(await fetch(`${env.SUPABASE_URL}${path}`, { ...init, headers }));
 }
