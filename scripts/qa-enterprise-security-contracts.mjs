@@ -9,6 +9,7 @@ const entry = await readFile('worker/app/index.ts', 'utf8');
 const session = await readFile('worker/app/auth/session.ts', 'utf8');
 const pages = await readFile('worker/app/services/pages.ts', 'utf8');
 const products = await readFile('worker/app/services/products.ts', 'utf8');
+const catalog = await readFile('worker/app/services/catalog.ts', 'utf8');
 const media = await readFile('worker/app/services/media.ts', 'utf8');
 const brandImages = await readFile('worker/app/services/brand-images.ts', 'utf8');
 
@@ -17,6 +18,12 @@ if (!entry.includes("path.startsWith('/api/admin/')")) fail('router não separa 
 if (!entry.includes('companyMembership(effectiveReq, env)')) fail('router admin sem gate global de membership.');
 if (!entry.includes("!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !sameOrigin(req)")) {
   fail('proteção global de origem para métodos mutáveis ausente.');
+}
+if (!entry.includes("'/rest/v1/rpc/bootstrap_status'")) {
+  fail('health não usa o RPC público leve bootstrap_status.');
+}
+if (/publicTable\([\s\S]{0,400}catalog_settings/.test(entry)) {
+  fail('health voltou a depender de SELECT anon direto em catalog_settings.');
 }
 
 if (!session.includes('company_id=eq.${encodeURIComponent(COMPANY_ID)}&user_id=eq.')) {
@@ -31,6 +38,24 @@ if (!pages.includes("['GET', 'POST'].includes(req.method)")) fail('snapshot acei
 if (!pages.includes('REVISION_CONFLICT')) fail('draft sem proteção de revisão concorrente.');
 
 if (!products.includes('&company_id=eq.${COMPANY_ID}')) fail('CRUD de produtos sem escopo explícito de empresa.');
+
+for (const rpc of ['/rest/v1/rpc/get_public_catalog', '/rest/v1/rpc/get_public_site']) {
+  if (!catalog.includes(rpc)) fail(`catálogo público não usa RPC filtrado obrigatório: ${rpc}`);
+}
+for (const directRead of [
+  "publicTableAll(env, 'products'",
+  "publicTableAll(env, 'brands'",
+  "publicTableAll(env, 'hierarchy_nodes'",
+  "publicTable(env, 'offers'",
+  "publicTable(env, 'catalog_settings'",
+  "publicTable(env,\n      'marketing_settings'",
+]) {
+  if (catalog.includes(directRead)) fail(`catálogo público voltou a depender de SELECT anon direto: ${directRead}`);
+}
+if (!catalog.includes("publicTableAll(env, 'offer_products'")) {
+  fail('vínculo público de ofertas não preserva leitura RLS de offer_products.');
+}
+
 if (!media.includes('&company_id=eq.${encodeURIComponent(COMPANY_ID)}&select=public_url')) {
   fail('mídia pública não está isolada por empresa.');
 }
@@ -62,4 +87,4 @@ if (failed) {
   process.exit(1);
 }
 
-ok('tenant, métodos HTTP, origem, mídia e SSRF possuem contratos estáticos obrigatórios.');
+ok('tenant, métodos HTTP, origem, health por RPC público, catálogo filtrado, mídia e SSRF possuem contratos estáticos obrigatórios.');

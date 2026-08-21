@@ -1,7 +1,7 @@
 import type { Env } from './env';
 import { COMPANY_ID } from './env';
 import { clean, fail, ok, sameOrigin, secure } from './http';
-import { adminKey, publicTable } from './supabase';
+import { adminKey, publicSupabase } from './supabase';
 import {
   attachRefreshedSession,
   companyMembership,
@@ -41,11 +41,13 @@ async function probeSupabase(env: Env) {
   }
 
   try {
-    await publicTable(
-      env,
-      'catalog_settings',
-      `company_id=eq.${encodeURIComponent(COMPANY_ID)}&select=company_id&limit=1`,
-    );
+    const status = await publicSupabase(env, '/rest/v1/rpc/bootstrap_status', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    });
+    if (!status || typeof status !== 'object' || Array.isArray(status)) {
+      throw new Error('Resposta inválida do RPC público bootstrap_status');
+    }
     return {
       ok: true as const,
       status: 200,

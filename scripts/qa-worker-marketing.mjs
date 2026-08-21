@@ -8,8 +8,20 @@ const json = value => new Response(JSON.stringify(value), { headers: { 'content-
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(typeof input === 'string' ? input : input.url);
   const method = init.method || 'GET';
-  requests.push({ method, pathname: url.pathname, search: url.search });
+  requests.push({ method, pathname: url.pathname, search: url.search, body: init.body || null });
 
+  if (url.pathname === '/rest/v1/rpc/get_public_site' && method === 'POST') {
+    return json({
+      page: {},
+      marketing: {
+        theme: { primary: '#123456' },
+        banner: {},
+        videoBanner: {},
+        carousel: { items: [] },
+        settings: { source: 'qa', layout: { x: 30, y: 40, width: 900, height: 360, zIndex: 910, visible: true } },
+      },
+    });
+  }
   if (url.pathname === '/auth/v1/user') return json({ id: 'user_qa', email: 'qa@example.invalid' });
   if (url.pathname.endsWith('/company_memberships')) return json([{ company_id: 'cmp_asteryon', role: 'owner' }]);
   if (url.pathname.endsWith('/profiles')) return json([{ display_name: 'QA', email: 'qa@example.invalid' }]);
@@ -38,6 +50,9 @@ const publicResponse = await worker.fetch(new Request('https://example.test/api/
 assert.equal(publicResponse.status, 200);
 const publicPayload = await publicResponse.json();
 assert.deepEqual(publicPayload.marketing.layout, { x: 30, y: 40, width: 900, height: 360, zIndex: 910, visible: true });
+assert.equal(requests[0].pathname, '/rest/v1/rpc/get_public_site');
+assert.equal(JSON.parse(requests[0].body).page_slug, '__marketing_only__');
+assert.equal(requests.some((item, index) => index === 0 && item.pathname === '/rest/v1/marketing_settings'), false, 'Marketing público não pode depender de SELECT anon direto');
 
 const updateResponse = await worker.fetch(new Request('https://example.test/api/admin/marketing', {
   method: 'PUT',
@@ -56,4 +71,4 @@ assert.deepEqual(savedMarketing.settings, {
 assert.equal(savedMarketing.carousel.items.length, 1);
 assert.equal(requests.filter(item => item.pathname.endsWith('/audit_logs')).length, 1);
 
-console.log('QA de marketing móvel no Supabase: OK');
+console.log('QA de marketing público/admin no Supabase: OK');
