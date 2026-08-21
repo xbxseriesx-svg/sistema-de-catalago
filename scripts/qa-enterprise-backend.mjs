@@ -53,12 +53,13 @@ const env = await readFile('worker/app/env.ts', 'utf8');
 for (const cookieName of ['__Host-asteryon_access', '__Host-asteryon_refresh']) {
   if (!env.includes(cookieName)) fail(`cookie de sessão ausente: ${cookieName}`);
 }
-if (!env.includes('SUPABASE_ANON_KEY?: string')) fail('compatibilidade anon pública do Supabase ausente do Env.');
+if (!env.includes('SUPABASE_PUBLISHABLE_KEY: string')) fail('chave publishable pública do Supabase ausente do Env.');
+if (env.includes('SUPABASE_ANON_KEY')) fail('Env reintroduziu chave anon JWT legada desnecessária.');
 
 const supabaseSource = await readFile('worker/app/supabase.ts', 'utf8');
-if (!supabaseSource.includes('const anonKey = clean(env.SUPABASE_ANON_KEY)')) fail('publicHeaders não resolve anon JWT de compatibilidade.');
-if (!supabaseSource.includes("headers.set('authorization', `Bearer ${anonKey}`)")) fail('publicHeaders não define papel anon explicitamente quando disponível.');
+if (!supabaseSource.includes('const key = clean(env.SUPABASE_PUBLISHABLE_KEY)')) fail('publicHeaders não usa SUPABASE_PUBLISHABLE_KEY.');
 if (/publicHeaders[\s\S]{0,900}adminKey\(/.test(supabaseSource)) fail('publicHeaders não pode depender de chave administrativa.');
+if (supabaseSource.includes('SUPABASE_ANON_KEY')) fail('helper público reintroduziu JWT anon legado.');
 
 const account = await readFile('worker/app/auth/account.ts', 'utf8');
 for (const contract of ['/api/auth/account/session', '/api/auth/account/recovery', '/api/auth/account/password']) {
@@ -70,6 +71,9 @@ for (const contract of ['/api/public/catalog', '/api/public/brands', '/api/publi
   if (!catalog.includes(contract)) fail(`contrato público ausente: ${contract}`);
 }
 if (!/api\\\/public\\\/pages/.test(catalog)) fail('contrato público de páginas ausente.');
+for (const rpc of ['/rest/v1/rpc/get_public_catalog', '/rest/v1/rpc/get_public_site']) {
+  if (!catalog.includes(rpc)) fail(`RPC público filtrado ausente: ${rpc}`);
+}
 
 const catalogAdmin = await readFile('worker/app/services/catalog-admin.ts', 'utf8');
 for (const contract of ['/api/admin/catalog', '/api/admin/catalog/settings']) {
@@ -117,5 +121,5 @@ if (failed) {
   process.exit(1);
 }
 
-ok('entrypoint e serviços reconstruídos permanecem independentes da cadeia index-vXX.');
+ok('entrypoint, serviços e RPCs públicos filtrados permanecem independentes da cadeia index-vXX e de JWT anon legado.');
 console.log('ENTERPRISE BACKEND APROVADO PARA CONTINUAR A RECONSTRUÇÃO.');
