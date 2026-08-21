@@ -8,17 +8,25 @@ on:
       - '.enterprise-frontend-payload/**'
       - 'scripts/import-enterprise-frontend-source.sh'
       - '.github/workflows/import-enterprise-frontend-source.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.enterprise-frontend-payload/**'
+      - 'scripts/import-enterprise-frontend-source.sh'
+      - '.github/workflows/import-enterprise-frontend-source.yml'
 
 permissions:
   contents: write
 
 concurrency:
-  group: enterprise-frontend-source-import
+  group: enterprise-frontend-source-import-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   import-source:
     name: Importação verificada da fonte recuperada
+    if: github.event.pull_request.head.ref == 'enterprise/6-equipes-consolidacao' || github.ref == 'refs/heads/enterprise/6-equipes-consolidacao'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
