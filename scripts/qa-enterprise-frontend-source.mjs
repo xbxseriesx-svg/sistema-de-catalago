@@ -9,8 +9,30 @@ const root = path.resolve('frontend');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const exists = (file) => fs.existsSync(path.join(root, file));
 
-assert.ok(exists('src/editor/documentAdapter.ts'), 'Adaptador V94↔Enterprise ausente');
-assert.ok(exists('src/editor/persistence.ts'), 'Persistência Enterprise do frontend ausente');
+const requiredSource = [
+  'src/editor/store.ts',
+  'src/editor/registry.ts',
+  'src/editor/geometry.ts',
+  'src/editor/documentAdapter.ts',
+  'src/editor/persistence.ts',
+  'src/editor/usePersistence.ts',
+  'src/editor/useShortcuts.ts',
+  'src/editor/components/Canvas.tsx',
+  'src/editor/components/NodeView.tsx',
+  'src/editor/components/PropertiesPanel.tsx',
+  'src/editor/components/LayersPanel.tsx',
+  'src/editor/components/MarketingPreview.tsx',
+  'src/editor/components/PublishedDocument.tsx',
+  'src/editor/components/Toolbar.tsx',
+  'src/router.tsx',
+  'src/routeTree.gen.ts',
+  'src/routes/__root.tsx',
+  'src/routes/catalogo.tsx',
+  'src/routes/index.tsx',
+  'src/styles.css',
+];
+for (const file of requiredSource) assert.ok(exists(file), `Fonte recuperada incompleta: ${file}`);
+
 assert.equal(exists('wrangler.jsonc'), false, 'Frontend não pode possuir deploy Wrangler independente');
 assert.equal(exists('.env.production'), false, 'Frontend não pode versionar .env.production');
 assert.equal(exists('src/lib/supabase.ts'), false, 'Cliente Supabase direto deve ser removido do navegador');
@@ -21,15 +43,22 @@ assert.equal(read('VERSION').trim(), '94', 'VERSION do frontend precisa acompanh
 assert.equal(Object.hasOwn(pkg.scripts || {}, 'deploy'), false, 'Frontend não pode ter script deploy próprio');
 assert.equal(Object.hasOwn(pkg.scripts || {}, 'deploy:cloudflare'), false, 'Frontend não pode ter deploy Cloudflare próprio');
 
+const allSourceFiles = [];
 const sourceFiles = [];
 function walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const absolute = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(absolute);
-    else if (/\.(?:ts|tsx|js|jsx|mjs)$/.test(entry.name)) sourceFiles.push(absolute);
+    else {
+      allSourceFiles.push(absolute);
+      if (/\.(?:ts|tsx|js|jsx|mjs)$/.test(entry.name)) sourceFiles.push(absolute);
+    }
   }
 }
 walk(path.join(root, 'src'));
+assert.equal(allSourceFiles.length, 89, `Fonte React recuperada precisa conter exatamente 89 arquivos em src; encontrados ${allSourceFiles.length}`);
+assert.equal(sourceFiles.length, 87, `Fonte React/TS precisa conter 87 arquivos de código; encontrados ${sourceFiles.length}`);
+
 const source = sourceFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 for (const forbidden of [
   'VITE_SUPABASE_URL',
@@ -40,8 +69,10 @@ for (const forbidden of [
   '/storage/v1/',
   '/auth/v1/',
   'getSupabase(',
+  'D1Database',
+  'R2Bucket',
 ]) {
-  assert.equal(source.includes(forbidden), false, `Frontend ainda contém acesso direto proibido: ${forbidden}`);
+  assert.equal(source.includes(forbidden), false, `Frontend ainda contém acesso direto/legado proibido: ${forbidden}`);
 }
 
 const persistence = read('src/editor/persistence.ts');
@@ -125,4 +156,4 @@ const normalizedAgain = adapter.normalizePersistedDocument(serialized);
 assert.equal(adapter.countDocumentNodes(normalizedAgain), 460);
 assert.deepEqual(normalizedAgain, normalized, 'Normalizar → serializar → normalizar não pode perder conteúdo/geometria');
 
-console.log('QA Frontend Enterprise: OK — fonte sem Supabase direto, versão única e round-trip V94↔V5 com 460 nós.');
+console.log('QA Frontend Enterprise: OK — 89 arquivos-fonte, sem Supabase direto, versão única e round-trip V94↔schema 5 com 460 nós.');
