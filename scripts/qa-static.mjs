@@ -125,7 +125,11 @@ assert.match(prepareV81, /ASTER_V81_CORE_PATCH/);
 assert.match(prepareV81, /Bundle V81 já materializado/);
 const packageJson = JSON.parse(pkg);
 assert.equal(packageJson.version, `2.1.${version}`, 'package.json deve acompanhar VERSION');
-assert.match(packageJson.scripts['prepare:bundle'], /^node scripts\/sync-release-metadata-v94\.mjs && node scripts\/prepare-bundle-v81\.mjs$/, 'V94 deve sincronizar metadados antes de executar o mesmo bundle V81 materializado.');
+const rollbackCommand = 'node scripts/sync-release-metadata-v94.mjs && node scripts/prepare-bundle-v81.mjs';
+assert.equal(packageJson.scripts['prepare:rollback'], rollbackCommand, 'Rollback explícito deve continuar materializando exatamente o baseline V81/V94.');
+assert.equal(packageJson.scripts['prepare:release'], 'npm run prepare:frontend', 'Release Enterprise oficial deve preparar somente o frontend reconstruído.');
+assert.doesNotMatch(packageJson.scripts['prepare:release'], /prepare:rollback|sync-release-metadata-v94|prepare-bundle-v81/, 'Release oficial não pode depender da materialização do rollback legado.');
+assert.match(packageJson.scripts.test, /^npm run prepare:rollback && npm run prepare:release && /, 'A regressão deve validar rollback e release como caminhos separados.');
 assert.match(packageJson.scripts.test, /qa-template-preview-v69\.mjs/);
 assert.match(packageJson.scripts.test, /qa-system-v80\.mjs/);
 
