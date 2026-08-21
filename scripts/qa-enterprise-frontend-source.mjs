@@ -28,6 +28,7 @@ const requiredSource = [
   'src/editor/components/PublishedDocument.tsx',
   'src/editor/components/Toolbar.tsx',
   'src/lib/ai.functions.ts',
+  'src/lib/spreadsheet.ts',
   'src/router.tsx',
   'src/routeTree.gen.ts',
   'src/routes/__root.tsx',
@@ -75,8 +76,8 @@ function walk(dir) {
   }
 }
 walk(path.join(root, 'src'));
-assert.equal(allSourceFiles.length, 84, `Fonte React Enterprise precisa conter exatamente 84 arquivos em src; encontrados ${allSourceFiles.length}`);
-assert.equal(sourceFiles.length, 82, `Fonte React/TS Enterprise precisa conter 82 arquivos de código; encontrados ${sourceFiles.length}`);
+assert.equal(allSourceFiles.length, 85, `Fonte React Enterprise precisa conter exatamente 85 arquivos em src; encontrados ${allSourceFiles.length}`);
+assert.equal(sourceFiles.length, 83, `Fonte React/TS Enterprise precisa conter 83 arquivos de código; encontrados ${sourceFiles.length}`);
 
 const source = sourceFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 for (const forbidden of [
@@ -120,6 +121,59 @@ for (const route of ['/api/admin/ai/test', '/api/admin/ai/chat', '/api/admin/ai/
 const editorRoute = read('src/routes/index.tsx');
 assert.ok(editorRoute.includes('overflow-y-auto'), 'Painéis laterais precisam possuir rolagem vertical explícita');
 assert.equal(editorRoute.includes('flex-1 overflow-hidden'), false, 'Painel de elementos não pode bloquear rolagem com overflow-hidden');
+
+const adminRoute = read('src/routes/admin.tsx');
+for (const token of [
+  'parseSpreadsheetFile',
+  '/api/admin/catalog/products/bulk',
+  'Arquivo para importar',
+  '.xlsx,.csv',
+  'Importar produtos',
+  'data-asteryon-import-summary',
+]) assert.ok(adminRoute.includes(token), `Importador Enterprise incompleto: ${token}`);
+
+const spreadsheetSource = read('src/lib/spreadsheet.ts');
+for (const token of ['DecompressionStream', 'xl/sharedStrings.xml', 'xl/worksheets/sheet1.xml', 'mapProductRow', 'sourceColumns']) {
+  assert.ok(spreadsheetSource.includes(token), `Parser XLSX/CSV Enterprise incompleto: ${token}`);
+}
+const spreadsheetJs = ts.transpileModule(spreadsheetSource, {
+  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+}).outputText;
+const spreadsheet = await import(`data:text/javascript;base64,${Buffer.from(spreadsheetJs).toString('base64')}`);
+const realRow = {
+  'Código': '32',
+  'Descrição': 'BALA FLOPI DIET 40G FLORESTAL',
+  'Descrição do departamento': 'ATACADO',
+  'Descrição da seção': 'BOMBONIERI',
+  'Marca': 'FLORESTAL',
+  'Nome da categoria': 'BALAS & DROPS',
+  'Embalagem': '12X40G',
+  'Descrição da unidade': 'DISPLAY',
+  'Embalagem Master': '04X12X40G',
+  'Descrição da unidade_1': 'CAIXA',
+  'NCM + Exceção': '21069090.',
+  'NCM': '21069090',
+  'Unidade Venda [EAN8, UPC12, EAN13, e DUN14]': '7896321005601',
+  'Unidade Master [EAN8, UPC12, EAN13, e DUN14]': '17896321005608',
+};
+const product = spreadsheet.mapProductRow(realRow);
+assert.ok(product, 'a linha real da planilha precisa ser aceita pela fonte Enterprise');
+assert.equal(product.code, '32');
+assert.equal(product.name, 'BALA FLOPI DIET 40G FLORESTAL');
+assert.equal(product.departamentoName, 'ATACADO');
+assert.equal(product.secaoName, 'BOMBONIERI');
+assert.equal(product.categoriaName, 'BALAS & DROPS');
+assert.equal(product.brandName, 'FLORESTAL');
+assert.equal(product.packaging, '12X40G');
+assert.equal(product.unit, 'DISPLAY');
+assert.equal(product.ncm, '21069090');
+assert.equal(product.ean, '7896321005601');
+assert.equal(product.technical['Embalagem Master'], '04X12X40G');
+assert.equal(product.technical['Descrição da unidade Master'], 'CAIXA');
+assert.equal(product.technical['NCM + Exceção'], '21069090.');
+assert.equal(product.technical['Unidade Master EAN'], '17896321005608');
+assert.equal(Object.keys(product.sourceColumns).length, 14, 'as 14 colunas originais precisam ser preservadas');
+assert.equal(spreadsheet.mapProductRow({ ...realRow, 'Nome da categoria': '' }), null, 'categoria continua obrigatória');
 
 const adapterSource = read('src/editor/documentAdapter.ts');
 const adapterJs = ts.transpileModule(adapterSource, {
@@ -186,4 +240,4 @@ const normalizedAgain = adapter.normalizePersistedDocument(serialized);
 assert.equal(adapter.countDocumentNodes(normalizedAgain), 460);
 assert.deepEqual(normalizedAgain, normalized, 'Normalizar → serializar → normalizar não pode perder conteúdo/geometria');
 
-console.log('QA Frontend Enterprise: OK — SPA único, 84 arquivos-fonte, API same-origin e round-trip V94↔schema 5 com 460 nós.');
+console.log('QA Frontend Enterprise: OK — SPA único, 85 arquivos-fonte, importador XLSX/CSV de 14 colunas, API same-origin e round-trip V94↔schema 5 com 460 nós.');
