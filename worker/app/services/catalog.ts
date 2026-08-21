@@ -2,7 +2,7 @@ import type { Env } from '../env';
 import { COMPANY_ID } from '../env';
 import { marketingLayout, postgrestLiteral } from '../domain';
 import { clean, fail, ok } from '../http';
-import { table, tableAll } from '../supabase';
+import { publicTable, publicTableAll, table, tableAll } from '../supabase';
 
 function brandDto(row: any) {
   const data = row?.data && typeof row.data === 'object' ? row.data : {};
@@ -22,11 +22,10 @@ function brandDto(row: any) {
 }
 
 export async function brandsPayload(env: Env, publicOnly = false) {
-  const rows = await tableAll(
-    env,
-    'brands',
-    `company_id=eq.${COMPANY_ID}${publicOnly ? '&active=eq.true' : ''}&select=id,name,slug,description,website,logo_url,banner_url,sort_order,active,featured,data&order=sort_order.asc,name.asc`,
-  );
+  const query = `company_id=eq.${COMPANY_ID}${publicOnly ? '&active=eq.true' : ''}&select=id,name,slug,description,website,logo_url,banner_url,sort_order,active,featured,data&order=sort_order.asc,name.asc`;
+  const rows = publicOnly
+    ? await publicTableAll(env, 'brands', query)
+    : await tableAll(env, 'brands', query);
   const visible = publicOnly ? rows.filter((row: any) => row?.active === true) : rows;
   return visible.map(brandDto);
 }
@@ -41,17 +40,17 @@ function liveOffer(item: any, now = Date.now()) {
 }
 
 export async function offersPayload(env: Env, publicOnly: boolean) {
-  const offers = await table(
-    env,
-    'offers',
-    `company_id=eq.${COMPANY_ID}${publicOnly ? '&status=eq.published' : ''}&select=*&order=featured.desc,updated_at.desc`,
-  ) as any[];
+  const offerQuery = `company_id=eq.${COMPANY_ID}${publicOnly ? '&status=eq.published' : ''}&select=*&order=featured.desc,updated_at.desc`;
+  const offers = (publicOnly
+    ? await publicTable(env, 'offers', offerQuery)
+    : await table(env, 'offers', offerQuery)) as any[];
+  const linksQuery = offers?.length
+    ? `offer_id=in.(${offers.map((item: any) => postgrestLiteral(item.id)).join(',')})&select=offer_id,product_id,sort_order&order=sort_order.asc`
+    : '';
   const links = offers?.length
-    ? await tableAll(
-      env,
-      'offer_products',
-      `offer_id=in.(${offers.map((item: any) => postgrestLiteral(item.id)).join(',')})&select=offer_id,product_id,sort_order&order=sort_order.asc`,
-    )
+    ? (publicOnly
+      ? await publicTableAll(env, 'offer_products', linksQuery)
+      : await tableAll(env, 'offer_products', linksQuery))
     : [];
 
   const result = (offers || []).map((offer: any) => ({
@@ -72,15 +71,14 @@ export async function offersPayload(env: Env, publicOnly: boolean) {
 
 export async function catalogPayload(env: Env, publicOnly: boolean) {
   const status = publicOnly ? '&status=eq.active' : '';
+  const productQuery = `company_id=eq.${COMPANY_ID}${status}&select=*&order=name.asc`;
+  const hierarchyQuery = `company_id=eq.${COMPANY_ID}${publicOnly ? '&active=eq.true' : ''}&select=id,name,slug,type,parent_id,sort_order,active&order=sort_order.asc,name.asc`;
+  const settingsQuery = `company_id=eq.${COMPANY_ID}&select=display_fields&limit=1`;
   const [products, brands, hierarchy, settings, promotions] = await Promise.all([
-    tableAll(env, 'products', `company_id=eq.${COMPANY_ID}${status}&select=*&order=name.asc`),
+    publicOnly ? publicTableAll(env, 'products', productQuery) : tableAll(env, 'products', productQuery),
     brandsPayload(env, publicOnly),
-    tableAll(
-      env,
-      'hierarchy_nodes',
-      `company_id=eq.${COMPANY_ID}${publicOnly ? '&active=eq.true' : ''}&select=id,name,slug,type,parent_id,sort_order,active&order=sort_order.asc,name.asc`,
-    ),
-    table(env, 'catalog_settings', `company_id=eq.${COMPANY_ID}&select=display_fields&limit=1`) as Promise<any[]>,
+    publicOnly ? publicTableAll(env, 'hierarchy_nodes', hierarchyQuery) : tableAll(env, 'hierarchy_nodes', hierarchyQuery),
+    (publicOnly ? publicTable(env, 'catalog_settings', settingsQuery) : table(env, 'catalog_settings', settingsQuery)) as Promise<any[]>,
     offersPayload(env, publicOnly),
   ]);
 
@@ -123,7 +121,7 @@ export async function handlePublicCatalogRoute(req: Request, env: Env, path: str
     return ok({ brands: await brandsPayload(env, true) });
   }
   if (path === '/api/public/marketing' && req.method === 'GET') {
-    const rows = await table(
+    const rows = await publicTable(
       env,
       'marketing_settings',
       `company_id=eq.${COMPANY_ID}&select=theme,banner,video_banner,carousel,settings&limit=1`,
@@ -141,6 +139,8 @@ export async function handlePublicCatalogRoute(req: Request, env: Env, path: str
   }
   const pageMatch = path.match(/^\/api\/public\/pages\/([^/]+)$/);
   if (pageMatch && req.method === 'GET') {
+    // pages ainda não possui SELECT anon no baseline; mantenha a leitura server-side protegida
+    // até existir uma migration revisada e aprovada para publicação de páginas.
     const rows = await table(
       env,
       'pages',
