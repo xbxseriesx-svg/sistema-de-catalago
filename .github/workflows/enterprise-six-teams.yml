@@ -77,6 +77,8 @@ jobs:
         run: npm run prepare:release
       - name: TypeScript
         run: npm run check
+      - name: Preparar rollback legado explicitamente
+        run: npm run prepare:rollback
       - name: Gerar rollback V81 no caminho dos testes históricos
         run: npx wrangler deploy --dry-run --config wrangler.legacy-rollback.jsonc --outdir .wrangler-legacy-rollback-audit
       - name: Compilar Worker e SPA Enterprise oficiais no Wrangler
@@ -204,6 +206,8 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Preparar exatamente os assets de release Enterprise
         run: npm run prepare:release
+      - name: Preparar rollback legado explicitamente
+        run: npm run prepare:rollback
       - name: Rollback — validar Worker V81 e public legado sem publicar
         run: npx wrangler deploy --dry-run --config wrangler.legacy-rollback.jsonc --outdir .wrangler-legacy-rollback
       - name: Oficial — validar Worker e SPA Enterprise sem publicar
