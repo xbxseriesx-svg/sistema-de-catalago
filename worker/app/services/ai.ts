@@ -229,7 +229,7 @@ class OpenAiCompatible extends AiProvider {
       ...(this.cfg.provider === 'openrouter' ? { 'http-referer': 'https://sistema-de-catalago.xbxseriesx.workers.dev', 'x-title': 'ASTERYON AI Website Builder' } : {}),
     };
   }
-  async listModels() {
+  async listModels(): Promise<string[]> {
     const base = await this.validatedBase();
     const response = await providerRequest(`${base}/models`, { headers: this.headers(), timeoutMs: 20_000 });
     if (!response.ok) {
@@ -265,13 +265,15 @@ class OpenAiCompatible extends AiProvider {
 }
 
 class OllamaProvider extends AiProvider {
-  async listModels() {
+  async listModels(): Promise<string[]> {
     const base = await this.validatedBase();
     const response = await providerRequest(`${base}/api/tags`, { timeoutMs: 15_000 });
     if (!response.ok) throw new Error(`HTTP ${response.status} em /api/tags`);
-    const json = await response.json() as any;
-    const names = (Array.isArray(json?.models) ? json.models : []).map((item: any) => clean(item?.name)).filter(Boolean);
-    return [...new Set(names.flatMap((name: string) => [name, name.split(':')[0] || name]))].slice(0, 500);
+    const json = await response.json() as { models?: Array<{ name?: string }> };
+    const names: string[] = (json.models ?? [])
+      .map((item) => clean(item.name))
+      .filter((name): name is string => Boolean(name));
+    return [...new Set<string>(names.flatMap((name) => [name, name.split(':')[0] || name]))].slice(0, 500);
   }
   async chat(messages: AiMessage[], opts?: { json?: boolean }): Promise<AiChatResult> {
     const started = Date.now();
