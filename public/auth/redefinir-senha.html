@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+  <link rel="icon" type="image/svg+xml" href="/asteryon.svg" />
+  <link rel="stylesheet" href="/auth/auth-flow-v89.css?v=89" />
+  <title>Redefinir senha | ASTERYON</title>
+</head>
+<body data-auth-mode="reset">
+  <main class="auth-shell">
+    <section class="auth-card" aria-labelledby="auth-title">
+      <div class="auth-brand">
+        <img src="/asteryon.svg" alt="" />
+        <div><strong>ASTERYON</strong><span>Segurança da conta</span></div>
+      </div>
+
+      <h1 id="auth-title">Redefinir senha</h1>
+      <p class="auth-lead">Solicite um link de recuperação ou, depois de abrir o link recebido por e-mail, defina uma nova senha nesta mesma área.</p>
+
+      <div id="auth-status" class="auth-status" role="status" aria-live="polite"></div>
+
+      <form id="recovery-form" class="auth-form" autocomplete="on">
+        <label>
+          E-mail da conta
+          <input id="recovery-email" name="email" type="email" autocomplete="email" required placeholder="nome@empresa.com" />
+        </label>
+        <button class="auth-button" type="submit"><span class="auth-spinner" aria-hidden="true"></span><span>Enviar link de recuperação</span></button>
+      </form>
+
+      <form id="password-form" class="auth-form" autocomplete="on" hidden>
+        <label>
+          Nova senha
+          <input id="new-password" name="password" type="password" minlength="10" autocomplete="new-password" required />
+        </label>
+        <label>
+          Confirmar nova senha
+          <input id="confirm-password" name="confirmPassword" type="password" minlength="10" autocomplete="new-password" required />
+        </label>
+        <button class="auth-button" type="submit"><span class="auth-spinner" aria-hidden="true"></span><span>Salvar nova senha</span></button>
+      </form>
+
+      <div id="reset-actions" class="auth-actions" hidden>
+        <a class="auth-link-button" href="/">Entrar no sistema</a>
+        <a class="auth-link-button secondary" href="/auth/confirmar.html">Voltar para confirmação</a>
+      </div>
+
+      <p class="auth-helper">Por segurança, o link de recuperação é temporário e de uso único. A senha nunca é gravada nesta página nem enviada ao GitHub.</p>
+      <footer class="auth-footer">ASTERYON • fluxo protegido de recuperação de conta</footer>
+    </section>
+  </main>
+  <script src="/auth/auth-flow-v89.js?v=89" defer></script>
+</body>
+</html>

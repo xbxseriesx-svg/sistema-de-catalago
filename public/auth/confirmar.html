@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta http-equiv="Cache-Control" content="no-store" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+  <link rel="icon" type="image/svg+xml" href="/asteryon.svg" />
+  <link rel="stylesheet" href="/auth/auth-flow-v89.css?v=89" />
+  <title>Confirmar acesso | ASTERYON</title>
+</head>
+<body data-auth-mode="confirm">
+  <main class="auth-shell">
+    <section class="auth-card" aria-labelledby="auth-title">
+      <div class="auth-brand">
+        <img src="/asteryon.svg" alt="" />
+        <div><strong>ASTERYON</strong><span>Segurança da conta</span></div>
+      </div>
+
+      <h1 id="auth-title">Confirmar acesso</h1>
+      <p class="auth-lead">Esta área valida o link enviado pelo Supabase e prepara sua conta para entrar no painel ou definir uma senha.</p>
+
+      <div id="auth-status" class="auth-status" role="status" aria-live="polite"></div>
+
+      <div id="confirm-actions" class="auth-actions" hidden>
+        <a id="define-password-link" class="auth-link-button" href="/auth/redefinir-senha.html">Definir ou redefinir senha</a>
+        <a class="auth-link-button secondary" href="/">Ir para o sistema</a>
+      </div>
+
+      <p class="auth-helper">Se o link estiver expirado, acesse a área de redefinição de senha para solicitar um novo e-mail.</p>
+      <footer class="auth-footer">ASTERYON • fluxo protegido de confirmação de conta</footer>
+    </section>
+  </main>
+  <script src="/auth/auth-flow-v89.js?v=89" defer></script>
+</body>
+</html>
