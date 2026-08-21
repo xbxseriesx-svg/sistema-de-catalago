@@ -1,12 +1,16 @@
 import { test, expect } from '@playwright/test';
 
-function installApiMocks(page) {
+function installApiMocks(page, { authenticated }) {
   return page.route('**/api/**', async route => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     const json = body => route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify(body) });
 
-    if (path === '/api/auth/status') return json({ ok: true, needsBootstrap: false, user: { id: 'qa-user', companyId: 'cmp_asteryon', email: 'qa@example.invalid', name: 'QA', role: 'SDM' } });
+    if (path === '/api/auth/status') {
+      return json(authenticated
+        ? { ok: true, needsBootstrap: false, user: { id: 'qa-user', companyId: 'cmp_asteryon', email: 'qa@example.invalid', name: 'QA', role: 'SDM' } }
+        : { ok: true, needsBootstrap: false, user: null });
+    }
     if (path === '/api/admin/catalog' || path === '/api/public/catalog') return json({ ok: true, catalog: {
       products: [{ id: 'p1', code: '1001', name: 'Produto QA', shortDescription: 'Produto QA', status: 'ativo', departamentoId: 'dep1', secaoId: 'sec1', categoriaId: 'cat1', imageUrl: null }],
       brands: [{ id: 'b1', name: 'Marca QA', slug: 'marca-qa', status: 'active' }],
@@ -22,7 +26,7 @@ function installApiMocks(page) {
     if (path === '/api/public/pages/home' || path.startsWith('/api/public/pages/home/')) return json({ ok: true, page: { slug: 'home', title: 'Home', versionId: 'supabase-v1', versionNumber: 1, publishedAt: new Date().toISOString(), nodes: [] } });
     if (path.includes('/templates')) return json({ ok: true, templates: [] });
     if (path.includes('/snapshots')) return json({ ok: true, snapshots: [] });
-    if (path.includes('/publications')) return json({ ok: true, publications: [] });
+    if (path.includes('/publications')) return json({ ok: true });
     return json({ ok: true });
   });
 }
@@ -45,8 +49,8 @@ async function openManagementPanel(page, testInfo) {
   await expect(heading).toBeVisible({ timeout: 15_000 });
 }
 
-test('raiz pública usa a experiência V94 e não abre o editor administrativo', async ({ page }) => {
-  await installApiMocks(page);
+test('raiz pública como visitante usa a experiência V94 e não abre o editor administrativo', async ({ page }) => {
+  await installApiMocks(page, { authenticated: false });
   const errors = runtimeErrors(page);
   await page.goto('/', { waitUntil: 'networkidle' });
   await expect(page.locator('#root')).toBeVisible();
@@ -58,8 +62,8 @@ test('raiz pública usa a experiência V94 e não abre o editor administrativo',
   expect(errors).toEqual([]);
 });
 
-test('/admin abre o editor/gestão V94 correto com as abas históricas', async ({ page }, testInfo) => {
-  await installApiMocks(page);
+test('/admin como SDM abre o editor/gestão V94 correto com as abas históricas', async ({ page }, testInfo) => {
+  await installApiMocks(page, { authenticated: true });
   const errors = runtimeErrors(page);
   await page.goto('/admin', { waitUntil: 'networkidle' });
   await expect(page.locator('#root')).toBeVisible();
@@ -70,8 +74,8 @@ test('/admin abre o editor/gestão V94 correto com as abas históricas', async (
   expect(errors).toEqual([]);
 });
 
-test('/admin mantém controles alcançáveis e sem overflow no mobile', async ({ page }, testInfo) => {
-  await installApiMocks(page);
+test('/admin como SDM mantém controles alcançáveis e sem overflow no mobile', async ({ page }, testInfo) => {
+  await installApiMocks(page, { authenticated: true });
   const errors = runtimeErrors(page);
   await page.goto('/admin', { waitUntil: 'networkidle' });
   await openManagementPanel(page, testInfo);
