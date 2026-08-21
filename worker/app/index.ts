@@ -22,6 +22,7 @@ import { handleProductImagesRoute } from './services/product-images';
 import { handleMediaRoute } from './services/media';
 import { handlePagesRoute } from './services/pages';
 import { handleTemplatesRoute } from './services/templates';
+import { handleAiRoute } from './services/ai';
 
 async function firstResponse(promises: Array<() => Promise<Response | null>>) {
   for (const run of promises) {
@@ -108,6 +109,7 @@ export default {
         if (hierarchyResponse) return finish(hierarchyResponse);
 
         const adminResponse = await firstResponse([
+          () => handleAiRoute(effectiveReq, env, path),
           () => handleProductImagesRoute(effectiveReq, env, path),
           () => handleMediaRoute(effectiveReq, env, path),
           () => handleBrandImagesRoute(effectiveReq, env, path),

@@ -29,6 +29,7 @@ jobs:
         run: |
           node scripts/qa-enterprise-transition.mjs
           node scripts/qa-enterprise-frontend-source.mjs
+          node scripts/qa-enterprise-ai.mjs
 
   team1:
     name: Equipe 1 — Build e Desenvolvimento
@@ -47,15 +48,17 @@ jobs:
         run: node scripts/qa-enterprise-backend.mjs
       - name: Compilar e executar regressão automatizada com Enterprise oficial
         run: npm test
-      - name: Instalar dependências isoladas do frontend candidato
+      - name: Instalar dependências isoladas do frontend SPA candidato
         working-directory: frontend
         run: npm install --ignore-scripts --no-audit --no-fund
-      - name: QA, TypeScript e build do frontend candidato
+      - name: QA, TypeScript e build SPA do frontend candidato
         working-directory: frontend
         run: |
           npm run qa:enterprise
           npm run typecheck
           npm run build
+          test -f dist/index.html
+          test ! -d .output
 
   team2:
     name: Equipe 2 — Auditoria Técnica e Segurança
@@ -80,8 +83,10 @@ jobs:
         run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-audit
       - name: Revalidar independência do backend novo
         run: node scripts/qa-enterprise-backend.mjs
-      - name: Validar contratos de segurança Enterprise
-        run: node scripts/qa-enterprise-security-contracts.mjs
+      - name: Validar contratos de segurança Enterprise e IA
+        run: |
+          node scripts/qa-enterprise-security-contracts.mjs
+          node scripts/qa-enterprise-ai.mjs
       - name: Segurança histórica, SSRF e isolamento por tenant no Enterprise oficial
         run: |
           npx wrangler deploy --dry-run --outdir .wrangler-dry-run
@@ -91,7 +96,7 @@ jobs:
           node scripts/qa-tenant-isolation-v89.mjs
       - name: Auditoria de dependências do Worker
         run: npm audit --audit-level=high
-      - name: Auditar frontend candidato sem scripts de terceiros
+      - name: Auditar frontend SPA sem scripts de terceiros
         working-directory: frontend
         run: |
           npm install --ignore-scripts --no-audit --no-fund
@@ -148,19 +153,23 @@ jobs:
         run: npm run prepare:bundle
       - name: Compilar novamente o Worker Enterprise oficial
         run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-team4
-      - name: Reconstruir frontend candidato em runner independente
+      - name: Reconstruir frontend SPA candidato em runner independente
         working-directory: frontend
         run: |
           npm install --ignore-scripts --no-audit --no-fund
           npm run qa:enterprise
           npm run typecheck
           npm run build
+          test -f dist/index.html
+          test ! -d .output
       - name: Instalar Chromium independente
         run: |
           npm install --no-save @playwright/test@1.55.0
           npx playwright install --with-deps chromium
       - name: Contratos de segurança antes dos E2E independentes
-        run: node scripts/qa-enterprise-security-contracts.mjs
+        run: |
+          node scripts/qa-enterprise-security-contracts.mjs
+          node scripts/qa-enterprise-ai.mjs
       - name: Repetir regressões críticas e stress do Editor
         run: |
           npx playwright test tests/e2e/editor-functional-regressions.spec.mjs --project=chromium-desktop --project=chromium-mobile
@@ -174,7 +183,6 @@ jobs:
             test-results/
             playwright-report/
             .wrangler-enterprise-team4/
-            frontend/.output/
             frontend/dist/
           if-no-files-found: ignore
           include-hidden-files: true
@@ -199,13 +207,15 @@ jobs:
         run: npx wrangler deploy --dry-run --config wrangler.legacy-rollback.jsonc --outdir .wrangler-legacy-rollback
       - name: Oficial — validar Worker Enterprise sem publicar
         run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-dry-run
-      - name: Revalidar frontend candidato sem ativá-lo
+      - name: Revalidar frontend SPA candidato sem ativá-lo
         working-directory: frontend
         run: |
           npm install --ignore-scripts --no-audit --no-fund
           npm run qa:enterprise
           npm run typecheck
           npm run build
+          test -f dist/index.html
+          test ! -d .output
       - name: Revalidar metadados, segurança e limpeza transitória
         run: |
           node scripts/qa-version-v94.mjs
@@ -214,14 +224,14 @@ jobs:
           node scripts/qa-enterprise-backend.mjs
           node scripts/qa-enterprise-security-contracts.mjs
           node scripts/qa-enterprise-frontend-source.mjs
-      - name: Artefatos de dry-run e frontend candidato para inspeção
+          node scripts/qa-enterprise-ai.mjs
+      - name: Artefatos de dry-run e frontend SPA candidato para inspeção
         uses: actions/upload-artifact@v4
         with:
           name: enterprise-equipe5-release-candidate
           path: |
             .wrangler-legacy-rollback/
             .wrangler-enterprise-dry-run/
-            frontend/.output/
             frontend/dist/
           if-no-files-found: error
           include-hidden-files: true

@@ -10,6 +10,9 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const exists = (file) => fs.existsSync(path.join(root, file));
 
 const requiredSource = [
+  'index.html',
+  'vite.config.ts',
+  'src/main.tsx',
   'src/editor/store.ts',
   'src/editor/registry.ts',
   'src/editor/geometry.ts',
@@ -24,6 +27,7 @@ const requiredSource = [
   'src/editor/components/MarketingPreview.tsx',
   'src/editor/components/PublishedDocument.tsx',
   'src/editor/components/Toolbar.tsx',
+  'src/lib/ai.functions.ts',
   'src/router.tsx',
   'src/routeTree.gen.ts',
   'src/routes/__root.tsx',
@@ -31,17 +35,31 @@ const requiredSource = [
   'src/routes/index.tsx',
   'src/styles.css',
 ];
-for (const file of requiredSource) assert.ok(exists(file), `Fonte recuperada incompleta: ${file}`);
+for (const file of requiredSource) assert.ok(exists(file), `Fonte Enterprise incompleta: ${file}`);
 
-assert.equal(exists('wrangler.jsonc'), false, 'Frontend não pode possuir deploy Wrangler independente');
-assert.equal(exists('.env.production'), false, 'Frontend não pode versionar .env.production');
-assert.equal(exists('src/lib/supabase.ts'), false, 'Cliente Supabase direto deve ser removido do navegador');
+for (const removed of [
+  'wrangler.jsonc',
+  '.env.production',
+  'src/lib/supabase.ts',
+  'src/server.ts',
+  'src/start.ts',
+  'src/lib/ai-providers.server.ts',
+  'src/lib/ai-search.server.ts',
+  'src/lib/lovable-error-reporting.ts',
+  'src/lib/error-capture.ts',
+  'src/lib/error-page.ts',
+]) {
+  assert.equal(exists(removed), false, `Resíduo/deploy paralelo não permitido no frontend: ${removed}`);
+}
 
 const pkg = JSON.parse(read('package.json'));
 assert.equal(pkg.version, '2.1.94', 'Frontend precisa acompanhar a versão oficial 2.1.94');
 assert.equal(read('VERSION').trim(), '94', 'VERSION do frontend precisa acompanhar a release oficial');
 assert.equal(Object.hasOwn(pkg.scripts || {}, 'deploy'), false, 'Frontend não pode ter script deploy próprio');
 assert.equal(Object.hasOwn(pkg.scripts || {}, 'deploy:cloudflare'), false, 'Frontend não pode ter deploy Cloudflare próprio');
+for (const dependency of ['@tanstack/react-start', '@tanstack/router-plugin', '@lovable.dev/vite-tanstack-config', 'nitro']) {
+  assert.equal(Boolean(pkg.dependencies?.[dependency] || pkg.devDependencies?.[dependency]), false, `Runtime paralelo proibido: ${dependency}`);
+}
 
 const allSourceFiles = [];
 const sourceFiles = [];
@@ -56,8 +74,8 @@ function walk(dir) {
   }
 }
 walk(path.join(root, 'src'));
-assert.equal(allSourceFiles.length, 89, `Fonte React recuperada precisa conter exatamente 89 arquivos em src; encontrados ${allSourceFiles.length}`);
-assert.equal(sourceFiles.length, 87, `Fonte React/TS precisa conter 87 arquivos de código; encontrados ${sourceFiles.length}`);
+assert.equal(allSourceFiles.length, 83, `Fonte React Enterprise precisa conter exatamente 83 arquivos em src; encontrados ${allSourceFiles.length}`);
+assert.equal(sourceFiles.length, 81, `Fonte React/TS Enterprise precisa conter 81 arquivos de código; encontrados ${sourceFiles.length}`);
 
 const source = sourceFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 for (const forbidden of [
@@ -71,8 +89,11 @@ for (const forbidden of [
   'getSupabase(',
   'D1Database',
   'R2Bucket',
+  'createServerFn',
+  '@tanstack/react-start',
+  '@lovable.dev/',
 ]) {
-  assert.equal(source.includes(forbidden), false, `Frontend ainda contém acesso direto/legado proibido: ${forbidden}`);
+  assert.equal(source.includes(forbidden), false, `Frontend ainda contém acesso direto/runtime paralelo proibido: ${forbidden}`);
 }
 
 const persistence = read('src/editor/persistence.ts');
@@ -86,10 +107,18 @@ for (const route of [
 ]) {
   assert.ok(persistence.includes(route), `Persistência precisa usar ${route}`);
 }
-assert.ok(persistence.includes('serializeForLegacyStorage'), 'Save precisa preservar formato de rollback V94');
+assert.ok(persistence.includes('serializeForLegacyStorage'), 'Save precisa preservar formato de rollback V94 durante a transição');
 assert.ok(persistence.includes('expectedRevision: remoteRevision'), 'Save precisa manter proteção contra conflito de revisão');
 assert.ok(persistence.includes('schemaVersion: 5'), 'Versão interna do documento precisa ser identificada como schemaVersion');
 assert.equal(source.includes('ASTERYON V5'), false, 'Frontend não pode anunciar V5 como versão da aplicação');
+
+const aiClient = read('src/lib/ai.functions.ts');
+for (const route of ['/api/admin/ai/test', '/api/admin/ai/chat', '/api/admin/ai/search']) {
+  assert.ok(aiClient.includes(route), `ASTERYON AI precisa usar gateway same-origin ${route}`);
+}
+const editorRoute = read('src/routes/index.tsx');
+assert.ok(editorRoute.includes('overflow-y-auto'), 'Painéis laterais precisam possuir rolagem vertical explícita');
+assert.equal(editorRoute.includes('flex-1 overflow-hidden'), false, 'Painel de elementos não pode bloquear rolagem com overflow-hidden');
 
 const adapterSource = read('src/editor/documentAdapter.ts');
 const adapterJs = ts.transpileModule(adapterSource, {
@@ -156,4 +185,4 @@ const normalizedAgain = adapter.normalizePersistedDocument(serialized);
 assert.equal(adapter.countDocumentNodes(normalizedAgain), 460);
 assert.deepEqual(normalizedAgain, normalized, 'Normalizar → serializar → normalizar não pode perder conteúdo/geometria');
 
-console.log('QA Frontend Enterprise: OK — 89 arquivos-fonte, sem Supabase direto, versão única e round-trip V94↔schema 5 com 460 nós.');
+console.log('QA Frontend Enterprise: OK — SPA único, 83 arquivos-fonte, API same-origin e round-trip V94↔schema 5 com 460 nós.');

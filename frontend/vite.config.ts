@@ -1,8 +1,12 @@
-// Fonte recuperada do pacote V5. Ainda não é o build oficial de produção.
-import { defineConfig } from "@lovable.dev/vite-tanstack-config";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
-  tanstackStart: {
-    server: { entry: "server" },
+  plugins: [tsconfigPaths(), tailwindcss(), react()],
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
   },
 });
