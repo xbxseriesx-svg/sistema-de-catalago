@@ -27,9 +27,10 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Validar lockfile determinístico do frontend
         run: test -s frontend/package-lock.json
-      - name: Validar invariantes da transição Enterprise
+      - name: Validar candidato final sem legado físico
         run: |
           node scripts/qa-enterprise-transition.mjs
+          node scripts/qa-enterprise-backend.mjs
           node scripts/qa-enterprise-frontend-source.mjs
           node scripts/qa-enterprise-ai.mjs
 
@@ -46,9 +47,7 @@ jobs:
           cache: npm
       - name: Instalar dependências
         run: npm ci --ignore-scripts
-      - name: Validar arquitetura modular em reconstrução
-        run: node scripts/qa-enterprise-backend.mjs
-      - name: Compilar e executar regressão automatizada com Enterprise oficial
+      - name: Executar regressão oficial completa do Worker/SPA
         run: npm test
       - name: Revalidar frontend SPA oficial isoladamente
         working-directory: frontend
@@ -64,7 +63,7 @@ jobs:
     name: Equipe 2 — Auditoria Técnica e Segurança
     needs: team1
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -75,27 +74,21 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Preparar release Enterprise oficial
         run: npm run prepare:release
-      - name: TypeScript
-        run: npm run check
-      - name: Preparar rollback legado explicitamente
-        run: npm run prepare:rollback
-      - name: Gerar rollback V81 no caminho dos testes históricos
-        run: npx wrangler deploy --dry-run --config wrangler.legacy-rollback.jsonc --outdir .wrangler-legacy-rollback-audit
-      - name: Compilar Worker e SPA Enterprise oficiais no Wrangler
-        run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-audit
-      - name: Revalidar independência do backend novo
-        run: node scripts/qa-enterprise-backend.mjs
-      - name: Validar contratos de segurança Enterprise e IA
+      - name: TypeScript e dry-run oficial
         run: |
+          npm run check
+          npx wrangler deploy --dry-run --outdir .wrangler-enterprise-audit
+          node scripts/prepare-worker-qa.mjs
+      - name: Revalidar arquitetura e contratos de segurança
+        run: |
+          node scripts/qa-enterprise-transition.mjs
+          node scripts/qa-enterprise-backend.mjs
           node scripts/qa-enterprise-security-contracts.mjs
           node scripts/qa-enterprise-ai.mjs
-      - name: Segurança histórica, SSRF e isolamento por tenant no Enterprise oficial
-        run: |
-          npx wrangler deploy --dry-run --outdir .wrangler-dry-run
-          node scripts/prepare-worker-qa.mjs
-          node scripts/qa-security-v89.mjs
-          node scripts/qa-remote-image-ssrf-v89.mjs
-          node scripts/qa-tenant-isolation-v89.mjs
+          node scripts/qa-auth-refresh.mjs
+          node scripts/qa-auth-account.mjs
+          node scripts/qa-remote-image-ssrf.mjs
+          node scripts/qa-product-images.mjs
       - name: Auditoria de dependências do Worker
         run: npm audit --audit-level=high
       - name: Auditar frontend SPA oficial sem scripts de terceiros
@@ -105,6 +98,17 @@ jobs:
           npm run qa:enterprise
           npm run typecheck
           npm audit --audit-level=high
+      - name: Checkout isolado do baseline de rollback
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          path: _rollback-v94
+      - name: Provar rollback do SHA-base sem publicar
+        working-directory: _rollback-v94
+        run: |
+          npm ci --ignore-scripts
+          npm run prepare:bundle
+          npx wrangler deploy --dry-run --outdir ../.wrangler-base-rollback-audit
 
   team3:
     name: Equipe 3 — Homologação Funcional e UX
@@ -123,10 +127,10 @@ jobs:
         run: npm run prepare:release
       - name: Instalar Playwright/Chromium para QA
         run: |
-          npm install --no-save @playwright/test@1.55.0
+          npm install --no-save --package-lock=false @playwright/test@1.62.0
           npx playwright install --with-deps chromium
       - name: Executar homologação desktop e mobile contra SPA oficial
-        run: npx playwright test --project=chromium-desktop --project=chromium-mobile
+        run: npx playwright test --config=playwright.config.mjs
       - name: Evidências da Equipe 3
         if: always()
         uses: actions/upload-artifact@v4
@@ -152,10 +156,10 @@ jobs:
           cache: npm
       - name: Instalar projeto em runner independente
         run: npm ci --ignore-scripts
-      - name: Preparar release oficial do mesmo commit
-        run: npm run prepare:release
-      - name: Compilar novamente Worker e SPA Enterprise oficiais
-        run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-team4
+      - name: Preparar e compilar novamente o release oficial
+        run: |
+          npm run prepare:release
+          npx wrangler deploy --dry-run --outdir .wrangler-enterprise-team4
       - name: Reconstruir frontend SPA oficial em runner independente
         working-directory: frontend
         run: |
@@ -167,16 +171,18 @@ jobs:
           test ! -d .output
       - name: Instalar Chromium independente
         run: |
-          npm install --no-save @playwright/test@1.55.0
+          npm install --no-save --package-lock=false @playwright/test@1.62.0
           npx playwright install --with-deps chromium
       - name: Contratos de segurança antes dos E2E independentes
         run: |
           node scripts/qa-enterprise-security-contracts.mjs
           node scripts/qa-enterprise-ai.mjs
-      - name: Repetir regressões críticas e stress do Editor no SPA oficial
+      - name: Repetir regressões críticas e importação no SPA oficial
         run: |
           npx playwright test tests/e2e/editor-functional-regressions.spec.mjs --project=chromium-desktop --project=chromium-mobile
-          npx playwright test tests/e2e/preview-editor-v93-filled-source.spec.mjs --project=chromium-desktop --project=chromium-mobile
+          npx playwright test tests/e2e/import-products-enterprise.spec.mjs --project=chromium-desktop --project=chromium-mobile
+          npx playwright test tests/e2e/preview-editor-filled-source.spec.mjs --project=chromium-desktop --project=chromium-mobile
+          npx playwright test tests/e2e/preview-editor-independent.spec.mjs --project=chromium-desktop --project=chromium-mobile
       - name: Evidências da Equipe 4
         if: always()
         uses: actions/upload-artifact@v4
@@ -195,7 +201,7 @@ jobs:
     name: Equipe 5 — DevOps e Release Readiness
     needs: team4
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -206,10 +212,6 @@ jobs:
         run: npm ci --ignore-scripts
       - name: Preparar exatamente os assets de release Enterprise
         run: npm run prepare:release
-      - name: Preparar rollback legado explicitamente
-        run: npm run prepare:rollback
-      - name: Rollback — validar Worker V81 e public legado sem publicar
-        run: npx wrangler deploy --dry-run --config wrangler.legacy-rollback.jsonc --outdir .wrangler-legacy-rollback
       - name: Oficial — validar Worker e SPA Enterprise sem publicar
         run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-dry-run
       - name: Revalidar frontend SPA oficial ativado no release
@@ -221,21 +223,31 @@ jobs:
           npm run build
           test -f dist/index.html
           test ! -d .output
-      - name: Revalidar metadados, segurança e limpeza transitória
+      - name: Revalidar metadados, segurança e limpeza final
         run: |
-          node scripts/qa-version-v94.mjs
-          node scripts/qa-cleanup-v89.mjs
           node scripts/qa-enterprise-transition.mjs
           node scripts/qa-enterprise-backend.mjs
           node scripts/qa-enterprise-security-contracts.mjs
           node scripts/qa-enterprise-frontend-source.mjs
           node scripts/qa-enterprise-ai.mjs
+          node scripts/qa-supabase-baseline.mjs
+      - name: Checkout isolado do baseline de rollback
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          path: _rollback-v94
+      - name: Release readiness — provar rollback do SHA-base sem publicar
+        working-directory: _rollback-v94
+        run: |
+          npm ci --ignore-scripts
+          npm run prepare:bundle
+          npx wrangler deploy --dry-run --outdir ../.wrangler-base-rollback
       - name: Artefatos de dry-run e frontend SPA oficial para inspeção
         uses: actions/upload-artifact@v4
         with:
           name: enterprise-equipe5-release-candidate
           path: |
-            .wrangler-legacy-rollback/
+            .wrangler-base-rollback/
             .wrangler-enterprise-dry-run/
             frontend/dist/
           if-no-files-found: error
