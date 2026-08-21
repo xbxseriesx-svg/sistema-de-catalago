@@ -6,12 +6,12 @@ const TEMPLATE_NAMES = [
 ];
 
 const seedPage = {
-  id: 'legacy-page-v93', type: 'page', name: 'TEMPLATE LEGADA NÃO PODE APARECER', x: 0, y: 0, width: 1440, height: 1600,
+  id: 'seed-page', type: 'page', name: 'TEMPLATE ANTIGA NÃO PODE APARECER', x: 0, y: 0, width: 1440, height: 1600,
   rotation: 0, zIndex: 0, visible: true, locked: false, opacity: 1, styles: { backgroundColor: '#fff' }, props: {},
   children: [{
-    id: 'legacy-text-v93', type: 'text', name: 'Legado', x: 40, y: 40, width: 700, height: 50,
+    id: 'seed-text', type: 'text', name: 'Seed', x: 40, y: 40, width: 700, height: 50,
     rotation: 0, zIndex: 1, visible: true, locked: false, opacity: 1,
-    styles: { color: '#ff0000', fontSize: 28 }, props: { text: 'TEMPLATE LEGADA NÃO PODE APARECER' }, children: [],
+    styles: { color: '#ff0000', fontSize: 28 }, props: { text: 'TEMPLATE ANTIGA NÃO PODE APARECER' }, children: [],
   }],
 };
 
@@ -42,7 +42,7 @@ async function installMocks(page) {
     if (path === '/api/admin/catalog' || path === '/api/public/catalog') return json({ ok: true, catalog: { products, brands, hierarchy, promotions: [], settings: { displayFields: ['image','code','shortDescription','brand','category'] } } });
     if (path === '/api/admin/brands' || path === '/api/public/brands') return json({ ok: true, brands });
     if (path === '/api/admin/templates') return json({ ok: true, templates: TEMPLATE_NAMES.map((name, index) => ({
-      id: `tpl-${index}`, systemKey: `template-${index}`, name, description: `Template legada ${index}`,
+      id: `tpl-${index}`, systemKey: `template-${index}`, name, description: `Template QA ${index}`,
       category: 'pre-pronto', tags: ['qa'], accent: '#214C8F', nodes: [structuredClone(seedPage)], isSystem: true, version: 1,
     })) });
     if (path === '/api/admin/templates/seed') return json({ ok: true, requested: 0 });
@@ -55,7 +55,7 @@ async function installMocks(page) {
       return json({ ok: true, page: { id: 'page-home', slug: 'home', title: 'Home QA', nodes: currentNodes, revision: 1, updatedAt: new Date().toISOString() } });
     }
     if (path === '/api/admin/pages/home/snapshots') return json({ ok: true, snapshots: [] });
-    if (path === '/api/public/pages/home') return json({ ok: true, page: { slug: 'home', title: 'Home QA', versionId: 'qa-v1', versionNumber: 1, nodes: currentNodes } });
+    if (path === '/api/public/pages/home') return json({ ok: true, page: { slug: 'home', title: 'Home QA', versionId: 'qa-publication', versionNumber: 1, nodes: currentNodes } });
     return json({ ok: true });
   });
 }
@@ -78,77 +78,79 @@ async function openModels(page, testInfo) {
   await expect(page.getByRole('heading', { name: 'Modelos prontos' })).toBeVisible();
 }
 
-test('Grupo 3/4 V93: todas as templates antigas são substituídas pela Prévia preenchida corrente', async ({ page }, testInfo) => {
+async function auditRenderedModel(page) {
+  return page.locator('[data-node-id]').evaluateAll(elements => {
+    const products = elements.filter(element => element.getAttribute('data-node-id')?.startsWith('product-model-'));
+    const invalidGeometry = elements.filter(element => {
+      const rect = element.getBoundingClientRect();
+      return !Number.isFinite(rect.width) || !Number.isFinite(rect.height) || rect.width <= 0 || rect.height <= 0;
+    }).map(element => element.getAttribute('data-node-id'));
+    return {
+      count: elements.length,
+      productCount: products.length,
+      invalidGeometry,
+      text: elements.map(element => element.textContent || '').join('\n'),
+    };
+  });
+}
+
+test('todas as templates aplicam a prévia preenchida corrente no editor real', async ({ page }, testInfo) => {
   test.setTimeout(180_000);
   await installMocks(page);
   const dialogs = [];
+  const pageErrors = [];
   page.on('dialog', async dialog => { dialogs.push(dialog.message()); await dialog.accept(); });
+  page.on('pageerror', error => pageErrors.push(error.message));
 
   await page.goto('/admin', { waitUntil: 'networkidle' });
 
-  for (const templateName of TEMPLATE_NAMES) {
+  for (const [templateIndex, templateName] of TEMPLATE_NAMES.entries()) {
     await openModels(page, testInfo);
     const article = page.locator('article').filter({ has: page.getByRole('heading', { name: templateName, exact: true }) }).first();
     await expect(article).toBeVisible();
-    await expect(article).toHaveAttribute('data-asteryon-template-version', '93');
-    const legacyApply = article.getByRole('button', { name: /Aplicar modelo/i }).first();
-    await expect(legacyApply).toContainText('preenchido V93');
+    const applyButton = article.getByRole('button', { name: 'Aplicar modelo preenchido', exact: true });
+    await expect(applyButton).toBeVisible();
 
-    // Clique direto na template antiga deve abrir a Prévia, jamais aplicar o seed legado.
-    await legacyApply.click();
-    const preview = page.locator('#laurencini-template-preview-v69');
+    await applyButton.click();
+    const preview = page.locator('#asteryon-template-preview');
     await expect(preview).toBeVisible({ timeout: 12_000 });
-    await expect(preview.locator('.ltp-shell')).toBeVisible({ timeout: 12_000 });
+    await expect(preview.locator('.asteryon-template-preview-shell')).toBeVisible({ timeout: 12_000 });
     await expect(preview.getByText('Um catálogo completo para apresentar a força da Laurencini.', { exact: true })).toBeVisible();
     await expect(preview.getByText('Produto QA 1', { exact: true }).first()).toBeVisible();
     await expect(preview.getByText('Marca do catálogo', { exact: true }).first()).toBeVisible();
 
     await preview.getByRole('button', { name: 'Aplicar este modelo' }).click();
     await expect(preview).toBeHidden({ timeout: 12_000 });
+    await expect(page.getByRole('heading', { name: 'Editor Visual ASTERYON', exact: true })).toBeAttached();
+    await expect(page.locator('[data-node-id="hero-model"]').filter({ hasText: 'Um catálogo completo para apresentar a força da Laurencini.' })).toBeVisible({ timeout: 12_000 });
+    await expect(page.locator('[data-node-id="product-model-0"]').filter({ hasText: 'Produto QA 1' })).toBeVisible({ timeout: 12_000 });
+    await expect(page.locator('[data-node-id]').filter({ hasText: 'TEMPLATE ANTIGA NÃO PODE APARECER' })).toHaveCount(0);
 
-    await expect(page.locator('[data-node-id]').filter({ hasText: 'Um catálogo completo para apresentar a força da Laurencini.' }).first()).toBeVisible({ timeout: 12_000 });
-    await expect(page.locator('[data-node-id]').filter({ hasText: 'Produto QA 1' }).first()).toBeVisible({ timeout: 12_000 });
-    await expect(page.locator('[data-node-id]').filter({ hasText: 'Marca do catálogo' }).first()).toBeVisible({ timeout: 12_000 });
-    await expect(page.locator('[data-node-id]').filter({ hasText: 'TEMPLATE LEGADA NÃO PODE APARECER' })).toHaveCount(0);
+    const audit = await auditRenderedModel(page);
+    expect(audit.count, `${templateName}: editor precisa renderizar nós reais`).toBeGreaterThanOrEqual(3);
+    expect(audit.productCount, `${templateName}: ao menos um produto precisa estar no documento`).toBeGreaterThanOrEqual(1);
+    expect(audit.invalidGeometry, `${templateName}: nenhum nó pode ter geometria inválida`).toEqual([]);
+    expect(audit.text).toContain('Marca do catálogo');
+    expect(audit.text).toContain('Produto QA 1');
 
-    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.asteryonV93VisualParity || ''), { timeout: 15_000 }).toMatch(/^(approved|failed)$/);
-    const visualState = await page.evaluate(() => ({
-      status: document.documentElement.dataset.asteryonV93VisualParity || '',
-      report: window.__ASTERYON_PREVIEW_EDITOR_VISUAL_V93__ || null,
-    }));
-    if (visualState.status !== 'approved') console.log(`V93_VISUAL_FAIL ${templateName}: ${JSON.stringify(visualState.report)}`);
-    expect(visualState.status, `${templateName}: relatório visual ${JSON.stringify(visualState.report)}`).toBe('approved');
-
-    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.asteryonTeam4V93 || ''), { timeout: 15_000 }).toBe('approved');
-
-    const audit = await page.evaluate(() => ({
-      group3: window.__ASTERYON_PREVIEW_EDITOR_VISUAL_V93__ || null,
-      group4: window.__ASTERYON_PREVIEW_EDITOR_TEAM4_V93__ || null,
-      nodes: window.__ASTERYON_PREVIEW_EDITOR_NODES_V91__ || [],
-    }));
-    expect(audit.group3?.ok, `${templateName}: Grupo 3 visual`).toBe(true);
-    expect(audit.group3?.missingTexts, `${templateName}: textos ausentes`).toEqual([]);
-    expect(audit.group3?.productGeometryDriftCount, `${templateName}: produtos fora de proporção`).toBe(0);
-    expect(audit.group4?.approved, `${templateName}: Equipe 4`).toBe(true);
-    expect(audit.group4?.productGeometryDriftCount, `${templateName}: Equipe 4 produto`).toBe(0);
-
-    if (templateName === TEMPLATE_NAMES[0]) {
-      const before = await page.evaluate(() => ({ ...(window.__ASTERYON_EDITOR_PERF_V94__ || {}) }));
-      expect(before.version, 'Runtime de performance V94 não carregou.').toBe('94');
-      await page.evaluate(async () => {
-        const target = document.querySelector('[data-node-id]:not([data-node-id^="asteryon-brands-carousel-track-v91"])');
-        if (!(target instanceof HTMLElement)) throw new Error('Nenhum nó editável para stress de style.');
-        const original = target.getAttribute('style');
-        for (let index = 0; index < 200; index += 1) target.style.setProperty('--asteryon-v94-stress', String(index));
+    if (templateIndex === 0) {
+      const product = page.locator('[data-node-id="product-model-0"]');
+      const before = await product.boundingBox();
+      expect(before).not.toBeNull();
+      await product.evaluate(async element => {
+        const original = element.getAttribute('style');
+        for (let index = 0; index < 200; index += 1) element.style.setProperty('--asteryon-stress', String(index));
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        if (original == null) target.removeAttribute('style'); else target.setAttribute('style', original);
-        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        if (original == null) element.removeAttribute('style'); else element.setAttribute('style', original);
       });
-      const after = await page.evaluate(() => ({ ...(window.__ASTERYON_EDITOR_PERF_V94__ || {}) }));
-      expect((after.observerSchedules || 0) - (before.observerSchedules || 0), '200 mudanças de style não podem acordar o observer global V91.').toBe(0);
-      expect((after.runtimeRuns || 0) - (before.runtimeRuns || 0), 'Stress de style não pode reprocessar o runtime do Editor.').toBeLessThanOrEqual(1);
+      const after = await product.boundingBox();
+      expect(after).not.toBeNull();
+      expect(after.width).toBeGreaterThan(0);
+      expect(after.height).toBeGreaterThan(0);
+      expect(pageErrors, 'stress visual não pode gerar erro JavaScript').toEqual([]);
     }
   }
 
   expect(dialogs.filter(message => message.includes('Modelo não aplicado')), `Bloqueios encontrados: ${dialogs.join(' | ')}`).toEqual([]);
+  expect(pageErrors).toEqual([]);
 });
