@@ -23,9 +23,9 @@ export default defineConfig({
     { name: 'chromium-mobile', use: { ...devices['Pixel 7'] } },
   ],
   webServer: {
-    command: 'node scripts/serve-e2e-static-v89.mjs',
+    command: 'npm run prepare:frontend && node scripts/serve-enterprise-spa.mjs',
     url: 'http://127.0.0.1:8787/__e2e_health',
     reuseExistingServer: false,
-    timeout: 30_000,
+    timeout: 120_000,
   },
 });
