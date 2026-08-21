@@ -17,7 +17,6 @@
   "vars": {
     "SUPABASE_URL": "https://bjcfknhiwjxznxydvmzt.supabase.co",
     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_EVjhdMZ9qFCampvty7_9Bg_Dj9AF67N",
-    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqY2Zrbmhpd2p4em54eWR2bXp0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3MTE1MjYsImV4cCI6MjEwMjI4NzUyNn0.Twr8dT_stH_1CwP1P6smlNgMEEg2APkdGb0i2OnbkpQ",
     "GOOGLE_CSE_CX": "e0caed1c94d5a4047"
   }
 }
