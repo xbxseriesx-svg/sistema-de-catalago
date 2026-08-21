@@ -7,8 +7,15 @@ const calls = [];
 const respond = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
 
 globalThis.fetch = async (input, init = {}) => {
+  const requestHeaders = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
   const url = new URL(typeof input === 'string' ? input : input.url);
-  calls.push({ pathname: url.pathname, search: url.search, method: init.method || 'GET' });
+  calls.push({
+    pathname: url.pathname,
+    search: url.search,
+    method: init.method || (input instanceof Request ? input.method : 'GET'),
+    apikey: requestHeaders.get('apikey'),
+    authorization: requestHeaders.get('authorization'),
+  });
 
   if (url.pathname === '/rest/v1/catalog_settings') return respond([{ company_id: 'cmp_asteryon' }]);
   if (url.pathname === '/auth/v1/user') return respond({ id: 'user_v81', email: 'qa@example.invalid' });
@@ -38,26 +45,37 @@ const env = {
   SUPABASE_PUBLISHABLE_KEY: 'publishable',
   SUPABASE_SECRET_KEY: 'sb_secret_v81',
 };
+const publicEnv = { ...env };
+delete publicEnv.SUPABASE_SECRET_KEY;
 
-const health = await worker.fetch(new Request('https://catalog.example/api/health'), env);
-assert.equal(health.status, 200);
+const health = await worker.fetch(new Request('https://catalog.example/api/health'), publicEnv);
+assert.equal(health.status, 200, 'health público não pode depender de secret administrativo');
 const healthPayload = await health.json();
 assert.equal(healthPayload.version, expectedRelease, 'health deve acompanhar VERSION, sem hardcode da versão física do arquivo');
 assert.equal(healthPayload.supabase?.connected, true, 'health deve provar conexão real com Supabase');
-assert.ok(calls.some((call) => call.pathname === '/rest/v1/catalog_settings'), 'health deve executar probe real do Supabase');
+assert.equal(healthPayload.supabase?.publicAccess, true, 'health deve provar acesso público via RLS');
+assert.equal(healthPayload.supabase?.adminConfigured, false, 'ausência do secret deve ser reportada sem transformar o health em 503');
+const healthCall = calls.find((call) => call.pathname === '/rest/v1/catalog_settings');
+assert.ok(healthCall, 'health deve executar probe real do Supabase');
+assert.equal(healthCall.apikey, 'publishable', 'health deve usar somente a publishable key');
+assert.equal(healthCall.authorization, null, 'health público não deve enviar bearer administrativo');
 assert.match(health.headers.get('content-security-policy') || '', /fonts\.googleapis\.com/);
 assert.match(health.headers.get('strict-transport-security') || '', /max-age=31536000/);
 
-const brands = await worker.fetch(new Request('https://catalog.example/api/public/brands'), env);
-assert.equal(brands.status, 200);
+const brands = await worker.fetch(new Request('https://catalog.example/api/public/brands'), publicEnv);
+assert.equal(brands.status, 200, 'marcas públicas devem funcionar sem secret administrativo');
 const brandsPayload = await brands.json();
 assert.equal(brandsPayload.brands.length, 1, 'API pública deve expor somente marcas ativas');
 assert.equal(brandsPayload.brands[0].logoUrl, 'https://cdn.example.invalid/logo.webp', 'Campo canônico logo_url deve prevalecer sobre data legado');
 assert.equal(brandsPayload.brands[0].featured, true);
 assert.equal(brandsPayload.brands[0].custom, 'preservado');
+const publicBrandCall = calls.find((call) => call.pathname === '/rest/v1/brands' && call.search.includes('active=eq.true'));
+assert.ok(publicBrandCall, 'API pública deve consultar brands pelo caminho RLS');
+assert.equal(publicBrandCall.apikey, 'publishable', 'API pública deve usar publishable key');
+assert.equal(publicBrandCall.authorization, null, 'API pública não deve usar bearer administrativo');
 
 const noSession = await worker.fetch(new Request('https://catalog.example/api/admin/catalog'), env);
-assert.equal(noSession.status, 403, 'Admin sem sessão deve ser bloqueado antes do Worker legado');
+assert.equal(noSession.status, 403, 'Admin sem sessão deve ser bloqueado antes de qualquer mutação');
 assert.equal((await noSession.json()).error.code, 'COMPANY_FORBIDDEN');
 
 const malformedCookie = await worker.fetch(new Request('https://catalog.example/api/admin/catalog', {
@@ -73,4 +91,4 @@ assert.equal(missingForeignRecord.status, 404, 'Mutação fora do escopo da empr
 assert.equal((await missingForeignRecord.json()).error.code, 'NOT_FOUND');
 assert.ok(calls.some((call) => call.pathname === '/rest/v1/company_memberships' && call.search.includes('company_id=eq.cmp_asteryon')));
 
-console.log(`QA Worker / release ${expectedRelease}: OK — saúde real do Supabase, CSP, marcas canônicas, empresa obrigatória, cookie malformado e proteção contra escrita fora do escopo.`);
+console.log(`QA Worker / release ${expectedRelease}: OK — saúde pública real do Supabase, RLS sem secret, CSP, marcas canônicas, empresa obrigatória e proteção contra escrita fora do escopo.`);
