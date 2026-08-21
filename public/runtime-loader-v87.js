@@ -64,6 +64,7 @@
 
   const COMMON = ['/responsive-v67.js?v=94&perf=88'];
   const PUBLIC = [
+    '/public-experience-v94.js?v=94.1',
     '/product-modal-v66.js?v=94',
     '/public-global-search-v78.js?v=94',
     '/public-entity-popups-v81.js?v=94',
