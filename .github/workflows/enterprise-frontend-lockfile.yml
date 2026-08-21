@@ -1,4 +1,4 @@
-name: Enterprise — Frontend Lockfile Capture
+name: Enterprise — Frontend Lockfile Validation
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: enterprise-frontend-lockfile-${{ github.ref }}
@@ -14,37 +14,29 @@ concurrency:
 
 jobs:
   lockfile:
-    name: Gerar e fixar lockfile determinístico do frontend
+    name: Validar lockfile determinístico do frontend
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      - name: Gerar package-lock sem executar scripts de terceiros
-        working-directory: frontend
-        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-      - name: Validar lockfile gerado
+          cache-dependency-path: frontend/package-lock.json
+      - name: Validar lockfile versionado
         working-directory: frontend
         run: |
           test -s package-lock.json
           node -e "const p=require('./package-lock.json'); if (!p.lockfileVersion || !p.packages) process.exit(1)"
-      - name: Fixar lockfile no branch Enterprise
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      - name: Instalação determinística sem scripts de terceiros
+        working-directory: frontend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Confirmar que package.json e lockfile estão sincronizados
+        working-directory: frontend
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/package-lock.json
-          if git diff --cached --quiet; then
-            echo "Lockfile já está fixado e não mudou."
-            exit 0
-          fi
-          git commit -m "build(frontend): pin deterministic package lock"
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          git diff --exit-code -- package-lock.json
       - name: Publicar lockfile para auditoria
         uses: actions/upload-artifact@v4
         with:
