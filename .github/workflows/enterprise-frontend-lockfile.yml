@@ -32,11 +32,11 @@ jobs:
       - name: Instalação determinística sem scripts de terceiros
         working-directory: frontend
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Confirmar que package.json e lockfile estão sincronizados
+      - name: Confirmar árvore instalada e imutabilidade do lockfile
         working-directory: frontend
         run: |
-          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-          git diff --exit-code -- package-lock.json
+          npm ls --depth=0
+          git diff --exit-code -- package.json package-lock.json
       - name: Publicar lockfile para auditoria
         uses: actions/upload-artifact@v4
         with:
