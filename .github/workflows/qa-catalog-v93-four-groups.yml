@@ -37,8 +37,8 @@ jobs:
           cache: npm
       - name: Instalar projeto
         run: npm ci --ignore-scripts
-      - name: Preparar exatamente o bundle publicado
-        run: npm run prepare:bundle
+      - name: Preparar release Enterprise oficial
+        run: npm run prepare:release
       - name: Instalar Playwright e Chromium somente para QA
         run: |
           npm install --no-save @playwright/test@1.55.0
@@ -68,8 +68,8 @@ jobs:
           cache: npm
       - name: Instalar projeto do mesmo commit aprovado
         run: npm ci --ignore-scripts
-      - name: Preparar exatamente o bundle publicado
-        run: npm run prepare:bundle
+      - name: Preparar release Enterprise oficial
+        run: npm run prepare:release
       - name: Instalar Chromium independente
         run: |
           npm install --no-save @playwright/test@1.55.0
