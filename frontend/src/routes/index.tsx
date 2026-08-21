@@ -25,7 +25,7 @@ function EditorPage() {
   return (
     <EditorAccessGate>
       <div className="flex h-screen w-screen flex-col overflow-hidden bg-ed-bg text-ed-ink">
-        <h1 className="sr-only">Editor Visual ASTERYON V94</h1>
+        <h1 className="sr-only">Editor Visual ASTERYON</h1>
         <Toolbar />
         <SelectionBreadcrumb />
         <MarketingPreview />
