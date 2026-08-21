@@ -10,6 +10,7 @@ globalThis.fetch = async (input, init = {}) => {
   const url = new URL(typeof input === 'string' ? input : input.url);
   calls.push({ pathname: url.pathname, search: url.search, method: init.method || 'GET' });
 
+  if (url.pathname === '/rest/v1/catalog_settings') return respond([{ company_id: 'cmp_asteryon' }]);
   if (url.pathname === '/auth/v1/user') return respond({ id: 'user_v81', email: 'qa@example.invalid' });
   if (url.pathname === '/rest/v1/company_memberships') {
     assert.match(url.search, /company_id=eq\.cmp_asteryon/);
@@ -40,7 +41,10 @@ const env = {
 
 const health = await worker.fetch(new Request('https://catalog.example/api/health'), env);
 assert.equal(health.status, 200);
-assert.equal((await health.json()).version, expectedRelease, 'health deve acompanhar VERSION, sem hardcode da versão física do arquivo');
+const healthPayload = await health.json();
+assert.equal(healthPayload.version, expectedRelease, 'health deve acompanhar VERSION, sem hardcode da versão física do arquivo');
+assert.equal(healthPayload.supabase?.connected, true, 'health deve provar conexão real com Supabase');
+assert.ok(calls.some((call) => call.pathname === '/rest/v1/catalog_settings'), 'health deve executar probe real do Supabase');
 assert.match(health.headers.get('content-security-policy') || '', /fonts\.googleapis\.com/);
 assert.match(health.headers.get('strict-transport-security') || '', /max-age=31536000/);
 
@@ -69,4 +73,4 @@ assert.equal(missingForeignRecord.status, 404, 'Mutação fora do escopo da empr
 assert.equal((await missingForeignRecord.json()).error.code, 'NOT_FOUND');
 assert.ok(calls.some((call) => call.pathname === '/rest/v1/company_memberships' && call.search.includes('company_id=eq.cmp_asteryon')));
 
-console.log(`QA Worker físico V81 / release ${expectedRelease}: OK — saúde, CSP, marcas canônicas, empresa obrigatória, cookie malformado e proteção contra escrita fora do escopo.`);
+console.log(`QA Worker / release ${expectedRelease}: OK — saúde real do Supabase, CSP, marcas canônicas, empresa obrigatória, cookie malformado e proteção contra escrita fora do escopo.`);

@@ -1,6 +1,7 @@
 import type { Env } from './env';
 import { COMPANY_ID } from './env';
-import { fail, ok, sameOrigin, secure } from './http';
+import { clean, fail, ok, sameOrigin, secure } from './http';
+import { adminKey } from './supabase';
 import {
   attachRefreshedSession,
   companyMembership,
@@ -32,6 +33,36 @@ async function firstResponse(promises: Array<() => Promise<Response | null>>) {
   return null;
 }
 
+async function probeSupabase(env: Env) {
+  const url = clean(env.SUPABASE_URL).replace(/\/+$/, '');
+  const publishableKey = clean(env.SUPABASE_PUBLISHABLE_KEY);
+  const secretKey = adminKey(env);
+
+  if (!url || !publishableKey || !secretKey) {
+    return { ok: false as const, code: 'SUPABASE_CONFIG' };
+  }
+
+  const headers = new Headers({ apikey: secretKey });
+  if (!secretKey.startsWith('sb_secret_')) {
+    headers.set('authorization', `Bearer ${secretKey}`);
+  }
+
+  try {
+    const response = await fetch(
+      `${url}/rest/v1/catalog_settings?company_id=eq.${encodeURIComponent(COMPANY_ID)}&select=company_id&limit=1`,
+      { headers },
+    );
+    if (!response.ok) {
+      console.error('Supabase health probe failed', response.status);
+      return { ok: false as const, code: 'SUPABASE_UNAVAILABLE', status: response.status };
+    }
+    return { ok: true as const, status: response.status };
+  } catch (error) {
+    console.error('Supabase health probe error', error);
+    return { ok: false as const, code: 'SUPABASE_UNAVAILABLE' };
+  }
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     try {
@@ -50,11 +81,22 @@ export default {
       }
 
       if (path === '/api/health') {
+        const supabaseStatus = await probeSupabase(env);
+        if (!supabaseStatus.ok) {
+          return finish(fail(
+            supabaseStatus.code === 'SUPABASE_CONFIG'
+              ? 'Configuração do Supabase incompleta no Worker'
+              : 'Supabase indisponível para o Worker',
+            503,
+            supabaseStatus.code,
+          ));
+        }
         return finish(ok({
           service: 'sistema-de-catalago',
           version: 'V94',
           database: 'Supabase Postgres',
           storage: 'Supabase Storage',
+          supabase: { connected: true, status: supabaseStatus.status },
           d1: false,
           r2: false,
           architecture: 'enterprise-modular',
