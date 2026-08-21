@@ -8,27 +8,29 @@ globalThis.fetch = async (input, init = {}) => {
   const method = init.method || 'GET';
   requests.push({ method, pathname: url.pathname, search: url.search, body: init.body || null });
 
-  if (url.pathname === '/rest/v1/rpc/get_public_catalog' && method === 'POST') {
+  if (url.pathname === '/rest/v1/rpc/get_public_catalog_meta' && method === 'POST') {
     return json({
-      products: [{
-        id: 'prd_1', code: '100', ean: '7890000000100', name: 'Produto 100',
-        short_description: 'Produto 100', long_description: 'Produto 100 completo',
-        brand_id: 'brd_active', departamento_id: 'dep_active', secao_id: 'sec_active', categoria_id: 'cat_active',
-        unit: 'UN', packaging: 'CX 1', ncm: '12345678', price: 10, promo_price: 9, stock: 3,
-        image_url: '/p.webp', video_url: null, gallery: ['/p.webp'], technical: { NCM: '12345678' }, attributes: { Marca: 'Marca Ativa' }, tags: ['qa'], status: 'active',
-      }],
       brands: [{ id: 'brd_active', name: 'Marca Ativa', slug: 'marca-ativa', description: 'Canônica', website: null, logo_url: '/logo.webp', banner_url: null, sort_order: 1, featured: true }],
       hierarchy: [
         { id: 'dep_active', name: 'Atacado', slug: 'atacado', type: 'departamento', parent_id: null, sort_order: 1, active: true },
         { id: 'sec_active', name: 'Higiene', slug: 'higiene', type: 'secao', parent_id: 'dep_active', sort_order: 1, active: true },
         { id: 'cat_active', name: 'Pessoal', slug: 'pessoal', type: 'categoria', parent_id: 'sec_active', sort_order: 1, active: true },
       ],
-      offers: [{ id: 'off_live', title: 'Oferta Atual', description: null, featured: true, starts_at: '2020-01-01T00:00:00Z', ends_at: '2999-01-01T00:00:00Z', display_config: {}, data: {} }],
+      offers: [{ id: 'off_live', title: 'Oferta Atual', description: null, featured: true, starts_at: '2020-01-01T00:00:00Z', ends_at: '2999-01-01T00:00:00Z', display_config: {}, data: {}, product_ids: ['prd_1'] }],
       settings: { display_fields: ['image', 'name', 'code'] },
+      product_count: 1,
     });
   }
-  if (url.pathname === '/rest/v1/offer_products') {
-    return json([{ offer_id: 'off_live', product_id: 'prd_1', sort_order: 0 }]);
+  if (url.pathname === '/rest/v1/rpc/get_public_products_page' && method === 'POST') {
+    const body = JSON.parse(init.body || '{}');
+    assert.deepEqual(body, { p_offset: 0, p_limit: 500 });
+    return json([{
+      id: 'prd_1', code: '100', ean: '7890000000100', name: 'Produto 100',
+      short_description: 'Produto 100', long_description: 'Produto 100 completo',
+      brand_id: 'brd_active', departamento_id: 'dep_active', secao_id: 'sec_active', categoria_id: 'cat_active',
+      unit: 'UN', packaging: 'CX 1', ncm: '12345678', price: 10, promo_price: 9, stock: 3,
+      image_url: '/p.webp', video_url: null, gallery: ['/p.webp'], technical: { NCM: '12345678' }, attributes: { Marca: 'Marca Ativa' }, tags: ['qa'], status: 'active',
+    }]);
   }
   throw new Error(`Fetch público não simulado: ${method} ${url.pathname}${url.search}`);
 };
@@ -59,9 +61,11 @@ assert.equal(payload.catalog.products[0].departamentoName, 'Atacado');
 assert.equal(payload.catalog.products[0].image, '/p.webp');
 assert.equal(payload.catalog.products[0].status, 'ativo');
 
-assert.equal(requests.filter((item) => item.pathname === '/rest/v1/rpc/get_public_catalog').length, 1, 'Catálogo público deve usar um único RPC filtrado');
-for (const forbidden of ['/rest/v1/products', '/rest/v1/brands', '/rest/v1/hierarchy_nodes', '/rest/v1/offers', '/rest/v1/catalog_settings']) {
+assert.equal(requests.filter((item) => item.pathname === '/rest/v1/rpc/get_public_catalog_meta').length, 1, 'Catálogo público deve usar um RPC leve de metadados');
+assert.equal(requests.filter((item) => item.pathname === '/rest/v1/rpc/get_public_products_page').length, 1, 'Catálogo público deve paginar produtos via RPC');
+assert.equal(requests.some((item) => item.pathname === '/rest/v1/rpc/get_public_catalog'), false, 'RPC monolítico sujeito a timeout não pode voltar ao runtime público');
+for (const forbidden of ['/rest/v1/products', '/rest/v1/brands', '/rest/v1/hierarchy_nodes', '/rest/v1/offers', '/rest/v1/catalog_settings', '/rest/v1/offer_products']) {
   assert.equal(requests.some((item) => item.pathname === forbidden), false, `Catálogo público não pode depender de SELECT anon direto em ${forbidden}`);
 }
 
-console.log('QA Catálogo Público: OK — RPC filtrado, DTO público, hierarquia, marcas e ofertas validados sem SELECT anon direto.');
+console.log('QA Catálogo Público: OK — metadados filtrados e produtos paginados por RPC, sem SELECT anon direto nem RPC monolítico.');

@@ -21,12 +21,12 @@ globalThis.fetch = async (input, init = {}) => {
   if (url.pathname === '/rest/v1/rpc/bootstrap_status') {
     return respond({ bootstrapOpen: false, hasActiveAdmin: true });
   }
-  if (url.pathname === '/rest/v1/rpc/get_public_catalog') {
+  if (url.pathname === '/rest/v1/rpc/get_public_catalog_meta') {
     return respond({
-      products: [],
       hierarchy: [],
       offers: [],
       settings: { display_fields: [] },
+      product_count: 0,
       brands: [{
         id: 'brd_1',
         name: 'Marca Um',
@@ -93,11 +93,12 @@ assert.equal(brandsPayload.brands[0].logoUrl, 'https://cdn.example.invalid/logo.
 assert.equal(brandsPayload.brands[0].featured, true);
 assert.equal(brandsPayload.brands[0].status, 'active');
 assert.equal(brandsPayload.brands[0].custom, undefined, 'RPC público não deve vazar o objeto data privado da marca');
-const publicBrandCall = calls.find((call) => call.pathname === '/rest/v1/rpc/get_public_catalog');
-assert.ok(publicBrandCall, 'API pública de marcas deve usar o RPC filtrado do catálogo');
+const publicBrandCall = calls.find((call) => call.pathname === '/rest/v1/rpc/get_public_catalog_meta');
+assert.ok(publicBrandCall, 'API pública de marcas deve usar o RPC leve de metadados');
 assert.equal(publicBrandCall.method, 'POST');
 assert.equal(publicBrandCall.apikey, 'publishable', 'API pública deve usar publishable key');
 assert.equal(publicBrandCall.authorization, null, 'API pública não deve usar bearer administrativo');
+assert.equal(calls.some((call) => call.pathname === '/rest/v1/rpc/get_public_catalog'), false, 'RPC público monolítico não pode regressar');
 assert.equal(calls.some((call) => call.pathname === '/rest/v1/brands' && call.authorization === null), false, 'API pública não pode depender de SELECT anon direto em brands');
 
 const noSession = await worker.fetch(new Request('https://catalog.example/api/admin/catalog'), env);
@@ -117,4 +118,4 @@ assert.equal(missingForeignRecord.status, 404, 'Mutação fora do escopo da empr
 assert.equal((await missingForeignRecord.json()).error.code, 'NOT_FOUND');
 assert.ok(calls.some((call) => call.pathname === '/rest/v1/company_memberships' && call.search.includes('company_id=eq.cmp_asteryon')));
 
-console.log(`QA Worker / release ${expectedRelease}: OK — health via RPC público leve, catálogo público filtrado sem SELECT anon direto, CSP, empresa obrigatória e proteção contra escrita fora do escopo.`);
+console.log(`QA Worker / release ${expectedRelease}: OK — health por RPC público leve, catálogo público paginado sem SELECT anon direto, CSP, empresa obrigatória e proteção contra escrita fora do escopo.`);

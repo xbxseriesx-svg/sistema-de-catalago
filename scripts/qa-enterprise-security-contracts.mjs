@@ -39,8 +39,11 @@ if (!pages.includes('REVISION_CONFLICT')) fail('draft sem proteção de revisão
 
 if (!products.includes('&company_id=eq.${COMPANY_ID}')) fail('CRUD de produtos sem escopo explícito de empresa.');
 
-for (const rpc of ['/rest/v1/rpc/get_public_catalog', '/rest/v1/rpc/get_public_site']) {
-  if (!catalog.includes(rpc)) fail(`catálogo público não usa RPC filtrado obrigatório: ${rpc}`);
+for (const rpc of ['/rest/v1/rpc/get_public_catalog_meta', '/rest/v1/rpc/get_public_products_page', '/rest/v1/rpc/get_public_site']) {
+  if (!catalog.includes(rpc)) fail(`catálogo público não usa RPC filtrado/paginado obrigatório: ${rpc}`);
+}
+if (catalog.includes("'/rest/v1/rpc/get_public_catalog'")) {
+  fail('catálogo público voltou a usar RPC monolítico sujeito a timeout.');
 }
 for (const directRead of [
   "publicTableAll(env, 'products'",
@@ -48,12 +51,10 @@ for (const directRead of [
   "publicTableAll(env, 'hierarchy_nodes'",
   "publicTable(env, 'offers'",
   "publicTable(env, 'catalog_settings'",
+  "publicTableAll(env, 'offer_products'",
   "publicTable(env,\n      'marketing_settings'",
 ]) {
   if (catalog.includes(directRead)) fail(`catálogo público voltou a depender de SELECT anon direto: ${directRead}`);
-}
-if (!catalog.includes("publicTableAll(env, 'offer_products'")) {
-  fail('vínculo público de ofertas não preserva leitura RLS de offer_products.');
 }
 
 if (!media.includes('&company_id=eq.${encodeURIComponent(COMPANY_ID)}&select=public_url')) {
@@ -87,4 +88,4 @@ if (failed) {
   process.exit(1);
 }
 
-ok('tenant, métodos HTTP, origem, health por RPC público, catálogo filtrado, mídia e SSRF possuem contratos estáticos obrigatórios.');
+ok('tenant, métodos HTTP, origem, health por RPC público, catálogo público paginado, mídia e SSRF possuem contratos estáticos obrigatórios.');

@@ -2,7 +2,7 @@ import type { Env } from '../env';
 import { COMPANY_ID } from '../env';
 import { marketingLayout, postgrestLiteral } from '../domain';
 import { clean, fail, ok } from '../http';
-import { publicSupabase, publicTableAll, table, tableAll } from '../supabase';
+import { publicSupabase, table, tableAll } from '../supabase';
 
 function brandDto(row: any) {
   const data = row?.data && typeof row.data === 'object' ? row.data : {};
@@ -36,15 +36,35 @@ function publicBrandDto(row: any) {
   };
 }
 
-async function publicCatalogRpc(env: Env) {
-  const payload = await publicSupabase(env, '/rest/v1/rpc/get_public_catalog', {
+async function publicCatalogMetaRpc(env: Env) {
+  const payload = await publicSupabase(env, '/rest/v1/rpc/get_public_catalog_meta', {
     method: 'POST',
     body: JSON.stringify({}),
   });
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
-    throw new Error('Resposta pública inválida do RPC get_public_catalog');
+    throw new Error('Resposta pública inválida do RPC get_public_catalog_meta');
   }
   return payload as Record<string, any>;
+}
+
+async function publicProductsRpc(env: Env) {
+  const rows: any[] = [];
+  const pageSize = 500;
+  const maxRows = 10000;
+
+  for (let offset = 0; offset < maxRows; offset += pageSize) {
+    const payload = await publicSupabase(env, '/rest/v1/rpc/get_public_products_page', {
+      method: 'POST',
+      body: JSON.stringify({ p_offset: offset, p_limit: pageSize }),
+    });
+    if (!Array.isArray(payload)) {
+      throw new Error('Resposta pública inválida do RPC get_public_products_page');
+    }
+    rows.push(...payload);
+    if (payload.length < pageSize) return rows;
+  }
+
+  throw new Error(`Catálogo público excedeu o limite seguro de ${maxRows} produtos`);
 }
 
 async function publicSiteRpc(env: Env, pageSlug: string) {
@@ -108,10 +128,7 @@ function publicProductsDto(products: any[], brands: any[], hierarchy: any[]) {
   }));
 }
 
-async function publicOffersFromRpc(env: Env, offers: any[]) {
-  if (!offers.length) return [];
-  const linksQuery = `offer_id=in.(${offers.map((item: any) => postgrestLiteral(item.id)).join(',')})&select=offer_id,product_id,sort_order&order=sort_order.asc`;
-  const links = await publicTableAll(env, 'offer_products', linksQuery);
+function publicOffersFromRpc(offers: any[]) {
   return offers.map((offer: any) => ({
     ...(offer?.data && typeof offer.data === 'object' ? offer.data : {}),
     id: offer?.id,
@@ -122,15 +139,15 @@ async function publicOffersFromRpc(env: Env, offers: any[]) {
     startsAt: offer?.starts_at ?? null,
     endsAt: offer?.ends_at ?? null,
     displayConfig: offer?.display_config ?? {},
-    productIds: links
-      .filter((link: any) => link?.offer_id === offer?.id)
-      .map((link: any) => link?.product_id),
+    productIds: Array.isArray(offer?.product_ids)
+      ? offer.product_ids
+      : (Array.isArray(offer?.productIds) ? offer.productIds : []),
   }));
 }
 
 export async function brandsPayload(env: Env, publicOnly = false) {
   if (publicOnly) {
-    const payload = await publicCatalogRpc(env);
+    const payload = await publicCatalogMetaRpc(env);
     return (Array.isArray(payload.brands) ? payload.brands : []).map(publicBrandDto);
   }
   const query = `company_id=eq.${COMPANY_ID}&select=id,name,slug,description,website,logo_url,banner_url,sort_order,active,featured,data&order=sort_order.asc,name.asc`;
@@ -149,8 +166,8 @@ function liveOffer(item: any, now = Date.now()) {
 
 export async function offersPayload(env: Env, publicOnly: boolean) {
   if (publicOnly) {
-    const payload = await publicCatalogRpc(env);
-    return publicOffersFromRpc(env, Array.isArray(payload.offers) ? payload.offers : []);
+    const payload = await publicCatalogMetaRpc(env);
+    return publicOffersFromRpc(Array.isArray(payload.offers) ? payload.offers : []);
   }
 
   const offerQuery = `company_id=eq.${COMPANY_ID}&select=*&order=featured.desc,updated_at.desc`;
@@ -177,8 +194,10 @@ export async function offersPayload(env: Env, publicOnly: boolean) {
 
 export async function catalogPayload(env: Env, publicOnly: boolean) {
   if (publicOnly) {
-    const payload = await publicCatalogRpc(env);
-    const rawProducts = Array.isArray(payload.products) ? payload.products : [];
+    const [payload, rawProducts] = await Promise.all([
+      publicCatalogMetaRpc(env),
+      publicProductsRpc(env),
+    ]);
     const rawBrands = Array.isArray(payload.brands) ? payload.brands : [];
     const rawHierarchy = Array.isArray(payload.hierarchy) ? payload.hierarchy : [];
     const rawOffers = Array.isArray(payload.offers) ? payload.offers : [];
@@ -189,7 +208,7 @@ export async function catalogPayload(env: Env, publicOnly: boolean) {
       brands: rawBrands.map(publicBrandDto),
       distributions: [],
       hierarchy: rawHierarchy.map(publicHierarchyDto),
-      promotions: await publicOffersFromRpc(env, rawOffers),
+      promotions: publicOffersFromRpc(rawOffers),
       settings: { displayFields: Array.isArray(settings.display_fields) ? settings.display_fields : [] },
     };
   }
@@ -241,7 +260,6 @@ export async function handlePublicCatalogRoute(req: Request, env: Env, path: str
     return ok({ brands: await brandsPayload(env, true) });
   }
   if (path === '/api/public/marketing' && req.method === 'GET') {
-    // Um slug inexistente evita transportar os nós da página apenas para ler Marketing.
     const site = await publicSiteRpc(env, '__marketing_only__');
     const marketing = site.marketing && typeof site.marketing === 'object' ? site.marketing : {};
     return ok({
@@ -256,7 +274,6 @@ export async function handlePublicCatalogRoute(req: Request, env: Env, path: str
   }
   const pageMatch = path.match(/^\/api\/public\/pages\/([^/]+)$/);
   if (pageMatch && req.method === 'GET') {
-    // A página publicada continua server-side: a tabela pages não é exposta ao papel anon.
     const rows = await table(
       env,
       'pages',
