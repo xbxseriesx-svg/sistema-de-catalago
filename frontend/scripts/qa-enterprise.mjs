@@ -3,7 +3,7 @@ import fs from 'node:fs';
 const checks = {
   'src/main.tsx': ['RouterProvider', 'createRoot', './styles.css'],
   'src/editor/types.ts': ['1080p / Full HD', '2K / QHD', '4K / UHD'],
-  'src/editor/components/Toolbar.tsx': ['ASTERYON V94', 'Aplicar 3 modos', 'Publicar', 'Salvar'],
+  'src/editor/components/Toolbar.tsx': ['ASTERYON', 'Aplicar 3 modos', 'Publicar', 'Salvar'],
   'src/editor/store.ts': ['saveAllModes', 'applyCurrentFrameToAllModes', 'RESOLUTION_PRESETS', 'responsive.desktop'],
   'src/editor/components/NodeView.tsx': ['object-contain', 'case "carousel"', 'case "promotion"'],
   'src/editor/usePersistence.ts': ['schemaVersion: 5', '850', 'saveRemoteDraft', 'asteryon:manual-save'],
@@ -45,6 +45,7 @@ const all = fs.readdirSync('src', { recursive: true })
   .join('\n');
 for (const forbidden of [
   'ASTERYON V5',
+  'ASTERYON V94',
   'D1Database',
   'R2Bucket',
   'VITE_SUPABASE_URL',
