@@ -77,8 +77,6 @@ function App() {
     close();
   };
 
-  if (applied) return <EditorWorkspace auditCatalog={catalog} />;
-
   return <div style={{ minHeight: "100dvh", overflowX: "hidden", background: "#eef3f8", color: "#172033", fontFamily: "Inter,system-ui,sans-serif" }}>
     <header style={{ height: 58, display: "flex", alignItems: "center", gap: 12, padding: "0 16px", background: "#102a4c", color: "white", position: "sticky", top: 0, zIndex: 40 }}>
       <strong>ASTERYON</strong><span style={{ opacity: .72, fontSize: 12 }}>CATÁLOGO ENTERPRISE</span>
@@ -91,15 +89,15 @@ function App() {
       <aside data-asteryon-editor-sidebar="left" data-open={left ? "true" : "false"} className={`as-side as-left ${left ? "open" : ""}`}>
         <Panel tab={tab} setTab={(value) => { setTab(value); setLeft(true); }} catalog={catalog} templates={templates} preview={() => setPreview(true)} toast={setToast} />
       </aside>
-      <main tabIndex={0} aria-label="Área de edição do catálogo" style={{ flex: 1, minWidth: 0, padding: 18 }}>
-        <div style={{ maxWidth: 1440, margin: "0 auto", background: "white", borderRadius: 16, minHeight: "calc(100dvh - 94px)", overflow: "hidden" }}>
+      <main tabIndex={0} aria-label="Área de edição do catálogo" style={{ flex: 1, minWidth: 0, minHeight: 0, padding: applied ? 0 : 18 }}>
+        {applied ? <EditorWorkspace auditCatalog={catalog} /> : <div style={{ maxWidth: 1440, margin: "0 auto", background: "white", borderRadius: 16, minHeight: "calc(100dvh - 94px)", overflow: "hidden" }}>
           <div style={{ minHeight: "calc(100dvh - 94px)", display: "grid", placeItems: "center", padding: 24, textAlign: "center" }}>
             <div><h2>Editor Visual ASTERYON V94</h2><p>Use o painel de Gestão do Catálogo para editar produtos, estrutura, marketing e modelos.</p></div>
           </div>
-        </div>
+        </div>}
       </main>
       <aside data-asteryon-editor-sidebar="right" data-open={right ? "true" : "false"} className={`as-side as-right ${right ? "open" : ""}`}>
-        <div style={{ padding: 18 }}><h2>Propriedades</h2><p>Selecione um elemento para editar.</p></div>
+        <div style={{ padding: 18 }}>{applied ? <PropertiesPanel /> : <><h2>Propriedades</h2><p>Selecione um elemento para editar.</p></>}</div>
       </aside>
     </div>
     <button data-asteryon-sidebar-backdrop aria-label="Fechar painel" onClick={close} className={`as-backdrop ${left || right ? "open" : ""}`} />
@@ -152,7 +150,7 @@ function EditorWorkspace({ auditCatalog }: { auditCatalog: C }) {
     return () => { cancelled = true; cancelAnimationFrame(frame1); cancelAnimationFrame(frame2); };
   }, [mounted, auditCatalog, doc]);
 
-  return <div className="flex h-screen w-screen flex-col overflow-hidden bg-ed-bg text-ed-ink">
+  return <div className="flex h-[calc(100dvh-58px)] w-full flex-col overflow-hidden bg-ed-bg text-ed-ink">
     <h1 className="sr-only">Editor Visual ASTERYON V94</h1>
     <Toolbar />
     <SelectionBreadcrumb />
@@ -188,8 +186,12 @@ function buildFilledDocument(catalog: C): EditorDocument {
   products.forEach((product, index) => {
     const column = index % 4;
     const rowIndex = Math.floor(index / 4);
-    const label = `${product.shortDescription ?? product.name ?? `Produto QA ${index + 1}`}\n${product.brandName ?? "Marca do catálogo"}`;
-    add(makeNode(`product-v93-${index}`, "text", `Produto ${index + 1}`, page.id, 120 + column * 390, 430 + rowIndex * 260, 330, 190, { text: label }, { fontSize: 22, fontWeight: 650, color: "#172033", background: "#ffffff", radius: 14, borderWidth: 1, borderColor: "#e4e7ec" }));
+    const productText = product.shortDescription ?? product.name ?? `Produto QA ${index + 1}`;
+    const brandText = product.brandName ?? "Marca do catálogo";
+    const x = 120 + column * 390;
+    const y = 430 + rowIndex * 260;
+    add(makeNode(`product-v93-${index}`, "text", `Produto ${index + 1}`, page.id, x, y, 330, 132, { text: productText }, { fontSize: 22, fontWeight: 650, color: "#172033", background: "#ffffff", radius: 14, borderWidth: 1, borderColor: "#e4e7ec" }));
+    add(makeNode(`brand-v93-${index}`, "text", `Marca do produto ${index + 1}`, page.id, x + 14, y + 138, 302, 42, { text: brandText }, { fontSize: 15, fontWeight: 600, color: "#667085" }));
   });
   return { rootId: page.id, nodes };
 }
