@@ -71,9 +71,10 @@ for (const contract of ['/api/public/catalog', '/api/public/brands', '/api/publi
   if (!catalog.includes(contract)) fail(`contrato público ausente: ${contract}`);
 }
 if (!/api\\\/public\\\/pages/.test(catalog)) fail('contrato público de páginas ausente.');
-for (const rpc of ['/rest/v1/rpc/get_public_catalog', '/rest/v1/rpc/get_public_site']) {
-  if (!catalog.includes(rpc)) fail(`RPC público filtrado ausente: ${rpc}`);
+for (const rpc of ['/rest/v1/rpc/get_public_catalog_meta', '/rest/v1/rpc/get_public_products_page', '/rest/v1/rpc/get_public_site']) {
+  if (!catalog.includes(rpc)) fail(`RPC público filtrado/paginado ausente: ${rpc}`);
 }
+if (catalog.includes("'/rest/v1/rpc/get_public_catalog'")) fail('RPC público monolítico sujeito a timeout foi reintroduzido.');
 
 const catalogAdmin = await readFile('worker/app/services/catalog-admin.ts', 'utf8');
 for (const contract of ['/api/admin/catalog', '/api/admin/catalog/settings']) {
@@ -121,5 +122,5 @@ if (failed) {
   process.exit(1);
 }
 
-ok('entrypoint, serviços e RPCs públicos filtrados permanecem independentes da cadeia index-vXX e de JWT anon legado.');
+ok('entrypoint, serviços e RPCs públicos filtrados/paginados permanecem independentes da cadeia index-vXX e de JWT anon legado.');
 console.log('ENTERPRISE BACKEND APROVADO PARA CONTINUAR A RECONSTRUÇÃO.');
