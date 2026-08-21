@@ -153,7 +153,9 @@ function u32(view: DataView, offset: number) { return view.getUint32(offset, tru
 
 async function inflateRaw(bytes: Uint8Array) {
   if (typeof DecompressionStream === "undefined") throw new Error("Este navegador não suporta descompactação XLSX.");
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  const payload = new Uint8Array(bytes.byteLength);
+  payload.set(bytes);
+  const stream = new Blob([payload.buffer]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
