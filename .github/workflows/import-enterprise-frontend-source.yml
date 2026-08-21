@@ -1,0 +1,30 @@
+name: Enterprise — Importar fonte React recuperada
+
+on:
+  push:
+    branches:
+      - enterprise/6-equipes-consolidacao
+    paths:
+      - '.enterprise-frontend-payload/**'
+      - 'scripts/import-enterprise-frontend-source.sh'
+      - '.github/workflows/import-enterprise-frontend-source.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: enterprise-frontend-source-import
+  cancel-in-progress: true
+
+jobs:
+  import-source:
+    name: Importação verificada da fonte recuperada
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: enterprise/6-equipes-consolidacao
+          fetch-depth: 1
+      - name: Validar checksums e importar apenas arquivos ausentes
+        run: bash scripts/import-enterprise-frontend-source.sh
