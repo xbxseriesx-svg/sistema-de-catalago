@@ -6,8 +6,8 @@ const brandFixtures = Array.from({ length: 12 }, (_, index) => ({
   slug: `marca-qa-${index + 1}`,
   status: 'active',
   active: true,
-  featured: index < 4,
-  logoUrl: null,
+  featured: true,
+  logoUrl: '/asteryon.svg',
 }));
 
 function installApiMocks(page, { authenticated }) {
