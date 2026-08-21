@@ -181,7 +181,7 @@ function buildFilledDocument(catalog: C): EditorDocument {
   const nodes: Record<string, EditorNode> = { [page.id]: page };
   const add = (node: EditorNode) => { nodes[node.id] = node; page.children.push(node.id); };
   add(makeNode("hero-v93", "heading", "Hero principal", page.id, 120, 90, 1500, 150, { text: heroText }, { fontSize: 44, fontWeight: 800, color: "#153c6d" }));
-  add(makeNode("brands-v93", "heading", "Marcas", page.id, 120, 300, 900, 70, { text: "Marca do catálogo" }, { fontSize: 28, fontWeight: 700, color: "#172033" }));
+  add(makeNode("brands-v93", "text", "Marcas", page.id, 120, 300, 900, 70, { text: "Marca do catálogo" }, { fontSize: 28, fontWeight: 700, color: "#172033" }));
   const products = catalog.products.length ? catalog.products.slice(0, 8) : [{ id: "fallback", shortDescription: "Produto QA 1", brandName: "Marca do catálogo" }];
   products.forEach((product, index) => {
     const column = index % 4;
