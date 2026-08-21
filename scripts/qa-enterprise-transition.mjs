@@ -29,6 +29,12 @@ const packageRelease = String(pkg.version || '').split('.').at(-1);
 if (packageRelease !== version) fail(`VERSION=${version} diverge do patch de package.json=${pkg.version}.`);
 else ok(`metadados de release coerentes em ${version}.`);
 
+if (!String(pkg.scripts?.['prepare:release'] || '').includes('prepare:frontend')) {
+  fail('prepare:release não inclui o build/QA determinístico do frontend Enterprise.');
+} else {
+  ok('prepare:release inclui o frontend Enterprise.');
+}
+
 const wrangler = await readFile('wrangler.jsonc', 'utf8');
 if (!wrangler.includes('"SUPABASE_URL"')) fail('wrangler.jsonc sem SUPABASE_URL.');
 if (!wrangler.includes('"SUPABASE_PUBLISHABLE_KEY"')) fail('wrangler.jsonc sem SUPABASE_PUBLISHABLE_KEY.');
@@ -36,6 +42,8 @@ if (/\bD1\b|d1_databases|\bR2\b|r2_buckets/.test(wrangler)) fail('wrangler.jsonc
 else ok('Wrangler permanece na arquitetura Supabase sem D1/R2.');
 if (!wrangler.includes('"main": "worker/app/index.ts"')) fail('wrangler.jsonc ainda não aponta para o entrypoint Enterprise modular.');
 else ok('Wrangler oficial aponta para worker/app/index.ts.');
+if (!wrangler.includes('"directory": "./frontend/dist"')) fail('Wrangler oficial ainda não serve o SPA Enterprise reconstruído.');
+else ok('Wrangler oficial serve frontend/dist do SPA Enterprise.');
 
 let rollback = '';
 try {
@@ -46,6 +54,8 @@ try {
 if (rollback) {
   if (!rollback.includes('"main": "worker/index-v81.ts"')) fail('rollback legado não aponta para o último Worker oficial anterior.');
   else ok('rollback legado explícito preservado em worker/index-v81.ts.');
+  if (!rollback.includes('"directory": "./public"')) fail('rollback legado não preserva os assets public anteriores.');
+  else ok('rollback legado preserva public como baseline anterior.');
   if (/\bD1\b|d1_databases|\bR2\b|r2_buckets/.test(rollback)) fail('rollback reintroduziu binding D1/R2.');
 }
 
