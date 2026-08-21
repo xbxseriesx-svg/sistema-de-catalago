@@ -2,7 +2,6 @@ export type Env = {
   ASSETS: Fetcher;
   SUPABASE_URL: string;
   SUPABASE_PUBLISHABLE_KEY: string;
-  SUPABASE_ANON_KEY?: string;
   SUPABASE_SECRET_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
   REMOTE_IMAGE_HMAC_SECRET?: string;
