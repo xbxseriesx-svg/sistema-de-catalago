@@ -16,16 +16,10 @@ export function adminHeaders(env: Env, initial: HeadersInit = {}) {
 }
 
 export function publicHeaders(env: Env, initial: HeadersInit = {}) {
-  const publishableKey = clean(env.SUPABASE_PUBLISHABLE_KEY);
-  const anonKey = clean(env.SUPABASE_ANON_KEY);
-  const apiKey = anonKey || publishableKey;
-  if (!apiKey) throw new Error('SUPABASE_PUBLISHABLE_KEY não configurada');
+  const key = clean(env.SUPABASE_PUBLISHABLE_KEY);
+  if (!key) throw new Error('SUPABASE_PUBLISHABLE_KEY não configurada');
   const headers = new Headers(initial);
-  headers.set('apikey', apiKey);
-  // Compatibilidade Data API/RLS: o JWT anon legado continua sendo uma
-  // credencial pública de baixo privilégio. Quando configurado, ele define
-  // explicitamente o papel anon no PostgREST sem conceder service_role.
-  if (anonKey) headers.set('authorization', `Bearer ${anonKey}`);
+  headers.set('apikey', key);
   return headers;
 }
 
