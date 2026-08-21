@@ -31,6 +31,7 @@ const requiredSource = [
   'src/router.tsx',
   'src/routeTree.gen.ts',
   'src/routes/__root.tsx',
+  'src/routes/admin.tsx',
   'src/routes/catalogo.tsx',
   'src/routes/index.tsx',
   'src/styles.css',
@@ -74,8 +75,8 @@ function walk(dir) {
   }
 }
 walk(path.join(root, 'src'));
-assert.equal(allSourceFiles.length, 83, `Fonte React Enterprise precisa conter exatamente 83 arquivos em src; encontrados ${allSourceFiles.length}`);
-assert.equal(sourceFiles.length, 81, `Fonte React/TS Enterprise precisa conter 81 arquivos de código; encontrados ${sourceFiles.length}`);
+assert.equal(allSourceFiles.length, 84, `Fonte React Enterprise precisa conter exatamente 84 arquivos em src; encontrados ${allSourceFiles.length}`);
+assert.equal(sourceFiles.length, 82, `Fonte React/TS Enterprise precisa conter 82 arquivos de código; encontrados ${sourceFiles.length}`);
 
 const source = sourceFiles.map((file) => fs.readFileSync(file, 'utf8')).join('\n');
 for (const forbidden of [
@@ -185,4 +186,4 @@ const normalizedAgain = adapter.normalizePersistedDocument(serialized);
 assert.equal(adapter.countDocumentNodes(normalizedAgain), 460);
 assert.deepEqual(normalizedAgain, normalized, 'Normalizar → serializar → normalizar não pode perder conteúdo/geometria');
 
-console.log('QA Frontend Enterprise: OK — SPA único, 83 arquivos-fonte, API same-origin e round-trip V94↔schema 5 com 460 nós.');
+console.log('QA Frontend Enterprise: OK — SPA único, 84 arquivos-fonte, API same-origin e round-trip V94↔schema 5 com 460 nós.');
