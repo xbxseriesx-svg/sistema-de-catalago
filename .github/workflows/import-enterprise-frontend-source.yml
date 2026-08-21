@@ -34,5 +34,11 @@ jobs:
         with:
           ref: enterprise/6-equipes-consolidacao
           fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar dependências raiz sem scripts de terceiros
+        run: npm ci --ignore-scripts
       - name: Validar checksums e importar apenas arquivos ausentes
         run: bash scripts/import-enterprise-frontend-source.sh
