@@ -69,7 +69,7 @@ function App() {
   const close = () => { setLeft(false); setRight(false); };
   const applyModel = async () => {
     const doc = buildFilledDocument(catalog);
-    // Carrega a revisão atual antes do PUT para preservar o controle de concorrência do V94.
+    // Carrega a revisão atual antes do PUT para preservar o controle de concorrência do draft.
     await loadRemoteDraft().catch(() => null);
     await saveRemoteDraft({ schemaVersion: 5, doc, resolution: "1080p", savedAt: new Date().toISOString() }).catch(() => null);
     replaceDocument(doc, "1080p");
@@ -91,9 +91,9 @@ function App() {
         <Panel tab={tab} setTab={(value) => { setTab(value); setLeft(true); }} catalog={catalog} templates={templates} preview={() => setPreview(true)} toast={setToast} onCatalog={setCatalog} />
       </aside>
       <main tabIndex={0} aria-label="Área de edição do catálogo" style={{ flex: 1, minWidth: 0, minHeight: 0, padding: applied ? 0 : 18 }}>
-        {applied ? <EditorWorkspace auditCatalog={catalog} /> : <div style={{ maxWidth: 1440, margin: "0 auto", background: "white", borderRadius: 16, minHeight: "calc(100dvh - 94px)", overflow: "hidden" }}>
+        {applied ? <EditorWorkspace /> : <div style={{ maxWidth: 1440, margin: "0 auto", background: "white", borderRadius: 16, minHeight: "calc(100dvh - 94px)", overflow: "hidden" }}>
           <div style={{ minHeight: "calc(100dvh - 94px)", display: "grid", placeItems: "center", padding: 24, textAlign: "center" }}>
-            <div><h2>Editor Visual ASTERYON V94</h2><p>Use o painel de Gestão do Catálogo para editar produtos, estrutura, marketing e modelos.</p></div>
+            <div><h2>Editor Visual ASTERYON</h2><p>Use o painel de Gestão do Catálogo para editar produtos, estrutura, marketing e modelos.</p></div>
           </div>
         </div>}
       </main>
@@ -108,51 +108,14 @@ function App() {
   </div>;
 }
 
-function EditorWorkspace({ auditCatalog }: { auditCatalog: C }) {
+function EditorWorkspace() {
   useShortcuts();
   useEditorPersistence();
   const [mounted, setMounted] = useState(false);
-  const doc = useEditor((state) => state.doc);
-
   useEffect(() => setMounted(true), []);
-  useEffect(() => {
-    if (!mounted) return;
-    let cancelled = false;
-    let frame1 = 0;
-    let frame2 = 0;
-    frame1 = requestAnimationFrame(() => {
-      frame2 = requestAnimationFrame(() => {
-        if (cancelled) return;
-        const elements = Array.from(document.querySelectorAll<HTMLElement>("[data-node-id]"));
-        const productElements = elements.filter((element) => element.dataset.nodeId?.startsWith("product-v93-"));
-        const expectedTexts = [heroText, "Marca do catálogo", auditCatalog.products[0]?.shortDescription ?? auditCatalog.products[0]?.name ?? "Produto QA 1"];
-        const missingTexts = expectedTexts.filter((text) => !elements.some((element) => element.textContent?.includes(text)));
-        const productGeometryDriftCount = productElements.filter((element) => {
-          const rect = element.getBoundingClientRect();
-          return !Number.isFinite(rect.width) || !Number.isFinite(rect.height) || rect.width <= 0 || rect.height <= 0;
-        }).length;
-        const ok = elements.length >= 3 && productElements.length >= 1 && missingTexts.length === 0 && productGeometryDriftCount === 0;
-        const status = ok ? "approved" : "failed";
-        const root = document.documentElement.dataset;
-        root["asteryonV93VisualParity"] = status;
-        root["asteryonTeam4V93"] = status;
-        root["asteryonPreviewEditorParity"] = ok ? "ok" : "failed";
-        root["asteryonTeam4Parity"] = status;
-        const runtime = window as Window & Record<string, unknown>;
-        const report = { ok, missingTexts, productGeometryDriftCount };
-        runtime["__ASTERYON_PREVIEW_EDITOR_VISUAL_V93__"] = report;
-        runtime["__ASTERYON_PREVIEW_EDITOR_TEAM4_V93__"] = { approved: ok, productGeometryDriftCount };
-        runtime["__ASTERYON_PREVIEW_EDITOR_PARITY_V91__"] = { ok, editorInitialParityOk: ok };
-        runtime["__ASTERYON_PREVIEW_EDITOR_TEAM4_V92__"] = { approved: ok, preflight: { ok }, editor: { ok } };
-        runtime["__ASTERYON_PREVIEW_EDITOR_NODES_V91__"] = Object.values(doc.nodes);
-        runtime["__ASTERYON_EDITOR_PERF_V94__"] = { version: "94", observerSchedules: 0, runtimeRuns: 1 };
-      });
-    });
-    return () => { cancelled = true; cancelAnimationFrame(frame1); cancelAnimationFrame(frame2); };
-  }, [mounted, auditCatalog, doc]);
 
   return <div className="flex h-[calc(100dvh-58px)] w-full flex-col overflow-hidden bg-ed-bg text-ed-ink">
-    <h1 className="sr-only">Editor Visual ASTERYON V94</h1>
+    <h1 className="sr-only">Editor Visual ASTERYON</h1>
     <Toolbar />
     <SelectionBreadcrumb />
     <MarketingPreview />
@@ -176,13 +139,13 @@ function makeNode(id: string, type: NodeType, name: string, parentId: string | n
 }
 
 function buildFilledDocument(catalog: C): EditorDocument {
-  const page = makeNode("page-v93", "page", "Modelo Oficial", null, 0, 0, 1920, 1800, {}, { background: "#f7f9fc" });
+  const page = makeNode("page-model", "page", "Modelo Oficial", null, 0, 0, 1920, 1800, {}, { background: "#f7f9fc" });
   page.responsive.tablet = { x: 0, y: 0, width: 768, height: 1900 };
   page.responsive.mobile = { x: 0, y: 0, width: 390, height: 2300 };
   const nodes: Record<string, EditorNode> = { [page.id]: page };
   const add = (node: EditorNode) => { nodes[node.id] = node; page.children.push(node.id); };
-  add(makeNode("hero-v93", "heading", "Hero principal", page.id, 120, 90, 1500, 150, { text: heroText }, { fontSize: 44, fontWeight: 800, color: "#153c6d" }));
-  add(makeNode("brands-v93", "text", "Marcas", page.id, 120, 300, 900, 70, { text: "Marca do catálogo" }, { fontSize: 28, fontWeight: 700, color: "#172033" }));
+  add(makeNode("hero-model", "heading", "Hero principal", page.id, 120, 90, 1500, 150, { text: heroText }, { fontSize: 44, fontWeight: 800, color: "#153c6d" }));
+  add(makeNode("brands-model", "text", "Marcas", page.id, 120, 300, 900, 70, { text: "Marca do catálogo" }, { fontSize: 28, fontWeight: 700, color: "#172033" }));
   const products = catalog.products.length ? catalog.products.slice(0, 8) : [{ id: "fallback", shortDescription: "Produto QA 1", brandName: "Marca do catálogo" }];
   products.forEach((product, index) => {
     const column = index % 4;
@@ -191,8 +154,8 @@ function buildFilledDocument(catalog: C): EditorDocument {
     const brandText = product.brandName ?? "Marca do catálogo";
     const x = 120 + column * 390;
     const y = 430 + rowIndex * 260;
-    add(makeNode(`product-v93-${index}`, "text", `Produto ${index + 1}`, page.id, x, y, 330, 132, { text: productText }, { fontSize: 22, fontWeight: 650, color: "#172033", background: "#ffffff", radius: 14, borderWidth: 1, borderColor: "#e4e7ec" }));
-    add(makeNode(`brand-v93-${index}`, "text", `Marca do produto ${index + 1}`, page.id, x + 14, y + 138, 302, 42, { text: brandText }, { fontSize: 15, fontWeight: 600, color: "#667085" }));
+    add(makeNode(`product-model-${index}`, "text", `Produto ${index + 1}`, page.id, x, y, 330, 132, { text: productText }, { fontSize: 22, fontWeight: 650, color: "#172033", background: "#ffffff", radius: 14, borderWidth: 1, borderColor: "#e4e7ec" }));
+    add(makeNode(`brand-model-${index}`, "text", `Marca do produto ${index + 1}`, page.id, x + 14, y + 138, 302, 42, { text: brandText }, { fontSize: 15, fontWeight: 600, color: "#667085" }));
   });
   return { rootId: page.id, nodes };
 }
@@ -290,16 +253,16 @@ function Marketing() {
 
 function Models({ templates, preview }: { templates: T[]; preview: () => void }) {
   const list = templates.length ? templates : [{ id: "m", name: "Modelo Oficial", description: "Modelo preenchido" }];
-  return <Sec t="Modelos prontos"><button style={{ ...btn, width: "100%", marginBottom: 10 }}>Começar com página em branco</button>{list.map((template) => <article key={template.id} data-asteryon-template-version="93" style={{ border: "1px solid #d8e1ec", borderRadius: 12, padding: 12, marginBottom: 10 }}><h3 style={{ margin: "0 0 4px" }}>{template.name}</h3><p>{template.description}</p><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}><button onClick={preview} style={btn}>Pré-visualizar modelo completo</button><button onClick={preview} style={primary}>Aplicar modelo preenchido V93</button></div></article>)}</Sec>;
+  return <Sec t="Modelos prontos"><button style={{ ...btn, width: "100%", marginBottom: 10 }}>Começar com página em branco</button>{list.map((template) => <article key={template.id} style={{ border: "1px solid #d8e1ec", borderRadius: 12, padding: 12, marginBottom: 10 }}><h3 style={{ margin: "0 0 4px" }}>{template.name}</h3><p>{template.description}</p><div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}><button onClick={preview} style={btn}>Pré-visualizar modelo completo</button><button onClick={preview} style={primary}>Aplicar modelo preenchido</button></div></article>)}</Sec>;
 }
 
 function Preview({ catalog, close, apply }: { catalog: C; close: () => void; apply: () => void }) {
-  return <div id="laurencini-template-preview-v69" role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(8,20,38,.78)", padding: 16, overflowY: "auto" }}><div className="ltp-shell" style={{ maxWidth: 1180, margin: "0 auto", background: "white", borderRadius: 18, overflow: "hidden" }}><div style={{ padding: 14, display: "flex", justifyContent: "space-between" }}><strong>Prévia final preenchida</strong><button onClick={close} style={btn}>Fechar</button></div><Filled catalog={catalog} preview /><div style={{ padding: 16, textAlign: "right" }}><button onClick={apply} style={primary}>Aplicar este modelo</button></div></div></div>;
+  return <div id="asteryon-template-preview" role="dialog" aria-modal="true" style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(8,20,38,.78)", padding: 16, overflowY: "auto" }}><div className="asteryon-template-preview-shell" style={{ maxWidth: 1180, margin: "0 auto", background: "white", borderRadius: 18, overflow: "hidden" }}><div style={{ padding: 14, display: "flex", justifyContent: "space-between" }}><strong>Prévia final preenchida</strong><button onClick={close} style={btn}>Fechar</button></div><Filled catalog={catalog} preview /><div style={{ padding: 16, textAlign: "right" }}><button onClick={apply} style={primary}>Aplicar este modelo</button></div></div></div>;
 }
 
 function Filled({ catalog, preview = false }: { catalog: C; preview?: boolean }) {
   const products = catalog.products.length ? catalog.products : [{ id: "p", shortDescription: "Produto QA 1" }];
-  return <div style={{ background: "#f7f9fc" }}><section data-node-id={preview ? undefined : "hero-v93"} style={{ padding: "48px 7%", background: "linear-gradient(135deg,#153c6d,#245f9f)", color: "white" }}><p>ASTERYON • CATÁLOGO</p><h2>{heroText}</h2></section><section data-node-id={preview ? undefined : "brands-v93"} style={{ padding: "26px 7%", background: "white" }}><h3>Marca do catálogo</h3><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{catalog.brands.map((brand) => <div key={brand.id} style={{ border: "1px solid #d8e1ec", borderRadius: 10, padding: "8px 10px" }}><strong>{brand.name}</strong><small style={{ display: "block", color: "#667085" }}>Marca do catálogo</small></div>)}</div></section><section style={{ padding: "28px 7% 46px" }}><h3>Produtos em destaque</h3><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>{products.slice(0, 8).map((product, index) => <article key={product.id} data-node-id={preview ? undefined : `product-v93-${index}`} style={{ minHeight: 150, background: "white", border: "1px solid #e4e7ec", borderRadius: 12, padding: 14 }}><small>{product.code ?? `P${index + 1}`}</small><h4>{product.shortDescription ?? product.name ?? `Produto QA ${index + 1}`}</h4><p>{product.brandName ?? "Marca do catálogo"}</p></article>)}</div></section></div>;
+  return <div style={{ background: "#f7f9fc" }}><section data-node-id={preview ? undefined : "hero-model"} style={{ padding: "48px 7%", background: "linear-gradient(135deg,#153c6d,#245f9f)", color: "white" }}><p>ASTERYON • CATÁLOGO</p><h2>{heroText}</h2></section><section data-node-id={preview ? undefined : "brands-model"} style={{ padding: "26px 7%", background: "white" }}><h3>Marca do catálogo</h3><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{catalog.brands.map((brand) => <div key={brand.id} style={{ border: "1px solid #d8e1ec", borderRadius: 10, padding: "8px 10px" }}><strong>{brand.name}</strong><small style={{ display: "block", color: "#667085" }}>Marca do catálogo</small></div>)}</div></section><section style={{ padding: "28px 7% 46px" }}><h3>Produtos em destaque</h3><div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>{products.slice(0, 8).map((product, index) => <article key={product.id} data-node-id={preview ? undefined : `product-model-${index}`} style={{ minHeight: 150, background: "white", border: "1px solid #e4e7ec", borderRadius: 12, padding: 14 }}><small>{product.code ?? `P${index + 1}`}</small><h4>{product.shortDescription ?? product.name ?? `Produto QA ${index + 1}`}</h4><p>{product.brandName ?? "Marca do catálogo"}</p></article>)}</div></section></div>;
 }
 
 function Sec({ t, children }: { t: string; children: React.ReactNode }) { return <section><h2 style={{ fontSize: 17, margin: "0 0 10px" }}>{t}</h2>{children}</section>; }
