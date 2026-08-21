@@ -1,7 +1,7 @@
 import type { Env } from './env';
 import { COMPANY_ID } from './env';
 import { clean, fail, ok, sameOrigin, secure } from './http';
-import { adminKey } from './supabase';
+import { adminKey, publicTable } from './supabase';
 import {
   attachRefreshedSession,
   companyMembership,
@@ -36,27 +36,21 @@ async function firstResponse(promises: Array<() => Promise<Response | null>>) {
 async function probeSupabase(env: Env) {
   const url = clean(env.SUPABASE_URL).replace(/\/+$/, '');
   const publishableKey = clean(env.SUPABASE_PUBLISHABLE_KEY);
-  const secretKey = adminKey(env);
-
-  if (!url || !publishableKey || !secretKey) {
+  if (!url || !publishableKey) {
     return { ok: false as const, code: 'SUPABASE_CONFIG' };
   }
 
-  const headers = new Headers({ apikey: secretKey });
-  if (!secretKey.startsWith('sb_secret_')) {
-    headers.set('authorization', `Bearer ${secretKey}`);
-  }
-
   try {
-    const response = await fetch(
-      `${url}/rest/v1/catalog_settings?company_id=eq.${encodeURIComponent(COMPANY_ID)}&select=company_id&limit=1`,
-      { headers },
+    await publicTable(
+      env,
+      'catalog_settings',
+      `company_id=eq.${encodeURIComponent(COMPANY_ID)}&select=company_id&limit=1`,
     );
-    if (!response.ok) {
-      console.error('Supabase health probe failed', response.status);
-      return { ok: false as const, code: 'SUPABASE_UNAVAILABLE', status: response.status };
-    }
-    return { ok: true as const, status: response.status };
+    return {
+      ok: true as const,
+      status: 200,
+      adminConfigured: Boolean(adminKey(env)),
+    };
   } catch (error) {
     console.error('Supabase health probe error', error);
     return { ok: false as const, code: 'SUPABASE_UNAVAILABLE' };
@@ -85,7 +79,7 @@ export default {
         if (!supabaseStatus.ok) {
           return finish(fail(
             supabaseStatus.code === 'SUPABASE_CONFIG'
-              ? 'Configuração do Supabase incompleta no Worker'
+              ? 'Configuração pública do Supabase incompleta no Worker'
               : 'Supabase indisponível para o Worker',
             503,
             supabaseStatus.code,
@@ -96,7 +90,12 @@ export default {
           version: 'V94',
           database: 'Supabase Postgres',
           storage: 'Supabase Storage',
-          supabase: { connected: true, status: supabaseStatus.status },
+          supabase: {
+            connected: true,
+            publicAccess: true,
+            adminConfigured: supabaseStatus.adminConfigured,
+            status: supabaseStatus.status,
+          },
           d1: false,
           r2: false,
           architecture: 'enterprise-modular',
