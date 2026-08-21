@@ -50,12 +50,10 @@ jobs:
         run: node scripts/qa-enterprise-backend.mjs
       - name: Compilar e executar regressão automatizada com Enterprise oficial
         run: npm test
-      - name: Instalar dependências isoladas do frontend SPA candidato
-        working-directory: frontend
-        run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: QA, TypeScript e build SPA do frontend candidato
+      - name: Revalidar frontend SPA oficial isoladamente
         working-directory: frontend
         run: |
+          npm ci --ignore-scripts --no-audit --no-fund
           npm run qa:enterprise
           npm run typecheck
           npm run build
@@ -75,13 +73,13 @@ jobs:
           cache: npm
       - name: Instalar dependências
         run: npm ci --ignore-scripts
-      - name: Preparar bundle de referência
-        run: npm run prepare:bundle
+      - name: Preparar release Enterprise oficial
+        run: npm run prepare:release
       - name: TypeScript
         run: npm run check
       - name: Gerar rollback V81 no caminho dos testes históricos
         run: npx wrangler deploy --dry-run --config wrangler.legacy-rollback.jsonc --outdir .wrangler-legacy-rollback-audit
-      - name: Compilar Worker Enterprise oficial no Wrangler
+      - name: Compilar Worker e SPA Enterprise oficiais no Wrangler
         run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-audit
       - name: Revalidar independência do backend novo
         run: node scripts/qa-enterprise-backend.mjs
@@ -98,7 +96,7 @@ jobs:
           node scripts/qa-tenant-isolation-v89.mjs
       - name: Auditoria de dependências do Worker
         run: npm audit --audit-level=high
-      - name: Auditar frontend SPA sem scripts de terceiros
+      - name: Auditar frontend SPA oficial sem scripts de terceiros
         working-directory: frontend
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
@@ -119,13 +117,13 @@ jobs:
           cache: npm
       - name: Instalar projeto
         run: npm ci --ignore-scripts
-      - name: Preparar aplicação
-        run: npm run prepare:bundle
+      - name: Preparar release Enterprise oficial
+        run: npm run prepare:release
       - name: Instalar Playwright/Chromium para QA
         run: |
           npm install --no-save @playwright/test@1.55.0
           npx playwright install --with-deps chromium
-      - name: Executar homologação desktop e mobile
+      - name: Executar homologação desktop e mobile contra SPA oficial
         run: npx playwright test --project=chromium-desktop --project=chromium-mobile
       - name: Evidências da Equipe 3
         if: always()
@@ -135,6 +133,7 @@ jobs:
           path: |
             test-results/
             playwright-report/
+            frontend/dist/
           if-no-files-found: ignore
           retention-days: 14
 
@@ -151,11 +150,11 @@ jobs:
           cache: npm
       - name: Instalar projeto em runner independente
         run: npm ci --ignore-scripts
-      - name: Preparar aplicação do mesmo commit
-        run: npm run prepare:bundle
-      - name: Compilar novamente o Worker Enterprise oficial
+      - name: Preparar release oficial do mesmo commit
+        run: npm run prepare:release
+      - name: Compilar novamente Worker e SPA Enterprise oficiais
         run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-team4
-      - name: Reconstruir frontend SPA candidato em runner independente
+      - name: Reconstruir frontend SPA oficial em runner independente
         working-directory: frontend
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
@@ -172,7 +171,7 @@ jobs:
         run: |
           node scripts/qa-enterprise-security-contracts.mjs
           node scripts/qa-enterprise-ai.mjs
-      - name: Repetir regressões críticas e stress do Editor
+      - name: Repetir regressões críticas e stress do Editor no SPA oficial
         run: |
           npx playwright test tests/e2e/editor-functional-regressions.spec.mjs --project=chromium-desktop --project=chromium-mobile
           npx playwright test tests/e2e/preview-editor-v93-filled-source.spec.mjs --project=chromium-desktop --project=chromium-mobile
@@ -203,13 +202,13 @@ jobs:
           cache: npm
       - name: Instalar dependências
         run: npm ci --ignore-scripts
-      - name: Preparar exatamente os assets de release
-        run: npm run prepare:bundle
-      - name: Rollback — validar Worker V81 sem publicar
+      - name: Preparar exatamente os assets de release Enterprise
+        run: npm run prepare:release
+      - name: Rollback — validar Worker V81 e public legado sem publicar
         run: npx wrangler deploy --dry-run --config wrangler.legacy-rollback.jsonc --outdir .wrangler-legacy-rollback
-      - name: Oficial — validar Worker Enterprise sem publicar
+      - name: Oficial — validar Worker e SPA Enterprise sem publicar
         run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-dry-run
-      - name: Revalidar frontend SPA candidato sem ativá-lo
+      - name: Revalidar frontend SPA oficial ativado no release
         working-directory: frontend
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
@@ -227,7 +226,7 @@ jobs:
           node scripts/qa-enterprise-security-contracts.mjs
           node scripts/qa-enterprise-frontend-source.mjs
           node scripts/qa-enterprise-ai.mjs
-      - name: Artefatos de dry-run e frontend SPA candidato para inspeção
+      - name: Artefatos de dry-run e frontend SPA oficial para inspeção
         uses: actions/upload-artifact@v4
         with:
           name: enterprise-equipe5-release-candidate
