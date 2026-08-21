@@ -19,6 +19,12 @@ if (!entry.includes('companyMembership(effectiveReq, env)')) fail('router admin 
 if (!entry.includes("!['GET', 'HEAD', 'OPTIONS'].includes(req.method) && !sameOrigin(req)")) {
   fail('proteção global de origem para métodos mutáveis ausente.');
 }
+if (!entry.includes("'/rest/v1/rpc/bootstrap_status'")) {
+  fail('health não usa o RPC público leve bootstrap_status.');
+}
+if (/publicTable\([\s\S]{0,400}catalog_settings/.test(entry)) {
+  fail('health voltou a depender de SELECT anon direto em catalog_settings.');
+}
 
 if (!session.includes('company_id=eq.${encodeURIComponent(COMPANY_ID)}&user_id=eq.')) {
   fail('sessão não resolve membership pela empresa corrente.');
@@ -81,4 +87,4 @@ if (failed) {
   process.exit(1);
 }
 
-ok('tenant, métodos HTTP, origem, RPC público filtrado, mídia e SSRF possuem contratos estáticos obrigatórios.');
+ok('tenant, métodos HTTP, origem, health por RPC público, catálogo filtrado, mídia e SSRF possuem contratos estáticos obrigatórios.');
