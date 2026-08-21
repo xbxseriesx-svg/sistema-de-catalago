@@ -1,0 +1,42 @@
+name: Enterprise — Live Production QA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enterprise-live-production-qa
+  cancel-in-progress: true
+
+env:
+  ASTERYON_PRODUCTION_URL: https://sistema-de-catalago.xbxseriesx.workers.dev
+  ASTERYON_DEPLOY_WAIT_MS: 480000
+
+jobs:
+  live-production:
+    name: Pós-deploy — validar endereço real
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Instalar dependências controladas
+        run: npm ci --ignore-scripts
+      - name: Instalar Playwright/Chromium para inspeção real
+        run: |
+          npm install --no-save --package-lock=false @playwright/test@1.62.0
+          npx playwright install --with-deps chromium
+      - name: Acessar Workers real e validar correção publicada
+        run: node scripts/qa-live-production.mjs
+      - name: Registrar contexto de falha
+        if: failure()
+        run: |
+          echo "A correção NÃO está concluída enquanto o endereço real estiver vermelho."
+          echo "URL validada: $ASTERYON_PRODUCTION_URL"
