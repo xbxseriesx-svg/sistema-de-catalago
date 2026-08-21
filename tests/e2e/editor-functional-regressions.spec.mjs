@@ -78,7 +78,7 @@ async function installMocks(page) {
     if (path === '/api/admin/pages/home/snapshots') return json({ ok: true, snapshots: [] });
     if (path === '/api/admin/templates') return json({ ok: true, templates: [{
       id: 'tpl-modelo-oficial-qa', systemKey: 'modelo-oficial-qa', name: 'Modelo Oficial', description: 'Template QA corrente',
-      category: 'pre-pronto', tags: ['qa'], accent: '#214C8F', nodes: [structuredClone(pageNode)], isSystem: true, version: 93,
+      category: 'pre-pronto', tags: ['qa'], accent: '#214C8F', nodes: [structuredClone(pageNode)], isSystem: true, version: 1,
     }] });
     if (path === '/api/admin/templates/seed') return json({ ok: true, requested: 0 });
     if (path === '/api/public/pages/home') return json({ ok: true, page: { slug: 'home', title: 'Home QA', versionId: 'qa-v1', versionNumber: 1, publishedAt: new Date().toISOString(), nodes: currentNodes } });
@@ -210,9 +210,9 @@ test('Modelos no mobile permanecem roláveis, abrem a Prévia preenchida e fecha
   await expect(apply).toBeVisible();
   await apply.click();
 
-  const preview = page.locator('#laurencini-template-preview-v69');
+  const preview = page.locator('#asteryon-template-preview');
   await expect(preview).toBeVisible({ timeout: 12_000 });
-  await expect(preview.locator('.ltp-shell')).toBeVisible({ timeout: 12_000 });
+  await expect(preview.locator('.asteryon-template-preview-shell')).toBeVisible({ timeout: 12_000 });
   await expect(preview.getByText('Um catálogo completo para apresentar a força da Laurencini.', { exact: true })).toBeVisible();
   await expect(preview.getByText('Produto QA 1', { exact: true }).first()).toBeVisible();
   const overflowAfter = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
