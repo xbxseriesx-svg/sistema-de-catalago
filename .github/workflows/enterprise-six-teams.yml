@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  VERIFIED_V94_ROLLBACK_SHA: 6b07df6c8e07ff50c20dc32eb96d2f0a4ff0e657
+
 concurrency:
   group: enterprise-six-teams-${{ github.ref }}
   cancel-in-progress: true
@@ -20,14 +23,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
+        with: { node-version: 24, cache: npm }
       - name: Instalar dependências sem scripts de terceiros
         run: npm ci --ignore-scripts
       - name: Validar lockfile determinístico do frontend
         run: test -s frontend/package-lock.json
-      - name: Validar candidato final sem legado físico
+      - name: Validar topologia de produção compatível com V94 e Worker modular
         run: |
           node scripts/qa-enterprise-transition.mjs
           node scripts/qa-enterprise-backend.mjs
@@ -42,14 +43,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
+        with: { node-version: 24, cache: npm }
       - name: Instalar dependências
         run: npm ci --ignore-scripts
-      - name: Executar regressão oficial completa do Worker/SPA
+      - name: Executar regressão oficial completa do Worker e fontes
         run: npm test
-      - name: Revalidar frontend SPA oficial isoladamente
+      - name: Revalidar frontend Enterprise de fonte isoladamente
         working-directory: frontend
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
@@ -67,14 +66,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
+        with: { node-version: 24, cache: npm }
       - name: Instalar dependências
         run: npm ci --ignore-scripts
-      - name: Preparar release Enterprise oficial
+      - name: Preparar release e fonte Enterprise
         run: npm run prepare:release
-      - name: TypeScript e dry-run oficial
+      - name: TypeScript e dry-run da topologia realmente servida
         run: |
           npm run check
           npx wrangler deploy --dry-run --outdir .wrangler-dry-run
@@ -91,19 +88,19 @@ jobs:
           node scripts/qa-product-images.mjs
       - name: Auditoria de dependências do Worker
         run: npm audit --audit-level=high
-      - name: Auditar frontend SPA oficial sem scripts de terceiros
+      - name: Auditar frontend Enterprise de fonte sem scripts de terceiros
         working-directory: frontend
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
           npm run qa:enterprise
           npm run typecheck
           npm audit --audit-level=high
-      - name: Checkout isolado do baseline de rollback
+      - name: Checkout isolado do último production V94 verificado
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          ref: 6b07df6c8e07ff50c20dc32eb96d2f0a4ff0e657
           path: _rollback-v94
-      - name: Provar rollback do SHA-base sem publicar
+      - name: Provar rollback V94 sem publicar
         working-directory: _rollback-v94
         run: |
           npm ci --ignore-scripts
@@ -114,23 +111,23 @@ jobs:
     name: Equipe 3 — Homologação Funcional e UX
     needs: team2
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
+        with: { node-version: 24, cache: npm }
       - name: Instalar projeto
         run: npm ci --ignore-scripts
-      - name: Preparar release Enterprise oficial
+      - name: Preparar fontes Enterprise
         run: npm run prepare:release
       - name: Instalar Playwright/Chromium para QA
         run: |
           npm install --no-save --package-lock=false @playwright/test@1.62.0
           npx playwright install --with-deps chromium
-      - name: Executar homologação desktop e mobile contra SPA oficial
+      - name: Homologar fonte Enterprise desktop/mobile
         run: npx playwright test --config=playwright.config.mjs
+      - name: Homologar UI V94 realmente servida em produção desktop/mobile
+        run: npx playwright test --config=playwright.production-compat.config.mjs
       - name: Evidências da Equipe 3
         if: always()
         uses: actions/upload-artifact@v4
@@ -140,6 +137,7 @@ jobs:
             test-results/
             playwright-report/
             frontend/dist/
+            public/index.html
           if-no-files-found: ignore
           retention-days: 14
 
@@ -147,20 +145,18 @@ jobs:
     name: Equipe 4 — Auditoria Mestra Independente
     needs: team3
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
+        with: { node-version: 24, cache: npm }
       - name: Instalar projeto em runner independente
         run: npm ci --ignore-scripts
-      - name: Preparar e compilar novamente o release oficial
+      - name: Preparar e compilar novamente a topologia oficial
         run: |
           npm run prepare:release
           npx wrangler deploy --dry-run --outdir .wrangler-enterprise-team4
-      - name: Reconstruir frontend SPA oficial em runner independente
+      - name: Reconstruir frontend Enterprise de fonte em runner independente
         working-directory: frontend
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
@@ -175,14 +171,17 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Contratos de segurança antes dos E2E independentes
         run: |
+          node scripts/qa-enterprise-transition.mjs
           node scripts/qa-enterprise-security-contracts.mjs
           node scripts/qa-enterprise-ai.mjs
-      - name: Repetir regressões críticas e importação no SPA oficial
+      - name: Repetir regressões críticas da fonte Enterprise
         run: |
           npx playwright test tests/e2e/editor-functional-regressions.spec.mjs --project=chromium-desktop --project=chromium-mobile
           npx playwright test tests/e2e/import-products-enterprise.spec.mjs --project=chromium-desktop --project=chromium-mobile
           npx playwright test tests/e2e/preview-editor-filled-source.spec.mjs --project=chromium-desktop --project=chromium-mobile
           npx playwright test tests/e2e/preview-editor-independent.spec.mjs --project=chromium-desktop --project=chromium-mobile
+      - name: Repetir UI de produção V94 de forma independente
+        run: npx playwright test --config=playwright.production-compat.config.mjs
       - name: Evidências da Equipe 4
         if: always()
         uses: actions/upload-artifact@v4
@@ -193,6 +192,7 @@ jobs:
             playwright-report/
             .wrangler-enterprise-team4/
             frontend/dist/
+            public/index.html
           if-no-files-found: ignore
           include-hidden-files: true
           retention-days: 14
@@ -205,16 +205,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: npm
+        with: { node-version: 24, cache: npm }
       - name: Instalar dependências
         run: npm ci --ignore-scripts
-      - name: Preparar exatamente os assets de release Enterprise
+      - name: Preparar fontes e assets de release
         run: npm run prepare:release
-      - name: Oficial — validar Worker e SPA Enterprise sem publicar
+      - name: Oficial — validar Worker modular + public V94 sem publicar
         run: npx wrangler deploy --dry-run --outdir .wrangler-enterprise-dry-run
-      - name: Revalidar frontend SPA oficial ativado no release
+      - name: Revalidar fonte Enterprise preservada
         working-directory: frontend
         run: |
           npm ci --ignore-scripts --no-audit --no-fund
@@ -223,7 +221,7 @@ jobs:
           npm run build
           test -f dist/index.html
           test ! -d .output
-      - name: Revalidar metadados, segurança e limpeza final
+      - name: Revalidar metadados, segurança e topologia de produção
         run: |
           node scripts/qa-enterprise-transition.mjs
           node scripts/qa-enterprise-backend.mjs
@@ -231,18 +229,18 @@ jobs:
           node scripts/qa-enterprise-frontend-source.mjs
           node scripts/qa-enterprise-ai.mjs
           node scripts/qa-supabase-baseline.mjs
-      - name: Checkout isolado do baseline de rollback
+      - name: Checkout isolado do último production V94 verificado
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha || 'main' }}
+          ref: 6b07df6c8e07ff50c20dc32eb96d2f0a4ff0e657
           path: _rollback-v94
-      - name: Release readiness — provar rollback do SHA-base sem publicar
+      - name: Release readiness — provar rollback V94 sem publicar
         working-directory: _rollback-v94
         run: |
           npm ci --ignore-scripts
           npm run prepare:bundle
           npx wrangler deploy --dry-run --outdir ../.wrangler-base-rollback
-      - name: Artefatos de dry-run e frontend SPA oficial para inspeção
+      - name: Artefatos de dry-run e UIs para inspeção
         uses: actions/upload-artifact@v4
         with:
           name: enterprise-equipe5-release-candidate
@@ -250,6 +248,7 @@ jobs:
             .wrangler-base-rollback/
             .wrangler-enterprise-dry-run/
             frontend/dist/
+            public/index.html
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 14
