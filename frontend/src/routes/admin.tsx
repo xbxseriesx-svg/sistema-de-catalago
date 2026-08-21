@@ -14,6 +14,7 @@ import { useEditor } from "@/editor/store";
 import type { EditorDocument, EditorNode, NodeType } from "@/editor/types";
 import { useEditorPersistence } from "@/editor/usePersistence";
 import { useShortcuts } from "@/editor/useShortcuts";
+import { parseSpreadsheetFile } from "@/lib/spreadsheet";
 
 type H = { id: string; level: "departamento" | "secao" | "categoria"; name: string; parentId: string | null };
 type P = { id: string; code?: string; name?: string; shortDescription?: string; departamentoId?: string; secaoId?: string; brandName?: string };
@@ -87,7 +88,7 @@ function App() {
     </header>
     <div style={{ display: "flex", minHeight: "calc(100dvh - 58px)" }}>
       <aside data-asteryon-editor-sidebar="left" data-open={left ? "true" : "false"} className={`as-side as-left ${left ? "open" : ""}`}>
-        <Panel tab={tab} setTab={(value) => { setTab(value); setLeft(true); }} catalog={catalog} templates={templates} preview={() => setPreview(true)} toast={setToast} />
+        <Panel tab={tab} setTab={(value) => { setTab(value); setLeft(true); }} catalog={catalog} templates={templates} preview={() => setPreview(true)} toast={setToast} onCatalog={setCatalog} />
       </aside>
       <main tabIndex={0} aria-label="Área de edição do catálogo" style={{ flex: 1, minWidth: 0, minHeight: 0, padding: applied ? 0 : 18 }}>
         {applied ? <EditorWorkspace auditCatalog={catalog} /> : <div style={{ maxWidth: 1440, margin: "0 auto", background: "white", borderRadius: 16, minHeight: "calc(100dvh - 94px)", overflow: "hidden" }}>
@@ -196,13 +197,13 @@ function buildFilledDocument(catalog: C): EditorDocument {
   return { rootId: page.id, nodes };
 }
 
-function Panel({ tab, setTab, catalog, templates, preview, toast }: { tab: Tab; setTab: (value: Tab) => void; catalog: C; templates: T[]; preview: () => void; toast: (value: string) => void }) {
+function Panel({ tab, setTab, catalog, templates, preview, toast, onCatalog }: { tab: Tab; setTab: (value: Tab) => void; catalog: C; templates: T[]; preview: () => void; toast: (value: string) => void; onCatalog: (value: C) => void }) {
   return <div style={{ height: "100%", overflowY: "auto", overscrollBehavior: "contain", padding: 16 }}>
     <p style={{ margin: 0, color: "#2463a8", fontSize: 11, fontWeight: 800 }}>ADMINISTRAÇÃO</p>
     <h1 style={{ fontSize: 21, margin: "5px 0 14px" }}>Gestão do Catálogo</h1>
     <nav style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 7, marginBottom: 16 }}>{tabs.map((value) => <button key={value} onClick={() => setTab(value)} style={{ ...btn, ...(tab === value ? active : {}) }}>{value}</button>)}</nav>
     {tab === "Produtos" && <Products c={catalog} />}
-    {tab === "Importar" && <Sec t="Importar"><p>Importe planilhas e mídias para atualizar o catálogo.</p><input type="file" aria-label="Arquivo para importar" /></Sec>}
+    {tab === "Importar" && <ImportProducts toast={toast} onCatalog={onCatalog} />}
     {tab === "Estrutura" && <Structure toast={toast} />}
     {tab === "Marcas" && <Sec t="Marcas">{catalog.brands.map((brand) => <div key={brand.id} style={row}>{brand.name}</div>)}</Sec>}
     {tab === "Ofertas" && <Sec t="Ofertas"><p>Gerencie campanhas e ofertas.</p></Sec>}
@@ -219,6 +220,56 @@ function Products({ c }: { c: C }) {
   const [sectionName, setSectionName] = useState("");
   useEffect(() => setSectionName(""), [departmentName]);
   return <Sec t="Produtos"><div style={{ display: "flex", gap: 6, marginBottom: 10 }}><button style={btn}>Novo produto</button><button style={btn}>Atualizar lista</button></div><label style={label}>Departamento *<select value={departmentName} onChange={(event) => setDepartmentName(event.target.value)} style={field}><option value="">Selecione</option>{departments.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select></label><label style={label}>Seção *<select value={sectionName} onChange={(event) => setSectionName(event.target.value)} style={field}><option value="">Selecione</option>{sections.map((item) => <option key={item.id} value={item.name}>{item.name}</option>)}</select></label>{c.products.slice(0, 8).map((product) => <div key={product.id} style={row}><b>{product.code ?? "—"}</b><span>{product.shortDescription ?? product.name ?? "Produto"}</span></div>)}</Sec>;
+}
+
+function ImportProducts({ toast, onCatalog }: { toast: (value: string) => void; onCatalog: (value: C) => void }) {
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [summary, setSummary] = useState<{ total: number; inserted: number; updated: number; ignored: number } | null>(null);
+
+  const run = async () => {
+    if (!file || busy) return;
+    if (file.size > 25 * 1024 * 1024) {
+      setMessage("Arquivo acima de 25 MB. Divida a planilha em partes menores.");
+      return;
+    }
+    setBusy(true);
+    setMessage("Lendo e validando a planilha…");
+    setSummary(null);
+    try {
+      const parsed = await parseSpreadsheetFile(file);
+      if (!parsed.products.length) throw new Error("Nenhuma linha válida. Confira Código, Descrição, Departamento, Seção e Categoria.");
+      setMessage(`Enviando ${parsed.products.length} produto(s) válido(s)…`);
+      const result = await api<{ total: number; inserted: number; updated: number; ignored: number; errors?: string[] }>("/api/admin/catalog/products/bulk", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ filename: file.name, kind: "spreadsheet", products: parsed.products }),
+      });
+      const catalogResponse = await api<{ catalog?: C }>("/api/admin/catalog");
+      onCatalog(catalogResponse.catalog ?? empty);
+      setSummary({ total: result.total, inserted: result.inserted, updated: result.updated, ignored: result.ignored });
+      const invalid = parsed.ignoredRows + result.ignored;
+      setMessage(`Importação concluída. ${result.inserted} novo(s), ${result.updated} atualizado(s)${invalid ? `, ${invalid} ignorado(s)` : ""}.`);
+      toast("Importação de produtos concluída com sucesso.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Falha ao importar a planilha.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return <Sec t="Importar">
+    <p>Importe produtos em <b>.xlsx</b> ou <b>.csv</b>. As colunas da planilha oficial são reconhecidas sem alterar os códigos existentes.</p>
+    <p style={{ fontSize: 11, color: "#667085", lineHeight: 1.5 }}>Obrigatórios: Código, Descrição, Descrição do departamento, Descrição da seção e Nome da categoria. Marca, embalagens, unidades, NCM e EAN são preservados quando informados.</p>
+    <label style={label}>Arquivo para importar
+      <input type="file" aria-label="Arquivo para importar" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(event) => { setFile(event.target.files?.[0] ?? null); setMessage(""); setSummary(null); }} style={field} />
+    </label>
+    {file && <div style={row}><b>{file.name}</b><span>{Math.max(1, Math.round(file.size / 1024))} KB</span></div>}
+    <button onClick={() => { void run(); }} disabled={!file || busy} style={{ ...primary, opacity: !file || busy ? .55 : 1 }}>{busy ? "Importando…" : "Importar produtos"}</button>
+    {message && <p role="status" style={{ marginTop: 10, fontSize: 12 }}>{message}</p>}
+    {summary && <div data-asteryon-import-summary style={{ marginTop: 10, padding: 10, borderRadius: 8, background: "#eef6ff", fontSize: 12 }}>Total: {summary.total} · Novos: {summary.inserted} · Atualizados: {summary.updated} · Ignorados pela API: {summary.ignored}</div>}
+  </Sec>;
 }
 
 function Structure({ toast }: { toast: (value: string) => void }) {
