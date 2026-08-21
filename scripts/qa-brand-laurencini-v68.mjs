@@ -14,10 +14,21 @@ const packagePatch = Number(String(pkg.version).split('.').at(-1));
 assert.ok(Number.isFinite(version) && version >= 68, 'A identidade Laurencini exige VERSION 68 ou superior.');
 assert.equal(packagePatch, version, 'package.json precisa acompanhar VERSION.');
 if (version >= 94) {
+  const rollbackCommand = 'node scripts/sync-release-metadata-v94.mjs && node scripts/prepare-bundle-v81.mjs';
   assert.equal(
-    pkg.scripts['prepare:bundle'],
-    'node scripts/sync-release-metadata-v94.mjs && node scripts/prepare-bundle-v81.mjs',
-    'V94 deve sincronizar metadados e depois executar o mesmo preparador V81 que preserva a identidade Laurencini.',
+    pkg.scripts['prepare:rollback'],
+    rollbackCommand,
+    'V94 deve preservar a identidade Laurencini no caminho explícito de rollback V81.',
+  );
+  assert.equal(
+    pkg.scripts['prepare:release'],
+    'npm run prepare:frontend',
+    'O release Enterprise V94 deve preparar somente o frontend reconstruído.',
+  );
+  assert.doesNotMatch(
+    pkg.scripts['prepare:release'],
+    /prepare:rollback|sync-release-metadata-v94|prepare-bundle-v81/,
+    'A identidade do rollback legado não pode voltar a ser dependência do release Enterprise oficial.',
   );
 } else {
   assert.equal(pkg.scripts['prepare:bundle'], 'node scripts/prepare-bundle-v81.mjs');
