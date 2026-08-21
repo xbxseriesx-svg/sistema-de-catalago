@@ -13,7 +13,22 @@ import { useShortcuts } from "@/editor/useShortcuts";
 import { useEditorPersistence } from "@/editor/usePersistence";
 
 export const Route = createFileRoute("/")({
-  head: () => ({ meta: [{ title: "ASTERYON — Editor Visual de Catálogo Digital" }] }),
+  head: () => ({
+    meta: [
+      { title: "ASTERYON V94 — Editor Visual de Catálogo Digital" },
+      {
+        name: "description",
+        content:
+          "Editor visual profissional do ASTERYON: canvas infinito, drag & drop livre, camadas, smart guides, seleção profunda e responsividade por dispositivo.",
+      },
+      { property: "og:title", content: "ASTERYON V94 — Editor Visual de Catálogo Digital" },
+      {
+        property: "og:description",
+        content:
+          "Núcleo do editor visual ASTERYON: nós atômicos, resize livre, rotação, snap inteligente e painéis contextuais.",
+      },
+    ],
+  }),
   component: EditorPage,
 });
 
@@ -22,23 +37,30 @@ function EditorPage() {
   useEditorPersistence();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
   return (
     <EditorAccessGate>
-      <div className="flex h-screen w-screen flex-col overflow-hidden bg-ed-bg text-ed-ink">
-        <h1 className="sr-only">Editor Visual ASTERYON</h1>
-        <Toolbar />
-        <SelectionBreadcrumb />
-        <MarketingPreview />
-        <div className="flex min-h-0 flex-1">
-          <aside className="flex w-60 shrink-0 flex-col border-r border-ed-border bg-ed-panel">
-            <div className="min-h-0 flex-1 overflow-hidden"><ElementsPanel /></div>
-            <div className="h-[42%] min-h-0 border-t border-ed-border"><LayersPanel /></div>
-          </aside>
-          <main className="relative min-w-0 flex-1">{mounted ? <Canvas /> : null}</main>
-          <aside className="w-64 shrink-0 border-l border-ed-border bg-ed-panel"><PropertiesPanel /></aside>
-          {mounted ? <AiPanel /> : null}
-        </div>
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-ed-bg text-ed-ink">
+      <h1 className="sr-only">Editor Visual ASTERYON V94</h1>
+      <Toolbar />
+      <SelectionBreadcrumb />
+      <MarketingPreview />
+      <div className="flex min-h-0 flex-1">
+        <aside className="flex w-60 shrink-0 flex-col border-r border-ed-border bg-ed-panel">
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <ElementsPanel />
+          </div>
+          <div className="h-[42%] min-h-0 border-t border-ed-border">
+            <LayersPanel />
+          </div>
+        </aside>
+        <main className="relative min-w-0 flex-1">{mounted ? <Canvas /> : null}</main>
+        <aside className="w-64 shrink-0 border-l border-ed-border bg-ed-panel">
+          <PropertiesPanel />
+        </aside>
+        {mounted ? <AiPanel /> : null}
       </div>
+    </div>
     </EditorAccessGate>
   );
 }

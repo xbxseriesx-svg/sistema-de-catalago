@@ -6,6 +6,23 @@ import { clean, fail, ok, requestBody } from '../http';
 import { requireUser } from '../auth/session';
 import { table } from '../supabase';
 
+function validStoredNodes(value: unknown) {
+  if (Array.isArray(value)) return value.length > 0;
+  if (!value || typeof value !== 'object') return false;
+  const document = value as Record<string, unknown>;
+  return typeof document.rootId === 'string'
+    && !!document.rootId
+    && !!document.nodes
+    && typeof document.nodes === 'object'
+    && !Array.isArray(document.nodes);
+}
+
+function optionalSettings(value: unknown) {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
 export async function handlePagesRoute(req: Request, env: Env, path: string): Promise<Response | null> {
   const pageDraft = path.match(/^\/api\/admin\/pages\/([^/]+)\/draft$/);
   if (pageDraft && ['GET', 'PUT'].includes(req.method)) {
@@ -31,6 +48,7 @@ export async function handlePagesRoute(req: Request, env: Env, path: string): Pr
           slug: page.slug,
           title: page.title,
           nodes: page.draft_nodes,
+          settings: page.settings || {},
           revision: page.revision,
           updatedAt: page.updated_at,
           publishedVersionId: `supabase-v${page.published_revision}`,
@@ -39,7 +57,7 @@ export async function handlePagesRoute(req: Request, env: Env, path: string): Pr
     }
 
     const input = await requestBody(req);
-    if (!Array.isArray(input.nodes)) return fail('Conteúdo inválido');
+    if (!validStoredNodes(input.nodes)) return fail('Conteúdo inválido');
     if (input.expectedRevision != null && Number(input.expectedRevision) !== Number(page.revision)) {
       return fail(
         'O rascunho foi alterado em outra sessão. Recarregue antes de salvar.',
@@ -48,12 +66,19 @@ export async function handlePagesRoute(req: Request, env: Env, path: string): Pr
       );
     }
     const revision = Number(page.revision) + 1;
+    const settings = optionalSettings(input.settings);
+    const patch: Record<string, unknown> = { draft_nodes: input.nodes, revision };
+    if (settings) patch.settings = settings;
     await table(env, 'pages', `id=eq.${encodeURIComponent(page.id)}&company_id=eq.${COMPANY_ID}`, {
       method: 'PATCH',
       headers: { prefer: 'return=minimal' },
-      body: JSON.stringify({ draft_nodes: input.nodes, revision }),
+      body: JSON.stringify(patch),
     });
-    await audit(env, auth.user, 'draft.save', 'page', page.id, { revision });
+    await audit(env, auth.user, 'draft.save', 'page', page.id, {
+      revision,
+      editorSchemaVersion: settings?.editorSchemaVersion || null,
+      resolutionPreset: settings?.resolutionPreset || null,
+    });
     return ok({ revision, savedAt: new Date().toISOString() });
   }
 
@@ -100,6 +125,54 @@ export async function handlePagesRoute(req: Request, env: Env, path: string): Pr
     });
   }
 
+  const snapshotRestore = path.match(/^\/api\/admin\/pages\/([^/]+)\/snapshots\/([^/]+)\/restore$/);
+  if (snapshotRestore && req.method === 'POST') {
+    const auth = await requireUser(req, env, ['ADMIN']);
+    if (auth.error || !auth.user) return auth.error;
+    const pages = await table(
+      env,
+      'pages',
+      `company_id=eq.${COMPANY_ID}&slug=eq.${encodeURIComponent(decodeURIComponent(snapshotRestore[1]))}&select=*&limit=1`,
+    ) as any[];
+    const page = pages?.[0];
+    if (!page) return fail('Página não encontrada', 404, 'NOT_FOUND');
+    const snapshotRows = await table(
+      env,
+      'page_snapshots',
+      `id=eq.${encodeURIComponent(decodeURIComponent(snapshotRestore[2]))}&page_id=eq.${encodeURIComponent(page.id)}&select=id,label,nodes,revision,created_at&limit=1`,
+    ) as any[];
+    const snapshot = snapshotRows?.[0];
+    if (!snapshot || !validStoredNodes(snapshot.nodes)) {
+      return fail('Snapshot não encontrado', 404, 'SNAPSHOT_NOT_FOUND');
+    }
+
+    await table(env, 'page_snapshots', '', {
+      method: 'POST',
+      headers: { prefer: 'return=minimal' },
+      body: JSON.stringify({
+        id: uid('snap'),
+        page_id: page.id,
+        label: `Antes de restaurar ${clean(snapshot.label) || snapshot.id}`,
+        nodes: page.draft_nodes,
+        revision: page.revision,
+        created_by: auth.user.id,
+      }),
+    });
+
+    const revision = Number(page.revision) + 1;
+    await table(env, 'pages', `id=eq.${encodeURIComponent(page.id)}&company_id=eq.${COMPANY_ID}`, {
+      method: 'PATCH',
+      headers: { prefer: 'return=minimal' },
+      body: JSON.stringify({ draft_nodes: snapshot.nodes, revision }),
+    });
+    await audit(env, auth.user, 'snapshot.restore', 'page', page.id, {
+      snapshotId: snapshot.id,
+      sourceRevision: snapshot.revision,
+      revision,
+    });
+    return ok({ snapshotId: snapshot.id, revision, restoredAt: new Date().toISOString() });
+  }
+
   const snapshots = path.match(/^\/api\/admin\/pages\/([^/]+)\/snapshots$/);
   if (snapshots && ['GET', 'POST'].includes(req.method)) {
     const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']);
@@ -107,7 +180,7 @@ export async function handlePagesRoute(req: Request, env: Env, path: string): Pr
     const pages = await table(
       env,
       'pages',
-      `company_id=eq.${COMPANY_ID}&slug=eq.${encodeURIComponent(decodeURIComponent(snapshots[1]))}&select=id,revision&limit=1`,
+      `company_id=eq.${COMPANY_ID}&slug=eq.${encodeURIComponent(decodeURIComponent(snapshots[1]))}&select=id,revision,draft_nodes&limit=1`,
     ) as any[];
     const page = pages?.[0];
     if (!page) return fail('Página não encontrada', 404, 'NOT_FOUND');
@@ -116,20 +189,22 @@ export async function handlePagesRoute(req: Request, env: Env, path: string): Pr
       const rows = await table(
         env,
         'page_snapshots',
-        `page_id=eq.${encodeURIComponent(page.id)}&select=id,label,nodes,created_at&order=created_at.desc&limit=30`,
+        `page_id=eq.${encodeURIComponent(page.id)}&select=id,label,nodes,revision,created_at&order=created_at.desc&limit=30`,
       ) as any[];
       return ok({
         snapshots: (rows || []).map((item: any) => ({
           id: item.id,
           label: item.label,
           nodes: item.nodes,
+          revision: item.revision,
           createdAt: item.created_at,
         })),
       });
     }
 
     const input = await requestBody(req);
-    if (!Array.isArray(input.nodes)) return fail('Snapshot inválido');
+    const nodes = validStoredNodes(input.nodes) ? input.nodes : page.draft_nodes;
+    if (!validStoredNodes(nodes)) return fail('Snapshot inválido');
     const id = uid('snap');
     const label = clean(input.label).slice(0, 120) || 'Ponto manual';
     await table(env, 'page_snapshots', '', {
@@ -139,12 +214,12 @@ export async function handlePagesRoute(req: Request, env: Env, path: string): Pr
         id,
         page_id: page.id,
         label,
-        nodes: input.nodes,
+        nodes,
         revision: page.revision,
         created_by: auth.user.id,
       }),
     });
-    return ok({ snapshot: { id, label, createdAt: new Date().toISOString() } });
+    return ok({ snapshot: { id, label, revision: page.revision, createdAt: new Date().toISOString() } });
   }
 
   const versions = path.match(/^\/api\/admin\/pages\/([^/]+)\/versions$/);
@@ -212,6 +287,11 @@ export async function handlePagesRoute(req: Request, env: Env, path: string): Pr
       method: 'PATCH',
       headers: { prefer: 'return=minimal' },
       body: JSON.stringify({ draft_nodes: version.nodes, revision }),
+    });
+    await audit(env, auth.user, 'page.rollback', 'page', page.id, {
+      versionId: version.id,
+      versionNumber: version.revision,
+      revision,
     });
     return ok({
       versionId: version.id,

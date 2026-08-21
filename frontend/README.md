@@ -1,41 +1,22 @@
-# ASTERYON Frontend — recuperação de fonte Enterprise
+# ASTERYON Frontend Enterprise — V94
 
-Esta pasta inicia a substituição controlada do frontend legado compilado (`public/assets/index-V60Excel.js` + runtimes versionados) por uma fonte React/TypeScript editável e reproduzível.
+Esta pasta contém a fonte React/TypeScript recuperada e em reconstrução controlada para substituir o bundle histórico de `public/`.
 
-## Origem
+## Estado atual
 
-- Fonte original: `asterion-canvas-studio-main(1).zip`.
-- Base consolidada recuperada: `asterion-canvas-studio-v5-supabase-cloudflare-ready-2026-08-14.zip`.
-- Referência funcional histórica do pacote V5: `ee9420f97299b6b95586389f3a2aae9f1afd5962`.
-- Recuperação iniciada em 2026-08-20 depois da aprovação do backend modular pelo Framework Enterprise de 6 Equipes no SHA `1110d9673cde5c1af952a900addb4945b4aed560`.
+- **Ainda não é o frontend de produção.** `public/` continua sendo o rollback funcional durante a transição.
+- A versão lógica da aplicação é **V94 / 2.1.94**. O número `schemaVersion: 5` identifica apenas o formato interno do documento editável e não é uma segunda versão da aplicação.
+- A persistência do navegador usa somente rotas same-origin `/api/*` do Worker Enterprise.
+- O navegador não acessa Supabase Auth, Postgres ou Storage diretamente e não recebe service-role/secret.
+- Drafts editados pelo frontend novo são serializados no formato recursivo compatível com V94 para preservar rollback.
+- Desktop continua nos campos-base; Tablet e Mobile permanecem independentes.
+- Snapshot restore cria um snapshot de segurança antes da restauração.
+- O frontend não possui `wrangler.jsonc`, `.env.production` nem script de deploy independente.
 
-## Estado
+## Gate para ativação
 
-**NÃO É AINDA O FRONTEND DE PRODUÇÃO.**
+A troca do `public/assets/index-V60Excel.js` pelo build desta fonte só poderá ocorrer depois de: build e typecheck reproduzíveis, E2E do frontend candidato, paridade funcional, auditoria de segurança e aprovação das Equipes 0–5 no mesmo SHA.
 
-O frontend entregue continua em `public/` até esta fonte atingir paridade funcional e passar novamente pelas 6 Equipes. Não remover o bundle/runtimes históricos antes desse gate.
+## Proveniência
 
-## Regras da consolidação
-
-1. `Desktop` continua sendo a fonte única de posição/tamanho base.
-2. `Tablet` e `Mobile` permanecem independentes.
-3. Preservar “Aplicar ajuste atual em todos os modos”.
-4. Preservar 1366×768, 1440×900, Full HD, 2K e 4K.
-5. Preservar autosave de aproximadamente 850 ms, Ctrl+S e salvar manual.
-6. Preservar snapshots, publicação e rollback real.
-7. Marketing deve permanecer visível, movível, redimensionável, editável e excluível no Editor.
-8. Imagens devem usar `object-contain` onde o requisito é não cortar/zoomar.
-9. Preview final preenchido deve continuar sendo a fonte do conteúdo aplicado ao Editor.
-10. Não criar novas camadas `vXX`/hotfix como arquitetura permanente.
-
-## Migração de segurança obrigatória
-
-O pacote V5 recuperado fazia algumas operações diretamente no Supabase pelo navegador. Isso é somente referência histórica. Antes da ativação desta fonte:
-
-- autenticação deve usar `/api/auth/*` do Worker Enterprise;
-- draft/snapshot/publish/rollback devem usar `/api/admin/pages/*`;
-- mídia deve usar `/api/admin/media` e `/api/admin/product-images/import`;
-- catálogo público deve usar `/api/public/*`;
-- o navegador não deve receber service-role/secret e não deve contornar o gate de tenant do Worker.
-
-A troca de `public/` pelo build desta pasta somente será permitida após Equipes 0–5 verdes no mesmo SHA.
+A fonte foi recuperada de `asterion-canvas-studio-main(1).zip` e do pacote `asterion-canvas-studio-v5-supabase-cloudflare-ready-2026-08-14.zip`. Arquivos V5 preservados nesta pasta servem apenas como documentação histórica da origem e não definem a versão ativa da aplicação.
