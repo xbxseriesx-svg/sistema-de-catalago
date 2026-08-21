@@ -28,8 +28,6 @@ async function installPreviewMocks(page) {
           departamentoId: 'dep-qa', secaoId: 'sec-qa', categoriaId: 'cat-qa', brandId: 'brand-qa',
           brandName: 'Marca QA', packaging: 'CX 12', image: '',
         }],
-        // Sem logo de propósito: reproduz exatamente o caso em que o Preview mostra
-        // <strong>Marca QA</strong><small>Marca do catálogo</small>.
         brands: [{ id: 'brand-qa', name: 'Marca QA', slug: 'marca-qa', status: 'active', logoUrl: null }],
         hierarchy: [
           { id: 'dep-qa', level: 'departamento', name: 'QA Departamento', slug: 'qa-departamento', parentId: null, status: 'active' },
@@ -61,7 +59,7 @@ async function installPreviewMocks(page) {
       return json({ ok: true, page: { id: 'page-home', slug: 'home', title: 'Home QA', nodes: currentNodes, revision: 1, updatedAt: new Date().toISOString() } });
     }
     if (path === '/api/admin/pages/home/snapshots') return json({ ok: true, snapshots: [] });
-    if (path === '/api/public/pages/home') return json({ ok: true, page: { slug: 'home', title: 'Home QA', versionId: 'qa-v1', versionNumber: 1, nodes: currentNodes } });
+    if (path === '/api/public/pages/home') return json({ ok: true, page: { slug: 'home', title: 'Home QA', versionId: 'qa-publication', versionNumber: 1, nodes: currentNodes } });
     return json({ ok: true });
   });
 }
@@ -74,13 +72,12 @@ async function openLeftPanel(page, testInfo) {
   await expect(page.locator('[data-asteryon-editor-sidebar="left"]')).toHaveAttribute('data-open', 'true');
 }
 
-test('Equipe 4: Modelo Oficial aplica pelo Preview Final mesmo com marca sem logo', async ({ page }, testInfo) => {
+test('auditoria independente aplica Modelo Oficial pelo Preview Final mesmo sem logo da marca', async ({ page }, testInfo) => {
   await installPreviewMocks(page);
   const dialogs = [];
-  page.on('dialog', async dialog => {
-    dialogs.push(dialog.message());
-    await dialog.accept();
-  });
+  const pageErrors = [];
+  page.on('dialog', async dialog => { dialogs.push(dialog.message()); await dialog.accept(); });
+  page.on('pageerror', error => pageErrors.push(error.message));
 
   await page.goto('/admin', { waitUntil: 'networkidle' });
   await openLeftPanel(page, testInfo);
@@ -93,41 +90,35 @@ test('Equipe 4: Modelo Oficial aplica pelo Preview Final mesmo com marca sem log
   await expect(previewButton).toBeVisible({ timeout: 10_000 });
   await previewButton.click();
 
-  const preview = page.locator('#laurencini-template-preview-v69');
+  const preview = page.locator('#asteryon-template-preview');
   await expect(preview).toBeVisible();
-  await expect(preview.locator('.ltp-shell')).toBeVisible({ timeout: 10_000 });
+  await expect(preview.locator('.asteryon-template-preview-shell')).toBeVisible({ timeout: 10_000 });
   await expect(preview.getByText('Marca QA', { exact: true }).first()).toBeVisible();
   await expect(preview.getByText('Marca do catálogo', { exact: true }).first()).toBeVisible();
 
   await preview.getByRole('button', { name: 'Aplicar este modelo' }).click();
   await expect(preview).toBeHidden({ timeout: 12_000 });
-  await expect(page.locator('[data-node-id]').filter({ hasText: 'Marca do catálogo' }).first()).toBeVisible({ timeout: 12_000 });
-  await expect(page.locator('[data-node-id]').filter({ hasText: 'Marca QA' }).first()).toBeVisible({ timeout: 12_000 });
+  await expect(page.locator('[data-node-id="brands-model"]').filter({ hasText: 'Marca do catálogo' })).toBeVisible({ timeout: 12_000 });
+  await expect(page.locator('[data-node-id="brand-model-0"]').filter({ hasText: 'Marca QA' })).toBeVisible({ timeout: 12_000 });
+  await expect(page.locator('[data-node-id="product-model-0"]').filter({ hasText: 'Produto QA' })).toBeVisible({ timeout: 12_000 });
 
-  expect(dialogs.filter(message => message.includes('Modelo não aplicado')), `Alerta de produção reapareceu: ${dialogs.join(' | ')}`).toEqual([]);
-
-  await expect.poll(async () => page.evaluate(() => document.documentElement.dataset.asteryonPreviewEditorParity || ''), { timeout: 12_000 }).toBe('ok');
-  await expect.poll(async () => page.evaluate(() => document.documentElement.dataset.asteryonTeam4Parity || ''), { timeout: 12_000 }).toBe('approved');
-
-  const audit = await page.evaluate(() => {
-    const group3 = window.__ASTERYON_PREVIEW_EDITOR_PARITY_V91__ || null;
-    const team4 = window.__ASTERYON_PREVIEW_EDITOR_TEAM4_V92__ || null;
-    const nodes = window.__ASTERYON_PREVIEW_EDITOR_NODES_V91__ || [];
-    const texts = [];
-    const walk = item => {
-      if (!item) return;
-      if ((item.type === 'text' || item.type === 'button') && item.props?.text) texts.push(item.props.text);
-      (item.children || []).forEach(walk);
-    };
-    nodes.forEach(walk);
-    return { group3, team4, texts };
+  const audit = await page.locator('[data-node-id]').evaluateAll(elements => {
+    const text = elements.map(element => element.textContent || '').join('\n');
+    const invalidGeometry = elements.filter(element => {
+      const rect = element.getBoundingClientRect();
+      return rect.width <= 0 || rect.height <= 0 || !Number.isFinite(rect.width) || !Number.isFinite(rect.height);
+    }).map(element => element.getAttribute('data-node-id'));
+    const qaGlobals = Object.keys(window).filter(key => key.startsWith('__ASTERYON_PREVIEW_EDITOR') || key.startsWith('__ASTERYON_EDITOR_PERF'));
+    const parityDataset = Object.keys(document.documentElement.dataset).filter(key => /parity|team4v|v93visual/i.test(key));
+    return { text, invalidGeometry, qaGlobals, parityDataset };
   });
 
-  expect(audit.group3?.ok).toBe(true);
-  expect(audit.group3?.editorInitialParityOk).toBe(true);
-  expect(audit.team4?.preflight?.ok).toBe(true);
-  expect(audit.team4?.editor?.ok).toBe(true);
-  expect(audit.team4?.approved).toBe(true);
-  expect(audit.texts).toContain('Marca QA');
-  expect(audit.texts).toContain('Marca do catálogo');
+  expect(audit.text).toContain('Marca QA');
+  expect(audit.text).toContain('Marca do catálogo');
+  expect(audit.text).toContain('Produto QA');
+  expect(audit.invalidGeometry).toEqual([]);
+  expect(audit.qaGlobals, 'runtime oficial não deve publicar globais privados de QA').toEqual([]);
+  expect(audit.parityDataset, 'runtime oficial não deve publicar dataset privado de paridade').toEqual([]);
+  expect(dialogs.filter(message => message.includes('Modelo não aplicado')), `Alerta de produção reapareceu: ${dialogs.join(' | ')}`).toEqual([]);
+  expect(pageErrors).toEqual([]);
 });
