@@ -2,7 +2,7 @@ import type { Env } from '../env';
 import { COMPANY_ID } from '../env';
 import { marketingLayout, postgrestLiteral } from '../domain';
 import { clean, fail, ok } from '../http';
-import { publicTable, publicTableAll, table, tableAll } from '../supabase';
+import { publicSupabase, publicTableAll, table, tableAll } from '../supabase';
 
 function brandDto(row: any) {
   const data = row?.data && typeof row.data === 'object' ? row.data : {};
@@ -21,13 +21,121 @@ function brandDto(row: any) {
   };
 }
 
+function publicBrandDto(row: any) {
+  return {
+    id: row?.id,
+    name: row?.name,
+    slug: row?.slug,
+    description: row?.description ?? null,
+    website: row?.website ?? null,
+    logoUrl: row?.logo_url ?? null,
+    bannerUrl: row?.banner_url ?? null,
+    sortOrder: Number(row?.sort_order ?? 0),
+    featured: !!row?.featured,
+    status: 'active',
+  };
+}
+
+async function publicCatalogRpc(env: Env) {
+  const payload = await publicSupabase(env, '/rest/v1/rpc/get_public_catalog', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('Resposta pública inválida do RPC get_public_catalog');
+  }
+  return payload as Record<string, any>;
+}
+
+async function publicSiteRpc(env: Env, pageSlug: string) {
+  const payload = await publicSupabase(env, '/rest/v1/rpc/get_public_site', {
+    method: 'POST',
+    body: JSON.stringify({ page_slug: pageSlug }),
+  });
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new Error('Resposta pública inválida do RPC get_public_site');
+  }
+  return payload as Record<string, any>;
+}
+
+function publicHierarchyDto(row: any) {
+  return {
+    id: row?.id,
+    name: row?.name,
+    slug: row?.slug,
+    level: row?.type,
+    parent_id: row?.parent_id ?? null,
+    parentId: row?.parent_id ?? null,
+    sort_order: row?.sort_order ?? 0,
+    sortOrder: row?.sort_order ?? 0,
+    status: 'active',
+  };
+}
+
+function publicProductsDto(products: any[], brands: any[], hierarchy: any[]) {
+  const brandNames = new Map(brands.map((brand: any) => [brand?.id, brand?.name]));
+  const hierarchyNames = new Map(hierarchy.map((node: any) => [node?.id, node?.name]));
+
+  return products.map((product: any) => ({
+    id: product?.id,
+    code: product?.code,
+    ean: product?.ean ?? null,
+    name: product?.name,
+    shortDescription: product?.short_description ?? product?.name ?? '',
+    longDescription: product?.long_description ?? product?.short_description ?? product?.name ?? '',
+    brandId: product?.brand_id ?? null,
+    brandName: brandNames.get(product?.brand_id) ?? null,
+    departamentoId: product?.departamento_id ?? null,
+    departamentoName: hierarchyNames.get(product?.departamento_id) ?? null,
+    secaoId: product?.secao_id ?? null,
+    secaoName: hierarchyNames.get(product?.secao_id) ?? null,
+    categoriaId: product?.categoria_id ?? null,
+    categoriaName: hierarchyNames.get(product?.categoria_id) ?? null,
+    unit: product?.unit ?? null,
+    packaging: product?.packaging ?? null,
+    ncm: product?.ncm ?? null,
+    price: product?.price ?? null,
+    promoPrice: product?.promo_price ?? null,
+    stock: product?.stock ?? null,
+    image: product?.image_url ?? null,
+    imageUrl: product?.image_url ?? null,
+    videoUrl: product?.video_url ?? null,
+    gallery: Array.isArray(product?.gallery) ? product.gallery : [],
+    technical: product?.technical && typeof product.technical === 'object' ? product.technical : {},
+    attributes: product?.attributes && typeof product.attributes === 'object' ? product.attributes : {},
+    tags: Array.isArray(product?.tags) ? product.tags : [],
+    status: 'ativo',
+  }));
+}
+
+async function publicOffersFromRpc(env: Env, offers: any[]) {
+  if (!offers.length) return [];
+  const linksQuery = `offer_id=in.(${offers.map((item: any) => postgrestLiteral(item.id)).join(',')})&select=offer_id,product_id,sort_order&order=sort_order.asc`;
+  const links = await publicTableAll(env, 'offer_products', linksQuery);
+  return offers.map((offer: any) => ({
+    ...(offer?.data && typeof offer.data === 'object' ? offer.data : {}),
+    id: offer?.id,
+    title: offer?.title,
+    description: offer?.description ?? null,
+    status: 'published',
+    featured: !!offer?.featured,
+    startsAt: offer?.starts_at ?? null,
+    endsAt: offer?.ends_at ?? null,
+    displayConfig: offer?.display_config ?? {},
+    productIds: links
+      .filter((link: any) => link?.offer_id === offer?.id)
+      .map((link: any) => link?.product_id),
+  }));
+}
+
 export async function brandsPayload(env: Env, publicOnly = false) {
-  const query = `company_id=eq.${COMPANY_ID}${publicOnly ? '&active=eq.true' : ''}&select=id,name,slug,description,website,logo_url,banner_url,sort_order,active,featured,data&order=sort_order.asc,name.asc`;
-  const rows = publicOnly
-    ? await publicTableAll(env, 'brands', query)
-    : await tableAll(env, 'brands', query);
-  const visible = publicOnly ? rows.filter((row: any) => row?.active === true) : rows;
-  return visible.map(brandDto);
+  if (publicOnly) {
+    const payload = await publicCatalogRpc(env);
+    return (Array.isArray(payload.brands) ? payload.brands : []).map(publicBrandDto);
+  }
+  const query = `company_id=eq.${COMPANY_ID}&select=id,name,slug,description,website,logo_url,banner_url,sort_order,active,featured,data&order=sort_order.asc,name.asc`;
+  const rows = await tableAll(env, 'brands', query);
+  return rows.map(brandDto);
 }
 
 function liveOffer(item: any, now = Date.now()) {
@@ -40,20 +148,19 @@ function liveOffer(item: any, now = Date.now()) {
 }
 
 export async function offersPayload(env: Env, publicOnly: boolean) {
-  const offerQuery = `company_id=eq.${COMPANY_ID}${publicOnly ? '&status=eq.published' : ''}&select=*&order=featured.desc,updated_at.desc`;
-  const offers = (publicOnly
-    ? await publicTable(env, 'offers', offerQuery)
-    : await table(env, 'offers', offerQuery)) as any[];
+  if (publicOnly) {
+    const payload = await publicCatalogRpc(env);
+    return publicOffersFromRpc(env, Array.isArray(payload.offers) ? payload.offers : []);
+  }
+
+  const offerQuery = `company_id=eq.${COMPANY_ID}&select=*&order=featured.desc,updated_at.desc`;
+  const offers = await table(env, 'offers', offerQuery) as any[];
   const linksQuery = offers?.length
     ? `offer_id=in.(${offers.map((item: any) => postgrestLiteral(item.id)).join(',')})&select=offer_id,product_id,sort_order&order=sort_order.asc`
     : '';
-  const links = offers?.length
-    ? (publicOnly
-      ? await publicTableAll(env, 'offer_products', linksQuery)
-      : await tableAll(env, 'offer_products', linksQuery))
-    : [];
+  const links = offers?.length ? await tableAll(env, 'offer_products', linksQuery) : [];
 
-  const result = (offers || []).map((offer: any) => ({
+  return (offers || []).map((offer: any) => ({
     ...offer.data,
     id: offer.id,
     title: offer.title,
@@ -66,27 +173,40 @@ export async function offersPayload(env: Env, publicOnly: boolean) {
       .filter((link: any) => link.offer_id === offer.id)
       .map((link: any) => link.product_id),
   }));
-  return publicOnly ? result.filter((item: any) => liveOffer(item)) : result;
 }
 
 export async function catalogPayload(env: Env, publicOnly: boolean) {
-  const status = publicOnly ? '&status=eq.active' : '';
-  const productQuery = `company_id=eq.${COMPANY_ID}${status}&select=*&order=name.asc`;
-  const hierarchyQuery = `company_id=eq.${COMPANY_ID}${publicOnly ? '&active=eq.true' : ''}&select=id,name,slug,type,parent_id,sort_order,active&order=sort_order.asc,name.asc`;
+  if (publicOnly) {
+    const payload = await publicCatalogRpc(env);
+    const rawProducts = Array.isArray(payload.products) ? payload.products : [];
+    const rawBrands = Array.isArray(payload.brands) ? payload.brands : [];
+    const rawHierarchy = Array.isArray(payload.hierarchy) ? payload.hierarchy : [];
+    const rawOffers = Array.isArray(payload.offers) ? payload.offers : [];
+    const settings = payload.settings && typeof payload.settings === 'object' ? payload.settings : {};
+
+    return {
+      products: publicProductsDto(rawProducts, rawBrands, rawHierarchy),
+      brands: rawBrands.map(publicBrandDto),
+      distributions: [],
+      hierarchy: rawHierarchy.map(publicHierarchyDto),
+      promotions: await publicOffersFromRpc(env, rawOffers),
+      settings: { displayFields: Array.isArray(settings.display_fields) ? settings.display_fields : [] },
+    };
+  }
+
+  const productQuery = `company_id=eq.${COMPANY_ID}&select=*&order=name.asc`;
+  const hierarchyQuery = `company_id=eq.${COMPANY_ID}&select=id,name,slug,type,parent_id,sort_order,active&order=sort_order.asc,name.asc`;
   const settingsQuery = `company_id=eq.${COMPANY_ID}&select=display_fields&limit=1`;
   const [products, brands, hierarchy, settings, promotions] = await Promise.all([
-    publicOnly ? publicTableAll(env, 'products', productQuery) : tableAll(env, 'products', productQuery),
-    brandsPayload(env, publicOnly),
-    publicOnly ? publicTableAll(env, 'hierarchy_nodes', hierarchyQuery) : tableAll(env, 'hierarchy_nodes', hierarchyQuery),
-    (publicOnly ? publicTable(env, 'catalog_settings', settingsQuery) : table(env, 'catalog_settings', settingsQuery)) as Promise<any[]>,
-    offersPayload(env, publicOnly),
+    tableAll(env, 'products', productQuery),
+    brandsPayload(env, false),
+    tableAll(env, 'hierarchy_nodes', hierarchyQuery),
+    table(env, 'catalog_settings', settingsQuery) as Promise<any[]>,
+    offersPayload(env, false),
   ]);
 
-  const visibleProducts = publicOnly ? products.filter((product: any) => product?.status === 'active') : products;
-  const visibleHierarchy = publicOnly ? hierarchy.filter((node: any) => node?.active === true) : hierarchy;
-
   return {
-    products: visibleProducts.map((product: any) => ({
+    products: products.map((product: any) => ({
       ...product.data,
       id: product.id,
       code: product.code,
@@ -97,7 +217,7 @@ export async function catalogPayload(env: Env, publicOnly: boolean) {
     })),
     brands,
     distributions: [],
-    hierarchy: visibleHierarchy.map((node: any) => ({
+    hierarchy: hierarchy.map((node: any) => ({
       id: node.id,
       name: node.name,
       slug: node.slug,
@@ -108,7 +228,7 @@ export async function catalogPayload(env: Env, publicOnly: boolean) {
       sortOrder: node.sort_order,
       status: node.active ? 'active' : 'inactive',
     })),
-    promotions,
+    promotions: promotions.filter((item: any) => liveOffer(item)),
     settings: { displayFields: settings?.[0]?.display_fields || [] },
   };
 }
@@ -121,17 +241,14 @@ export async function handlePublicCatalogRoute(req: Request, env: Env, path: str
     return ok({ brands: await brandsPayload(env, true) });
   }
   if (path === '/api/public/marketing' && req.method === 'GET') {
-    const rows = await publicTable(
-      env,
-      'marketing_settings',
-      `company_id=eq.${COMPANY_ID}&select=theme,banner,video_banner,carousel,settings&limit=1`,
-    ) as any[];
-    const marketing = rows?.[0] || {};
+    // Um slug inexistente evita transportar os nós da página apenas para ler Marketing.
+    const site = await publicSiteRpc(env, '__marketing_only__');
+    const marketing = site.marketing && typeof site.marketing === 'object' ? site.marketing : {};
     return ok({
       marketing: {
         theme: marketing.theme || {},
         banner: marketing.banner || {},
-        videoBanner: marketing.video_banner || {},
+        videoBanner: marketing.videoBanner || marketing.video_banner || {},
         carousel: marketing.carousel || {},
         layout: marketingLayout(marketing.settings?.layout),
       },
@@ -139,8 +256,7 @@ export async function handlePublicCatalogRoute(req: Request, env: Env, path: str
   }
   const pageMatch = path.match(/^\/api\/public\/pages\/([^/]+)$/);
   if (pageMatch && req.method === 'GET') {
-    // pages ainda não possui SELECT anon no baseline; mantenha a leitura server-side protegida
-    // até existir uma migration revisada e aprovada para publicação de páginas.
+    // A página publicada continua server-side: a tabela pages não é exposta ao papel anon.
     const rows = await table(
       env,
       'pages',
