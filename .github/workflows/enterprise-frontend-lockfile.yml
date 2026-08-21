@@ -1,0 +1,40 @@
+name: Enterprise — Frontend Lockfile Capture
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enterprise-frontend-lockfile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lockfile:
+    name: Gerar lockfile determinístico do frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - name: Gerar package-lock sem executar scripts de terceiros
+        working-directory: frontend
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Validar lockfile gerado
+        working-directory: frontend
+        run: |
+          test -s package-lock.json
+          node -e "const p=require('./package-lock.json'); if (!p.lockfileVersion || !p.packages) process.exit(1)"
+      - name: Publicar lockfile para auditoria e fixação no branch
+        uses: actions/upload-artifact@v4
+        with:
+          name: enterprise-frontend-package-lock
+          path: frontend/package-lock.json
+          if-no-files-found: error
+          retention-days: 7
