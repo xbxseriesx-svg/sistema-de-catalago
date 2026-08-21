@@ -53,6 +53,12 @@ const env = await readFile('worker/app/env.ts', 'utf8');
 for (const cookieName of ['__Host-asteryon_access', '__Host-asteryon_refresh']) {
   if (!env.includes(cookieName)) fail(`cookie de sessão ausente: ${cookieName}`);
 }
+if (!env.includes('SUPABASE_ANON_KEY?: string')) fail('compatibilidade anon pública do Supabase ausente do Env.');
+
+const supabaseSource = await readFile('worker/app/supabase.ts', 'utf8');
+if (!supabaseSource.includes('const anonKey = clean(env.SUPABASE_ANON_KEY)')) fail('publicHeaders não resolve anon JWT de compatibilidade.');
+if (!supabaseSource.includes("headers.set('authorization', `Bearer ${anonKey}`)")) fail('publicHeaders não define papel anon explicitamente quando disponível.');
+if (/publicHeaders[\s\S]{0,900}adminKey\(/.test(supabaseSource)) fail('publicHeaders não pode depender de chave administrativa.');
 
 const account = await readFile('worker/app/auth/account.ts', 'utf8');
 for (const contract of ['/api/auth/account/session', '/api/auth/account/recovery', '/api/auth/account/password']) {
