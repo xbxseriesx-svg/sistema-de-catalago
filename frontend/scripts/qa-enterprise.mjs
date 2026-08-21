@@ -46,6 +46,17 @@ const all = fs.readdirSync('src', { recursive: true })
 for (const forbidden of [
   'ASTERYON V5',
   'ASTERYON V94',
+  '__ASTERYON_PREVIEW_EDITOR',
+  '__ASTERYON_EDITOR_PERF',
+  'asteryonV93VisualParity',
+  'asteryonTeam4V93',
+  'data-asteryon-template-version',
+  'laurencini-template-preview-v69',
+  'ltp-shell',
+  'product-v93-',
+  'brand-v93-',
+  'hero-v93',
+  'brands-v93',
   'D1Database',
   'R2Bucket',
   'VITE_SUPABASE_URL',
@@ -61,4 +72,4 @@ for (const forbidden of [
 ]) {
   if (all.includes(forbidden)) throw new Error(`Referência proibida no frontend Enterprise: ${forbidden}`);
 }
-console.log('QA frontend Enterprise SPA: OK — runtime único, API same-origin e painéis roláveis.');
+console.log('QA frontend Enterprise SPA: OK — runtime único, API same-origin, DOM auditável e painéis roláveis.');

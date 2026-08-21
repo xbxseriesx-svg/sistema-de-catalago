@@ -1,22 +1,51 @@
-# ASTERYON Frontend Enterprise — V94
+# ASTERYON Frontend Enterprise
 
-Esta pasta contém a fonte React/TypeScript recuperada e em reconstrução controlada para substituir o bundle histórico de `public/`.
+Esta pasta contém o **frontend oficial** do ASTERYON Catálogo em React/TypeScript.
 
-## Estado atual
+## Runtime
 
-- **Ainda não é o frontend de produção.** `public/` continua sendo o rollback funcional durante a transição.
-- A versão lógica da aplicação é **V94 / 2.1.94**. O número `schemaVersion: 5` identifica apenas o formato interno do documento editável e não é uma segunda versão da aplicação.
-- A persistência do navegador usa somente rotas same-origin `/api/*` do Worker Enterprise.
-- O navegador não acessa Supabase Auth, Postgres ou Storage diretamente e não recebe service-role/secret.
-- Drafts editados pelo frontend novo são serializados no formato recursivo compatível com V94 para preservar rollback.
-- Desktop continua nos campos-base; Tablet e Mobile permanecem independentes.
-- Snapshot restore cria um snapshot de segurança antes da restauração.
-- O frontend não possui `wrangler.jsonc`, `.env.production` nem script de deploy independente.
+- Fonte: `frontend/src`.
+- Entrada HTML: `frontend/index.html`.
+- Build: Vite.
+- Saída oficial: `frontend/dist`.
+- Publicação: feita pelo `wrangler.jsonc` da raiz; o frontend não possui deploy independente.
 
-## Gate para ativação
+O antigo `public/` raiz e seus bundles/runtimes versionados não fazem parte do candidato Enterprise.
 
-A troca do `public/assets/index-V60Excel.js` pelo build desta fonte só poderá ocorrer depois de: build e typecheck reproduzíveis, E2E do frontend candidato, paridade funcional, auditoria de segurança e aprovação das Equipes 0–5 no mesmo SHA.
+## Contrato com o backend
 
-## Proveniência
+O navegador acessa somente rotas same-origin `/api/*` do Worker. Supabase Auth, Postgres e Storage são acessados pelo backend quando a operação exige credenciais privilegiadas. Nenhum service-role/secret é incorporado ao bundle do navegador.
 
-A fonte foi recuperada de `asterion-canvas-studio-main(1).zip` e do pacote `asterion-canvas-studio-v5-supabase-cloudflare-ready-2026-08-14.zip`. Arquivos V5 preservados nesta pasta servem apenas como documentação histórica da origem e não definem a versão ativa da aplicação.
+## Editor
+
+O editor preserva:
+
+- Desktop, Tablet e Mobile independentes;
+- presets HD, 1440×900, Full HD, 2K e 4K;
+- autosave e salvamento manual;
+- snapshots, publicação e restauração;
+- painéis de Elementos, Camadas, Propriedades, Marketing e ASTERYON AI;
+- modelos preenchidos aplicados como documento realmente editável;
+- gestão de produtos, hierarquia, marcas, ofertas, marketing e importação de planilhas.
+
+`schemaVersion: 5` é a versão do formato interno do documento editável, não uma versão separada do aplicativo.
+
+## Build local/CI
+
+A partir da raiz do repositório, `npm run prepare:release` executa instalação determinística, QA, TypeScript e build deste SPA. Isoladamente:
+
+```bash
+cd frontend
+npm ci --ignore-scripts --no-audit --no-fund
+npm run qa:enterprise
+npm run typecheck
+npm run build
+```
+
+O build válido precisa gerar `dist/index.html` e não pode criar runtimes paralelos server-side.
+
+## QA
+
+Os E2Es validam o DOM e o estado reais do editor. O runtime oficial não publica variáveis globais ou `dataset` privados apenas para declarar que um teste passou.
+
+A proveniência dos pacotes usados para recuperar a fonte permanece apenas como histórico; ela não define a arquitetura, o entrypoint ou a versão ativa.
