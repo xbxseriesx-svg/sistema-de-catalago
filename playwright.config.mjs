@@ -3,8 +3,8 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   // A UI realmente publicada em public/ possui servidor/configuração próprios.
-  // Mantê-la fora deste conjunto evita testar o V94 contra o servidor do SPA de fonte.
-  testIgnore: 'production-ui-compat.spec.mjs',
+  // Mantê-la fora deste conjunto evita testar a UI pública contra o servidor do SPA de fonte.
+  testIgnore: ['production-ui-compat.spec.mjs', 'auto-responsive.spec.mjs'],
   timeout: 45_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,

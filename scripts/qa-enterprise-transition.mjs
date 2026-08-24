@@ -41,6 +41,7 @@ for (const path of [
   'public/editor-runtime-v87.js',
   'public/runtime-loader-v87.js',
   'public/responsive-v67.css',
+  'public/responsive-auto-v95.js',
   'public/commercial-segments-v95.js',
   'public/commercial-segments-destination-v95.js',
   'public/public-commercial-segment-popup-v95.js',
@@ -55,16 +56,43 @@ for (const marker of [
   'ASTERYON Editor V95',
   'index-V60Excel.js?v=95',
   'preview-editor-v93-source.js?v=95',
+  'responsive-auto-v95.js?v=95.3',
   'commercial-segments-v95.js?v=95',
   'commercial-segments-destination-v95.js?v=95.1',
 ]) {
   if (!publicIndex.includes(marker)) fail(`public/index.html perdeu marcador obrigatório V95: ${marker}`);
+}
+const coreIndex = publicIndex.indexOf('preview-editor-v91-core.js?v=95');
+const autoResponsiveIndex = publicIndex.indexOf('responsive-auto-v95.js?v=95.3');
+const previewSourceIndex = publicIndex.indexOf('preview-editor-v93-source.js?v=95');
+if (!(coreIndex >= 0 && autoResponsiveIndex > coreIndex && previewSourceIndex > autoResponsiveIndex)) {
+  fail('motor responsivo automático precisa carregar após o core e antes da captura V93.');
 }
 const baseSegmentIndex = publicIndex.indexOf('commercial-segments-v95.js?v=95');
 const destinationSegmentIndex = publicIndex.indexOf('commercial-segments-destination-v95.js?v=95.1');
 const bundleIndex = publicIndex.indexOf('index-V60Excel.js?v=95');
 if (!(baseSegmentIndex >= 0 && destinationSegmentIndex > baseSegmentIndex && bundleIndex > destinationSegmentIndex)) {
   fail('integração do destino Segmento comercial precisa carregar após a camada V95 e antes do bundle principal.');
+}
+
+const autoResponsive = readFileSync('public/responsive-auto-v95.js', 'utf8');
+for (const marker of [
+  "const VERSION = '95.3'",
+  'DEVICES = Object.freeze({ tablet: 834, mobile: 390 })',
+  'template-preview-v69.css',
+  "window.addEventListener('asteryon:preview-final-copied-v91'",
+  'autoResponsiveVersion',
+  "autoResponsiveMode = 'css-reflow'",
+  'AsteryonResponsiveAuto',
+  '/api\\/(?:admin|public)\\/(?:pages|templates)/',
+]) {
+  if (!autoResponsive.includes(marker)) fail(`motor responsivo automático incompleto: ${marker}`);
+}
+if (autoResponsive.includes('390 / 1440') || autoResponsive.includes('834 / 1440')) {
+  fail('regressão: tablet/mobile não podem voltar à escala matemática fixa do desktop.');
+}
+if (!autoResponsive.includes('ltp-products') || !autoResponsive.includes('ltp-segments') || !autoResponsive.includes('ltp-story')) {
+  fail('motor responsivo não reconhece os grupos estruturais principais do Modelo Oficial.');
 }
 
 const commercialDestination = readFileSync('public/commercial-segments-destination-v95.js', 'utf8');
@@ -138,5 +166,5 @@ if (!workflow.includes('npm run prepare:bundle')) fail('workflow não comprova a
 if (!workflow.includes('playwright.production-compat.config.mjs')) fail('homologação não testa a UI realmente servida em public/.');
 if (!workflow.includes('tests/e2e/import-products-enterprise.spec.mjs')) fail('auditoria independente não preserva a regressão XLSX da fonte Enterprise.');
 
-ok(`release ${version}: UI V95 validada, destino e popup de Segmento comercial integrados, bundle compatível preservado, Worker modular com segmentação comercial e rollback V94 fixado em ${VERIFIED_PRODUCTION_BASE}.`);
+ok(`release ${version}: UI V95 validada, reflow automático tablet/mobile V95.3, destino e popup de Segmento comercial integrados, bundle compatível preservado, Worker modular com segmentação comercial e rollback V94 fixado em ${VERIFIED_PRODUCTION_BASE}.`);
 console.log('ENTERPRISE PRODUCTION COMPATIBILITY APROVADA.');
