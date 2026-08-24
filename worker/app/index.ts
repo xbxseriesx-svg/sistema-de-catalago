@@ -24,6 +24,7 @@ import { handleMediaRoute } from './services/media';
 import { handlePagesRoute } from './services/pages';
 import { handleTemplatesRoute } from './services/templates';
 import { handleAiRoute } from './services/ai';
+import { handleCommercialSegmentsRoute } from './services/commercial-segments';
 
 async function firstResponse(promises: Array<() => Promise<Response | null>>) {
   for (const run of promises) {
@@ -89,7 +90,7 @@ export default {
         }
         return finish(ok({
           service: 'sistema-de-catalago',
-          version: 'V94',
+          version: 'V95',
           database: 'Supabase Postgres',
           storage: 'Supabase Storage',
           supabase: {
@@ -121,6 +122,7 @@ export default {
       if (path.startsWith('/api/public/')) {
         const publicResponse = await firstResponse([
           () => handleMediaRoute(effectiveReq, env, path),
+          () => handleCommercialSegmentsRoute(effectiveReq, env, path),
           () => handlePublicCatalogRoute(effectiveReq, env, path),
         ]);
         if (publicResponse) return finish(publicResponse);
@@ -156,6 +158,7 @@ export default {
           () => handleProductImagesRoute(effectiveReq, env, path),
           () => handleMediaRoute(effectiveReq, env, path),
           () => handleBrandImagesRoute(effectiveReq, env, path),
+          () => handleCommercialSegmentsRoute(effectiveReq, env, path),
           () => handleCatalogAdminRoute(effectiveReq, env, path),
           () => handleBrandsRoute(effectiveReq, env, path),
           () => handleMarketingRoute(effectiveReq, env, path),
