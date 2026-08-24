@@ -1,0 +1,100 @@
+name: Deploy Production — Cloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy e Smoke Test V95
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Validar credenciais de produção
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo "CLOUDFLARE_API_TOKEN não configurado"; exit 1; }
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "CLOUDFLARE_ACCOUNT_ID não configurado"; exit 1; }
+
+      - name: Instalar dependências
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Preparar release V95
+        run: npm run prepare:release
+
+      - name: Validar TypeScript
+        run: npm run check
+
+      - name: Publicar Worker e assets no Cloudflare
+        id: deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUTPUT_FILE="$(mktemp)"
+          npx wrangler deploy --config wrangler.jsonc 2>&1 | tee "$OUTPUT_FILE"
+          DEPLOY_URL="$(grep -Eo 'https://[^[:space:]]+\.workers\.dev' "$OUTPUT_FILE" | tail -n 1 || true)"
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "Wrangler não informou a URL workers.dev; consultando subdomínio da conta."
+            RESPONSE="$(curl --fail --silent --show-error \
+              -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+              "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/subdomain")"
+            SUBDOMAIN="$(printf '%s' "$RESPONSE" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(!j.success||!j.result?.subdomain)process.exit(1);process.stdout.write(j.result.subdomain)})')"
+            DEPLOY_URL="https://sistema-de-catalago.${SUBDOMAIN}.workers.dev"
+          fi
+          echo "production_url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo "PRODUCTION_URL=$DEPLOY_URL" >> "$GITHUB_ENV"
+
+      - name: Confirmar health V95 em produção
+        shell: bash
+        run: |
+          set -euo pipefail
+          HEALTH_URL="${PRODUCTION_URL%/}/api/health"
+          for attempt in 1 2 3 4 5 6; do
+            BODY="$(curl --fail --silent --show-error --max-time 20 "$HEALTH_URL" || true)"
+            if printf '%s' "$BODY" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s);if(j.ok===true&&j.version==="V95"&&j.database==="Supabase Postgres"&&j.d1===false&&j.r2===false)process.exit(0)}catch{}process.exit(1)})'; then
+              echo "Health V95 aprovado: $HEALTH_URL"
+              exit 0
+            fi
+            echo "Tentativa $attempt ainda não confirmou V95."
+            sleep 10
+          done
+          echo "Falha: produção não confirmou V95 em $HEALTH_URL"
+          exit 1
+
+      - name: Confirmar segmentação comercial pública
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL="${PRODUCTION_URL%/}/api/public/commercial-segments"
+          BODY="$(curl --fail --silent --show-error --max-time 20 "$URL")"
+          printf '%s' "$BODY" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s);if(j.ok!==true||!Array.isArray(j.segments)||j.segments.length!==16){console.error("Segmentos públicos inválidos",j);process.exit(1)}console.log(`Segmentação pública aprovada: ${j.segments.length} segmentos`)})'
+
+      - name: Resumo de produção
+        run: |
+          echo "## ASTERYON Catálogo — V95 em produção" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Worker: ${PRODUCTION_URL}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Health: V95 aprovado" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Segmentos comerciais públicos: 16 aprovados" >> "$GITHUB_STEP_SUMMARY"
