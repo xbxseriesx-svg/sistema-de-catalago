@@ -82,12 +82,13 @@ const commercial = await readFile('worker/app/services/commercial-segments.ts', 
 for (const contract of [
   '/api/public/commercial-segments',
   '/api/admin/commercial-segments',
-  '/commercial-segments/recalculate',
   '/rest/v1/rpc/get_public_segment_products',
   '/rest/v1/rpc/refresh_commercial_segment_profiles',
 ]) {
   if (!commercial.includes(contract)) fail(`contrato V95 de segmentação comercial ausente: ${contract}`);
 }
+if (!commercial.includes('const recalculate = path.match')) fail('rota administrativa de restauração automática/recalculo comercial ausente.');
+if (!commercial.includes('/rest/v1/rpc/reclassify_commercial_products')) fail('RPC de reclassificação automática por produto ausente.');
 if (!commercial.includes('const MAX_PRODUCT_SEGMENTS = 5')) fail('limite V95 de 5 segmentos por produto ausente.');
 if (!commercial.includes('manual_excluded')) fail('proteção de exclusão manual da segmentação ausente.');
 if (!commercial.includes("classification_source: 'manual'")) fail('origem de ajuste manual não é persistida.');
