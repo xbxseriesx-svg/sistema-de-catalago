@@ -93,11 +93,10 @@ for (const marker of [
   'event.stopImmediatePropagation()',
   'asteryon:public-product-popup',
   'AsteryonCommercialSegmentPopup',
-  'score interno',
 ]) {
   if (!commercialPopup.includes(marker)) fail(`popup público de segmento comercial incompleto: ${marker}`);
 }
-if (/\bscore\b/i.test(commercialPopup.replace(/score interno/gi, ''))) {
+if (/\bscore\b/i.test(commercialPopup)) {
   fail('popup público não deve renderizar nem consumir score comercial.');
 }
 
