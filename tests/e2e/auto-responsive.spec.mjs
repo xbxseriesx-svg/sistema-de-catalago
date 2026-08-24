@@ -80,7 +80,12 @@ function fixture() {
 }
 
 test('motor V95.3 faz reflow real e automático em tablet/mobile, sem miniaturizar desktop', async ({ page }) => {
-  await page.goto('/', { waitUntil: 'networkidle' });
+  await page.route('**/api/**', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json; charset=utf-8',
+    body: JSON.stringify({ ok: true }),
+  }));
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect.poll(() => page.evaluate(() => Boolean(window.AsteryonResponsiveAuto))).toBe(true);
 
   const result = await page.evaluate((nodes) => {
