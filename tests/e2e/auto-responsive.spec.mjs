@@ -128,3 +128,38 @@ test('motor V95.3 faz reflow real e automático em tablet/mobile, sem miniaturiz
   expect(result.free.mobile.x + result.free.mobile.width).toBeLessThanOrEqual(390.01);
   expect(result.free.tablet.x + result.free.tablet.width).toBeLessThanOrEqual(834.01);
 });
+
+test('runtime público muda automaticamente entre desktop, tablet e celular nas larguras equivalentes ao zoom do navegador', async ({ page }) => {
+  await page.route('**/api/**', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json; charset=utf-8',
+    body: JSON.stringify({ ok: true }),
+  }));
+  await page.goto('/catalogo', { waitUntil: 'domcontentloaded' });
+
+  const matrix = [
+    { width: 1920, height: 1080, device: 'desktop' },
+    { width: 1440, height: 900, device: 'desktop' },
+    // 1440 px físicos em 125% ficam próximos de 1152 CSS px: ainda desktop.
+    { width: 1152, height: 800, device: 'desktop' },
+    // Em 150% ficam próximos de 960 CSS px: reflow de tablet.
+    { width: 960, height: 800, device: 'tablet' },
+    { width: 834, height: 1112, device: 'tablet' },
+    { width: 768, height: 1024, device: 'tablet' },
+    // Em 200% ficam próximos de 720 CSS px: reflow de celular, sem bloquear o zoom nativo.
+    { width: 720, height: 900, device: 'mobile' },
+    { width: 430, height: 932, device: 'mobile' },
+    { width: 390, height: 844, device: 'mobile' },
+    { width: 360, height: 780, device: 'mobile' },
+  ];
+
+  for (const viewport of matrix) {
+    await page.setViewportSize({ width: viewport.width, height: viewport.height });
+    await expect.poll(() => page.evaluate(() => document.documentElement.dataset.asteryonDevice)).toBe(viewport.device);
+    const dimensions = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
+  }
+});
