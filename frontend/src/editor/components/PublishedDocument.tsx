@@ -15,6 +15,11 @@ function PublicNode({ doc, id, device }: { doc: EditorDocument; id: string; devi
   const frame = frameOf(node, device);
   const styles = node.styles;
   const props = node.props;
+  const actionSegmentId = String(props["actionSegmentId"] ?? "").trim();
+  const commercialAction = props["actionType"] === "commercial-segment" && Boolean(actionSegmentId);
+  const commercialHref = commercialAction
+    ? String(props["href"] || `/catalogo?segment=${encodeURIComponent(actionSegmentId)}`)
+    : "";
 
   const common: React.CSSProperties = {
     position: "absolute",
@@ -28,6 +33,7 @@ function PublicNode({ doc, id, device }: { doc: EditorDocument; id: string; devi
     borderRadius: Number(styles["radius"] ?? 0) || undefined,
     overflow: styles["clip"] ? "hidden" : undefined,
     zIndex: node.zIndex,
+    cursor: commercialAction ? "pointer" : undefined,
   };
 
   let inner: React.ReactNode = null;
@@ -125,8 +131,21 @@ function PublicNode({ doc, id, device }: { doc: EditorDocument; id: string; devi
     );
   }
 
+  const navigateCommercial = commercialAction && !["button", "productButton"].includes(node.type)
+    ? () => { window.location.assign(commercialHref); }
+    : undefined;
+
   return (
-    <div style={common}>
+    <div
+      style={common}
+      data-commercial-segment-action={commercialAction ? actionSegmentId : undefined}
+      role={commercialAction && !["button", "productButton"].includes(node.type) ? "link" : undefined}
+      tabIndex={commercialAction && !["button", "productButton"].includes(node.type) ? 0 : undefined}
+      onClick={navigateCommercial}
+      onKeyDown={commercialAction && !["button", "productButton"].includes(node.type)
+        ? (event) => { if (event.key === "Enter" || event.key === " ") window.location.assign(commercialHref); }
+        : undefined}
+    >
       {inner}
       {node.children.map((childId) => (
         <PublicNode key={childId} doc={doc} id={childId} device={device} />
