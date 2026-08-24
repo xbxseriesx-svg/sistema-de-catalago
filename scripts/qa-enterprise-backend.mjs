@@ -14,6 +14,7 @@ const required = [
   'worker/app/services/catalog-admin.ts',
   'worker/app/services/brands.ts',
   'worker/app/services/brand-images.ts',
+  'worker/app/services/commercial-segments.ts',
   'worker/app/services/hierarchy.ts',
   'worker/app/services/marketing.ts',
   'worker/app/services/media.ts',
@@ -42,7 +43,8 @@ if (!appEntries.some((entry) => entry.name === 'auth' && entry.isDirectory())) f
 
 const entry = await readFile('worker/app/index.ts', 'utf8');
 if (/index-v\d+/i.test(entry)) fail('entrypoint Enterprise ainda depende de Worker versionado.');
-if (!entry.includes("version: 'V94'")) fail('entrypoint Enterprise não preserva metadado V94 da release corrente.');
+if (!entry.includes("version: 'V95'")) fail('entrypoint Enterprise não declara metadado V95 da release corrente.');
+if (!entry.includes('handleCommercialSegmentsRoute')) fail('entrypoint Enterprise não registra a rota de segmentação comercial V95.');
 
 const session = await readFile('worker/app/auth/session.ts', 'utf8');
 for (const contract of ['/api/auth/status', '/api/auth/bootstrap', '/api/auth/login', '/api/auth/logout']) {
@@ -75,6 +77,25 @@ for (const rpc of ['/rest/v1/rpc/get_public_catalog_meta', '/rest/v1/rpc/get_pub
   if (!catalog.includes(rpc)) fail(`RPC público filtrado/paginado ausente: ${rpc}`);
 }
 if (catalog.includes("'/rest/v1/rpc/get_public_catalog'")) fail('RPC público monolítico sujeito a timeout foi reintroduzido.');
+
+const commercial = await readFile('worker/app/services/commercial-segments.ts', 'utf8');
+for (const contract of [
+  '/api/public/commercial-segments',
+  '/api/admin/commercial-segments',
+  '/rest/v1/rpc/get_public_segment_products',
+  '/rest/v1/rpc/refresh_commercial_segment_profiles',
+]) {
+  if (!commercial.includes(contract)) fail(`contrato V95 de segmentação comercial ausente: ${contract}`);
+}
+if (!commercial.includes('const recalculate = path.match')) fail('rota administrativa de restauração automática/recalculo comercial ausente.');
+if (!commercial.includes('/rest/v1/rpc/reclassify_commercial_products')) fail('RPC de reclassificação automática por produto ausente.');
+if (!commercial.includes('const MAX_PRODUCT_SEGMENTS = 5')) fail('limite V95 de 5 segmentos por produto ausente.');
+if (!commercial.includes('manual_excluded')) fail('proteção de exclusão manual da segmentação ausente.');
+if (!commercial.includes("classification_source: 'manual'")) fail('origem de ajuste manual não é persistida.');
+const productDtoBlock = commercial.slice(commercial.indexOf('function productDto'), commercial.indexOf('async function segments'));
+if (/\bscore\b|\breason\b|classification_source|manually_reviewed|manual_excluded/.test(productDtoBlock)) {
+  fail('DTO público de produto por segmento expõe metadados internos de classificação.');
+}
 
 const catalogAdmin = await readFile('worker/app/services/catalog-admin.ts', 'utf8');
 for (const contract of ['/api/admin/catalog', '/api/admin/catalog/settings']) {
@@ -122,5 +143,5 @@ if (failed) {
   process.exit(1);
 }
 
-ok('entrypoint, serviços e RPCs públicos filtrados/paginados permanecem independentes da cadeia index-vXX e de JWT anon legado.');
+ok('release V95: entrypoint, serviços, segmentação comercial, segurança e RPCs públicos filtrados/paginados permanecem modulares e sem exposição do score público.');
 console.log('ENTERPRISE BACKEND APROVADO PARA CONTINUAR A RECONSTRUÇÃO.');
