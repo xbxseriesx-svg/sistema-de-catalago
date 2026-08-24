@@ -95,8 +95,9 @@ test('segmento comercial abre popup com produtos e mantém o usuário na página
   expect(new URL(page.url()).searchParams.has('segment')).toBe(false);
 
   await page.locator('#asteryon-commercial-segment-popup-v95 [data-acs95-product="p1"]').click();
-  await expect(page.locator('#asteryon-entity-popup-v81')).toHaveAttribute('data-open', 'true');
-  await expect(page.getByText('Farinha Profissional QA 25KG').first()).toBeVisible();
+  const entityPopup = page.locator('#asteryon-entity-popup-v81');
+  await expect(entityPopup).toHaveAttribute('data-open', 'true');
+  await expect(entityPopup.getByText('Farinha Profissional QA 25KG').first()).toBeVisible();
   expect(errors).toEqual([]);
 });
 
