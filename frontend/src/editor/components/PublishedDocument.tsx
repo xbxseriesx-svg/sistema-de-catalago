@@ -2,17 +2,42 @@ import { useEffect, useState } from "react";
 import type { Device, EditorDocument } from "../types";
 import { frameOf } from "../geometry";
 
-function currentDevice(): Device {
-  if (typeof window === "undefined") return "desktop";
-  if (window.innerWidth <= 640) return "mobile";
-  if (window.innerWidth <= 1024) return "tablet";
+const MOBILE_MAX = 767;
+const TABLET_MAX = 1100;
+
+function layoutViewportWidth(): number {
+  if (typeof window === "undefined") return 1440;
+  const rootWidth = document.documentElement?.clientWidth || 0;
+  const innerWidth = window.innerWidth || 0;
+  const width = rootWidth > 0 && innerWidth > 0 ? Math.min(rootWidth, innerWidth) : Math.max(rootWidth, innerWidth);
+  return Math.max(320, Math.round(width || 1440));
+}
+
+function deviceForWidth(width: number): Device {
+  if (width <= MOBILE_MAX) return "mobile";
+  if (width <= TABLET_MAX) return "tablet";
   return "desktop";
 }
 
-function PublicNode({ doc, id, device }: { doc: EditorDocument; id: string; device: Device }) {
+function PublicNode({
+  doc,
+  id,
+  device,
+  horizontalScale,
+}: {
+  doc: EditorDocument;
+  id: string;
+  device: Device;
+  horizontalScale: number;
+}) {
   const node = doc.nodes[id];
   if (!node || !node.visible) return null;
-  const frame = frameOf(node, device);
+  const sourceFrame = frameOf(node, device);
+  const frame = {
+    ...sourceFrame,
+    x: sourceFrame.x * horizontalScale,
+    width: sourceFrame.width * horizontalScale,
+  };
   const styles = node.styles;
   const props = node.props;
   const actionSegmentId = String(props["actionSegmentId"] ?? "").trim();
@@ -34,6 +59,8 @@ function PublicNode({ doc, id, device }: { doc: EditorDocument; id: string; devi
     overflow: styles["clip"] ? "hidden" : undefined,
     zIndex: node.zIndex,
     cursor: commercialAction ? "pointer" : undefined,
+    minWidth: 0,
+    maxWidth: "100%",
   };
 
   let inner: React.ReactNode = null;
@@ -46,6 +73,7 @@ function PublicNode({ doc, id, device }: { doc: EditorDocument; id: string; devi
           color: String(styles["color"] ?? "#0f172a"),
           textAlign: (styles["textAlign"] as React.CSSProperties["textAlign"]) ?? "left",
           lineHeight: Number(styles["lineHeight"] ?? 1.3),
+          overflowWrap: "anywhere",
         }}
       >
         {String(props["text"] ?? "")}
@@ -66,6 +94,8 @@ function PublicNode({ doc, id, device }: { doc: EditorDocument; id: string; devi
           fontSize: Number(styles["fontSize"] ?? 15),
           fontWeight: Number(styles["fontWeight"] ?? 600),
           textDecoration: "none",
+          textAlign: "center",
+          overflowWrap: "anywhere",
         }}
       >
         {String(props["label"] ?? "Botão")}
@@ -107,9 +137,11 @@ function PublicNode({ doc, id, device }: { doc: EditorDocument; id: string; devi
             position: "absolute",
             left: 24,
             bottom: 24,
+            maxWidth: "calc(100% - 48px)",
             color: String(styles["color"] ?? "#fff"),
             fontSize: 28,
             fontWeight: 700,
+            overflowWrap: "anywhere",
           }}
         >
           {String(props["title"] ?? "")}
@@ -123,7 +155,7 @@ function PublicNode({ doc, id, device }: { doc: EditorDocument; id: string; devi
     ) : null;
   } else if (node.type === "promotion") {
     inner = (
-      <div style={{ padding: 18 }}>
+      <div style={{ padding: 18, overflowWrap: "anywhere" }}>
         <b>{String(props["title"] ?? "Promoção")}</b>
         <br />
         <a href={String(props["href"] ?? "#promocoes")}>{String(props["label"] ?? "Ver promoção")}</a>
@@ -148,34 +180,76 @@ function PublicNode({ doc, id, device }: { doc: EditorDocument; id: string; devi
     >
       {inner}
       {node.children.map((childId) => (
-        <PublicNode key={childId} doc={doc} id={childId} device={device} />
+        <PublicNode
+          key={childId}
+          doc={doc}
+          id={childId}
+          device={device}
+          horizontalScale={horizontalScale}
+        />
       ))}
     </div>
   );
 }
 
 export function PublishedDocument({ doc }: { doc: EditorDocument }) {
-  const [device, setDevice] = useState<Device>(currentDevice);
+  const [viewportWidth, setViewportWidth] = useState(layoutViewportWidth);
+
   useEffect(() => {
-    const update = () => setDevice(currentDevice());
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
+    let raf = 0;
+    const update = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        setViewportWidth(layoutViewportWidth());
+      });
+    };
+
+    window.addEventListener("resize", update, { passive: true });
+    window.addEventListener("orientationchange", update, { passive: true });
+    window.visualViewport?.addEventListener("resize", update, { passive: true });
+
+    return () => {
+      if (raf) window.cancelAnimationFrame(raf);
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+      window.visualViewport?.removeEventListener("resize", update);
+    };
   }, []);
+
   const root = doc.nodes[doc.rootId];
   if (!root) return null;
+
+  const device = deviceForWidth(viewportWidth);
   const frame = frameOf(root, device);
+  const designWidth = Math.max(1, Number(frame.width) || viewportWidth);
+  const horizontalScale = Math.max(0.25, Math.min(4, viewportWidth / designWidth));
+  const minHeight = Math.max(1, Number(frame.height) || 1);
+
   return (
     <div
+      data-asteryon-published-document="true"
+      data-asteryon-published-device={device}
+      data-asteryon-published-viewport={viewportWidth}
       style={{
         position: "relative",
         width: "100%",
-        minHeight: frame.height,
+        maxWidth: "100%",
+        minWidth: 0,
+        minHeight,
         background: String(root.styles["background"] ?? "#fff"),
-        overflow: "hidden",
+        overflowX: "clip",
+        overflowY: "visible",
       }}
     >
       {root.children.map((childId) => (
-        <PublicNode key={childId} doc={doc} id={childId} device={device} />
+        <PublicNode
+          key={childId}
+          doc={doc}
+          id={childId}
+          device={device}
+          horizontalScale={horizontalScale}
+        />
       ))}
     </div>
   );
