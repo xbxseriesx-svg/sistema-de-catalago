@@ -3,7 +3,7 @@ import { COMPANY_ID } from '../env';
 import { audit } from '../audit';
 import { requireUser } from '../auth/session';
 import { clean, fail, ok, requestBody } from '../http';
-import { adminFetch, publicSupabase, table } from '../supabase';
+import { adminFetch, publicSupabase, table, tableAll } from '../supabase';
 
 const MAX_PRODUCT_SEGMENTS = 5;
 
@@ -61,6 +61,13 @@ function safeScore(value: unknown) {
   return Number.isFinite(score) ? Math.max(30, Math.min(100, score)) : 70;
 }
 
+async function refreshProfiles(env: Env) {
+  return adminFetch(env, '/rest/v1/rpc/refresh_commercial_segment_profiles', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
 export async function handleCommercialSegmentsRoute(
   req: Request,
   env: Env,
@@ -88,6 +95,29 @@ export async function handleCommercialSegmentsRoute(
     const auth = await requireUser(req, env, ['VIEWER', 'EDITOR', 'ADMIN']);
     if (auth.error || !auth.user) return auth.error;
     return ok({ segments: await segments(env, false) });
+  }
+
+  if (path === '/api/admin/commercial-segments/products' && req.method === 'GET') {
+    const auth = await requireUser(req, env, ['VIEWER', 'EDITOR', 'ADMIN']);
+    if (auth.error || !auth.user) return auth.error;
+    const url = new URL(req.url);
+    const term = clean(url.searchParams.get('q')).toLocaleLowerCase('pt-BR');
+    const rows = await tableAll(
+      env,
+      'products',
+      `company_id=eq.${COMPANY_ID}&select=id,code,name,status&order=name.asc`,
+      500,
+      5000,
+    );
+    const filtered = (rows || [])
+      .filter((item: any) => {
+        if (!term) return true;
+        return String(item?.code || '').toLocaleLowerCase('pt-BR').includes(term)
+          || String(item?.name || '').toLocaleLowerCase('pt-BR').includes(term);
+      })
+      .slice(0, 80)
+      .map((item: any) => ({ id: item.id, code: item.code, name: item.name, status: item.status }));
+    return ok({ products: filtered, totalReturned: filtered.length });
   }
 
   const productSegments = path.match(/^\/api\/admin\/products\/([^/]+)\/commercial-segments$/);
@@ -174,9 +204,11 @@ export async function handleCommercialSegmentsRoute(
       headers: { prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify(rows),
     });
+    const profileRefresh = await refreshProfiles(env);
     await audit(env, auth.user, 'commercial_segments.manual_update', 'product', productId, {
       selected: [...selected.entries()].map(([segmentId, value]) => ({ segmentId, ...value })),
       excludedCount: available.length - selected.size,
+      profileRefresh,
     });
     return ok({ productId, selected: selected.size, maxSegments: MAX_PRODUCT_SEGMENTS });
   }
@@ -201,7 +233,8 @@ export async function handleCommercialSegmentsRoute(
       method: 'POST',
       body: JSON.stringify({ p_product_ids: [productId] }),
     });
-    await audit(env, auth.user, 'commercial_segments.recalculate', 'product', productId, result || {});
+    const profileRefresh = await refreshProfiles(env);
+    await audit(env, auth.user, 'commercial_segments.recalculate', 'product', productId, { result, profileRefresh });
     return ok({ productId, result });
   }
 
