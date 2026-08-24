@@ -5,7 +5,6 @@ const fail = (message) => { throw new Error(`ENTERPRISE COMPAT: ${message}`); };
 const ok = (message) => console.log(`ENTERPRISE COMPAT OK: ${message}`);
 
 const VERIFIED_PRODUCTION_BASE = '6b07df6c8e07ff50c20dc32eb96d2f0a4ff0e657';
-const VERIFIED_INDEX_BLOB = '2ce65e5c554468c7e87abd4329a1988a1860c3e7';
 const VERIFIED_BUNDLE_BLOB = '06da9251f10658ea1a7d1abe28333a7d48817bde';
 
 function gitBlobSha(path) {
@@ -27,10 +26,11 @@ const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 if (String(pkg.version || '').split('.').at(-1) !== version) fail('VERSION diverge de package.json.');
 if (!String(pkg.scripts?.['prepare:release'] || '').includes('prepare:frontend')) fail('prepare:release deixou de reconstruir a fonte Enterprise para regressão.');
 if (pkg.scripts?.['prepare:rollback'] || pkg.scripts?.['prepare:bundle']) fail('candidato atual não deve carregar script de rollback/bundle histórico.');
+if (version !== '95') fail(`release atual deveria ser 95, recebido ${version || 'vazio'}.`);
 
 const wrangler = readFileSync('wrangler.jsonc', 'utf8');
 if (!wrangler.includes('"main": "worker/app/index.ts"')) fail('Wrangler não aponta para worker/app/index.ts.');
-if (!wrangler.includes('"directory": "./public"')) fail('Wrangler não serve a UI V94 de compatibilidade restaurada em public/.');
+if (!wrangler.includes('"directory": "./public"')) fail('Wrangler não serve a UI V95 em public/.');
 if (wrangler.includes('"directory": "./frontend/dist"')) fail('produção voltou a apontar para o SPA Enterprise que trocou as rotas visuais.');
 if (!wrangler.includes('"run_worker_first": ["/api/*"]')) fail('Worker não intercepta /api/* antes dos assets.');
 if (/\bD1\b|d1_databases|\bR2\b|r2_buckets/.test(wrangler)) fail('Wrangler reintroduziu D1/R2.');
@@ -41,15 +41,26 @@ for (const path of [
   'public/editor-runtime-v87.js',
   'public/runtime-loader-v87.js',
   'public/responsive-v67.css',
+  'public/commercial-segments-v95.js',
 ]) {
-  if (!existsSync(path)) fail(`asset V94 de compatibilidade ausente: ${path}`);
+  if (!existsSync(path)) fail(`asset obrigatório da release V95 ausente: ${path}`);
 }
-if (gitBlobSha('public/index.html') !== VERIFIED_INDEX_BLOB) fail('public/index.html divergiu do production V94 verificado.');
-if (gitBlobSha('public/assets/index-V60Excel.js') !== VERIFIED_BUNDLE_BLOB) fail('bundle principal V94 divergiu do production verificado.');
+
+// O bundle legado validado continua imutável; a evolução V95 entra por camadas adicionais e pelo Worker modular.
+if (gitBlobSha('public/assets/index-V60Excel.js') !== VERIFIED_BUNDLE_BLOB) fail('bundle principal de compatibilidade divergiu do production V94 verificado.');
 const publicIndex = readFileSync('public/index.html', 'utf8');
-for (const marker of ['ASTERYON Editor V94', 'index-V60Excel.js?v=94', 'preview-editor-v93-source.js?v=94']) {
-  if (!publicIndex.includes(marker)) fail(`public/index.html perdeu marcador obrigatório: ${marker}`);
+for (const marker of [
+  'ASTERYON Editor V95',
+  'index-V60Excel.js?v=95',
+  'preview-editor-v93-source.js?v=95',
+  'commercial-segments-v95.js?v=95',
+]) {
+  if (!publicIndex.includes(marker)) fail(`public/index.html perdeu marcador obrigatório V95: ${marker}`);
 }
+
+const workerIndex = readFileSync('worker/app/index.ts', 'utf8');
+if (!workerIndex.includes("version: 'V95'")) fail('health check do Worker não declara V95.');
+if (!workerIndex.includes('handleCommercialSegmentsRoute')) fail('Worker V95 perdeu a rota de segmentação comercial.');
 
 for (const path of [
   'wrangler.legacy-rollback.jsonc',
@@ -85,5 +96,5 @@ if (!workflow.includes('npm run prepare:bundle')) fail('workflow não comprova a
 if (!workflow.includes('playwright.production-compat.config.mjs')) fail('homologação não testa a UI realmente servida em public/.');
 if (!workflow.includes('tests/e2e/import-products-enterprise.spec.mjs')) fail('auditoria independente não preserva a regressão XLSX da fonte Enterprise.');
 
-ok(`release ${version}: UI V94 verificada restaurada em public/, Worker modular preservado e rollback fixado em ${VERIFIED_PRODUCTION_BASE}.`);
+ok(`release ${version}: UI V95 validada, bundle compatível preservado, Worker modular com segmentação comercial e rollback V94 fixado em ${VERIFIED_PRODUCTION_BASE}.`);
 console.log('ENTERPRISE PRODUCTION COMPATIBILITY APROVADA.');
