@@ -42,6 +42,7 @@ for (const path of [
   'public/runtime-loader-v87.js',
   'public/responsive-v67.css',
   'public/commercial-segments-v95.js',
+  'public/commercial-segments-destination-v95.js',
 ]) {
   if (!existsSync(path)) fail(`asset obrigatório da release V95 ausente: ${path}`);
 }
@@ -54,8 +55,28 @@ for (const marker of [
   'index-V60Excel.js?v=95',
   'preview-editor-v93-source.js?v=95',
   'commercial-segments-v95.js?v=95',
+  'commercial-segments-destination-v95.js?v=95.1',
 ]) {
   if (!publicIndex.includes(marker)) fail(`public/index.html perdeu marcador obrigatório V95: ${marker}`);
+}
+const baseSegmentIndex = publicIndex.indexOf('commercial-segments-v95.js?v=95');
+const destinationSegmentIndex = publicIndex.indexOf('commercial-segments-destination-v95.js?v=95.1');
+const bundleIndex = publicIndex.indexOf('index-V60Excel.js?v=95');
+if (!(baseSegmentIndex >= 0 && destinationSegmentIndex > baseSegmentIndex && bundleIndex > destinationSegmentIndex)) {
+  fail('integração do destino Segmento comercial precisa carregar após a camada V95 e antes do bundle principal.');
+}
+
+const commercialDestination = readFileSync('public/commercial-segments-destination-v95.js', 'utf8');
+for (const marker of [
+  "const ACTION = 'commercial-segment'",
+  "const LABEL = 'Segmento comercial'",
+  "normalize(element.textContent) === 'tipo de destino'",
+  'option.value = ACTION',
+  'option.textContent = LABEL',
+  'state.actions?.set(nodeId, current)',
+  'state.actions.delete(nodeId)',
+]) {
+  if (!commercialDestination.includes(marker)) fail(`integração visual de segmento comercial incompleta: ${marker}`);
 }
 
 const workerIndex = readFileSync('worker/app/index.ts', 'utf8');
@@ -96,5 +117,5 @@ if (!workflow.includes('npm run prepare:bundle')) fail('workflow não comprova a
 if (!workflow.includes('playwright.production-compat.config.mjs')) fail('homologação não testa a UI realmente servida em public/.');
 if (!workflow.includes('tests/e2e/import-products-enterprise.spec.mjs')) fail('auditoria independente não preserva a regressão XLSX da fonte Enterprise.');
 
-ok(`release ${version}: UI V95 validada, bundle compatível preservado, Worker modular com segmentação comercial e rollback V94 fixado em ${VERIFIED_PRODUCTION_BASE}.`);
+ok(`release ${version}: UI V95 validada, destino Segmento comercial integrado, bundle compatível preservado, Worker modular com segmentação comercial e rollback V94 fixado em ${VERIFIED_PRODUCTION_BASE}.`);
 console.log('ENTERPRISE PRODUCTION COMPATIBILITY APROVADA.');
