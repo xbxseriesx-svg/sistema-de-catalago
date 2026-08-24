@@ -67,6 +67,7 @@
     '/product-modal-v66.js?v=94',
     '/public-global-search-v78.js?v=94',
     '/public-entity-popups-v81.js?v=94',
+    '/public-commercial-segment-popup-v95.js?v=95.2',
     '/public-brand-popup-fix-v83.js?v=94',
     '/public-entity-popup-guard-v81.js?v=94',
   ];
@@ -158,9 +159,8 @@
     bindAdminIntent();
     await loadAll(ADMIN_CORE);
 
-    // V88/V94: runtimes pesados de gestão/template/produto continuam sob demanda.
-    // Marketing recebe somente a tentativa tardia já protegida por sua própria
-    // camada de performance e não participa do loop de edição do canvas.
+    // V88/V95: runtimes pesados de gestão/template/produto continuam sob demanda.
+    // O popup de segmento comercial é carregado somente no catálogo público.
     idle(() => {
       warmVisibleManagementOnce();
       void loadMarketing();

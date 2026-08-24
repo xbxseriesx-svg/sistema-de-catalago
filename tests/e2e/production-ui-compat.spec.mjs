@@ -3,7 +3,8 @@ import { test, expect } from '@playwright/test';
 function installApiMocks(page, { authenticated }) {
   return page.route('**/api/**', async route => {
     const request = route.request();
-    const path = new URL(request.url()).pathname;
+    const url = new URL(request.url());
+    const path = url.pathname;
     const json = body => route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify(body) });
 
     if (path === '/api/auth/status') {
@@ -11,13 +12,22 @@ function installApiMocks(page, { authenticated }) {
         ? { ok: true, needsBootstrap: false, user: { id: 'qa-user', companyId: 'cmp_asteryon', email: 'qa@example.invalid', name: 'QA', role: 'SDM' } }
         : { ok: true, needsBootstrap: false, user: null });
     }
+    if (path === '/api/public/commercial-segments') {
+      return json({ ok: true, segments: [{ id: 'seg-padaria', name: 'Padarias & Confeitarias', active: true, sortOrder: 2 }] });
+    }
+    if (path === '/api/public/commercial-segments/seg-padaria/products') {
+      return json({ ok: true, products: [{
+        id: 'p1', code: '1001', name: 'Farinha Profissional QA 25KG', shortDescription: 'Farinha Profissional QA 25KG',
+        image: null, packaging: '01X25KG', unit: 'SACARIA', attributes: { Marca: 'Marca QA', 'Nome da categoria': 'FOOD SERVICE' },
+      }], offset: Number(url.searchParams.get('offset') || 0), limit: Number(url.searchParams.get('limit') || 120), hasMore: false });
+    }
     if (path === '/api/admin/catalog' || path === '/api/public/catalog') return json({ ok: true, catalog: {
-      products: [{ id: 'p1', code: '1001', name: 'Produto QA', shortDescription: 'Produto QA', status: 'ativo', departamentoId: 'dep1', secaoId: 'sec1', categoriaId: 'cat1', imageUrl: null }],
+      products: [{ id: 'p1', code: '1001', name: 'Farinha Profissional QA 25KG', shortDescription: 'Farinha Profissional QA 25KG', status: 'ativo', departamentoId: 'dep1', secaoId: 'sec1', categoriaId: 'cat1', imageUrl: null }],
       brands: [{ id: 'b1', name: 'Marca QA', slug: 'marca-qa', status: 'active' }],
       hierarchy: [
         { id: 'dep1', level: 'departamento', name: 'Atacado', slug: 'atacado', parentId: null, status: 'active' },
-        { id: 'sec1', level: 'secao', name: 'Higiene', slug: 'higiene', parentId: 'dep1', status: 'active' },
-        { id: 'cat1', level: 'categoria', name: 'Sabonetes', slug: 'sabonetes', parentId: 'sec1', status: 'active' },
+        { id: 'sec1', level: 'secao', name: 'Alimentos', slug: 'alimentos', parentId: 'dep1', status: 'active' },
+        { id: 'cat1', level: 'categoria', name: 'Food Service', slug: 'food-service', parentId: 'sec1', status: 'active' },
       ], promotions: [], settings: { displayFields: ['image', 'code', 'shortDescription', 'brand', 'category', 'price', 'unit'] },
     } });
     if (path === '/api/admin/brands' || path === '/api/public/brands') return json({ ok: true, brands: [{ id: 'b1', name: 'Marca QA', slug: 'marca-qa', status: 'active' }] });
@@ -59,6 +69,35 @@ test('raiz pública como visitante usa a experiência V94 e não abre o editor a
   await expect(page.getByRole('button', { name: /^Publicar$/i })).toHaveCount(0);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(2);
+  expect(errors).toEqual([]);
+});
+
+test('segmento comercial abre popup com produtos e mantém o usuário na página', async ({ page }) => {
+  await installApiMocks(page, { authenticated: false });
+  const errors = runtimeErrors(page);
+  await page.goto('/', { waitUntil: 'networkidle' });
+  await expect.poll(() => page.evaluate(() => Boolean(window.AsteryonCommercialSegmentPopup))).toBe(true);
+
+  await page.evaluate(() => {
+    const anchor = document.createElement('a');
+    anchor.id = 'qa-commercial-segment-card';
+    anchor.href = '/catalogo?segment=seg-padaria';
+    anchor.textContent = 'Padarias';
+    anchor.style.cssText = 'position:fixed;left:10px;top:10px;z-index:999999;background:white;padding:10px';
+    document.body.appendChild(anchor);
+  });
+
+  await page.locator('#qa-commercial-segment-card').click();
+  await expect(page.locator('#asteryon-commercial-segment-popup-v95')).toHaveAttribute('data-open', 'true');
+  await expect(page.locator('#asteryon-commercial-segment-popup-v95 .acs95-title')).toHaveText('Padarias & Confeitarias');
+  await expect(page.getByText('Farinha Profissional QA 25KG').first()).toBeVisible();
+  await expect(page.getByText('Cód. 1001').first()).toBeVisible();
+  expect(new URL(page.url()).searchParams.has('segment')).toBe(false);
+
+  await page.locator('#asteryon-commercial-segment-popup-v95 [data-acs95-product="p1"]').click();
+  const entityPopup = page.locator('#asteryon-entity-popup-v81');
+  await expect(entityPopup).toHaveAttribute('data-open', 'true');
+  await expect(entityPopup.getByText('Farinha Profissional QA 25KG').first()).toBeVisible();
   expect(errors).toEqual([]);
 });
 

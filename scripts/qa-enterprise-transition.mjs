@@ -43,6 +43,7 @@ for (const path of [
   'public/responsive-v67.css',
   'public/commercial-segments-v95.js',
   'public/commercial-segments-destination-v95.js',
+  'public/public-commercial-segment-popup-v95.js',
 ]) {
   if (!existsSync(path)) fail(`asset obrigatório da release V95 ausente: ${path}`);
 }
@@ -77,6 +78,26 @@ for (const marker of [
   'state.actions.delete(nodeId)',
 ]) {
   if (!commercialDestination.includes(marker)) fail(`integração visual de segmento comercial incompleta: ${marker}`);
+}
+
+const runtimeLoader = readFileSync('public/runtime-loader-v87.js', 'utf8');
+if (!runtimeLoader.includes('/public-commercial-segment-popup-v95.js?v=95.2')) {
+  fail('runtime público deixou de carregar o popup de segmento comercial V95.2.');
+}
+const commercialPopup = readFileSync('public/public-commercial-segment-popup-v95.js', 'utf8');
+for (const marker of [
+  '/api/public/commercial-segments',
+  '/products?offset=',
+  'data-commercial-segment-action',
+  "document.addEventListener('click', intercept, true)",
+  'event.stopImmediatePropagation()',
+  'asteryon:public-product-popup',
+  'AsteryonCommercialSegmentPopup',
+]) {
+  if (!commercialPopup.includes(marker)) fail(`popup público de segmento comercial incompleto: ${marker}`);
+}
+if (/\bscore\b/i.test(commercialPopup)) {
+  fail('popup público não deve renderizar nem consumir score comercial.');
 }
 
 const workerIndex = readFileSync('worker/app/index.ts', 'utf8');
@@ -117,5 +138,5 @@ if (!workflow.includes('npm run prepare:bundle')) fail('workflow não comprova a
 if (!workflow.includes('playwright.production-compat.config.mjs')) fail('homologação não testa a UI realmente servida em public/.');
 if (!workflow.includes('tests/e2e/import-products-enterprise.spec.mjs')) fail('auditoria independente não preserva a regressão XLSX da fonte Enterprise.');
 
-ok(`release ${version}: UI V95 validada, destino Segmento comercial integrado, bundle compatível preservado, Worker modular com segmentação comercial e rollback V94 fixado em ${VERIFIED_PRODUCTION_BASE}.`);
+ok(`release ${version}: UI V95 validada, destino e popup de Segmento comercial integrados, bundle compatível preservado, Worker modular com segmentação comercial e rollback V94 fixado em ${VERIFIED_PRODUCTION_BASE}.`);
 console.log('ENTERPRISE PRODUCTION COMPATIBILITY APROVADA.');
