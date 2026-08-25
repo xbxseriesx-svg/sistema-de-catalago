@@ -18,6 +18,13 @@
     return String(heading?.textContent || target.getAttribute?.('aria-label') || target.id || 'Conteúdo').trim();
   };
 
+  function closeMobileNav() {
+    const nav = document.getElementById('main-nav');
+    const toggle = document.querySelector('.nav-toggle');
+    if (nav?.dataset.open === 'true') nav.dataset.open = 'false';
+    if (toggle instanceof HTMLElement) toggle.setAttribute('aria-expanded', 'false');
+  }
+
   function ensurePopup() {
     if (state.modal) return state.modal;
     const modal = document.createElement('div');
@@ -73,6 +80,7 @@
     if (!(target instanceof HTMLElement)) return false;
     if (target.hidden && target.dataset.editorHidden === 'true') return false;
 
+    closeMobileNav();
     const modal = ensurePopup();
     if (state.mounted === target && !modal.hidden) return true;
     if (state.mounted) restoreMounted();
@@ -97,6 +105,7 @@
   }
 
   function openExternalAction(href, label = 'Abrir conteúdo') {
+    closeMobileNav();
     const modal = ensurePopup();
     if (state.mounted) restoreMounted();
     state.lastFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -127,6 +136,23 @@
     }
     return nativeScrollIntoView.call(this, options);
   };
+
+  document.addEventListener('focusin', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest('.search-band, .editor-native-search')) closeMobileNav();
+  }, true);
+
+  document.addEventListener('pointerdown', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+    const nav = document.getElementById('main-nav');
+    const toggle = target.closest('.nav-toggle');
+    if (target.closest('.search-band, .editor-native-search')) {
+      closeMobileNav();
+      return;
+    }
+    if (nav?.dataset.open === 'true' && !target.closest('#main-nav') && !toggle) closeMobileNav();
+  }, true);
 
   document.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : null;
@@ -193,7 +219,9 @@
     if (event.key === 'Escape' && state.modal && !state.modal.hidden) {
       event.preventDefault();
       closePopup();
+      return;
     }
+    if (event.key === 'Escape') closeMobileNav();
   });
 
   window.addEventListener('beforeunload', restoreMounted);
