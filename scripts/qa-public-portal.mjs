@@ -4,6 +4,7 @@ import fs from 'node:fs';
 const read = (path) => fs.readFileSync(path, 'utf8');
 const portalHtml = read('public/portal/index.html');
 const portalCss = read('public/portal/styles.css');
+const bridgeCss = read('public/portal/editor-publication-bridge.css');
 const portalJs = read('public/portal/app.js');
 const bridgeJs = read('public/portal/editor-publication-bridge.js');
 const legacyIndex = read('public/index.html');
@@ -11,6 +12,7 @@ const worker = read('worker/app/index.ts');
 const wrangler = JSON.parse(read('wrangler.jsonc'));
 
 assert.ok(portalHtml.includes('/portal/styles.css?v=97'), 'Portal V97 sem stylesheet próprio.');
+assert.ok(portalHtml.includes('/portal/editor-publication-bridge.css?v=97'), 'Portal V97 sem CSS responsivo da ponte do editor.');
 assert.ok(portalHtml.includes('/portal/app.js?v=97'), 'Portal V97 sem runtime próprio.');
 assert.ok(portalHtml.includes('/portal/editor-publication-bridge.js?v=97'), 'Portal V97 sem ponte de publicação do editor.');
 assert.ok(portalHtml.indexOf('/portal/editor-publication-bridge.js?v=97') > portalHtml.indexOf('/portal/app.js?v=97'), 'Ponte do editor deve carregar depois do runtime público V97.');
@@ -19,19 +21,13 @@ assert.ok(portalHtml.includes('user-scalable=yes'), 'Zoom nativo precisa permane
 assert.ok(portalHtml.includes('maximum-scale=5.0'), 'Zoom nativo precisa permitir ampliação real.');
 
 for (const forbidden of [
-  'responsive-v67',
-  'responsive-auto-v95',
-  'preview-editor',
-  'editor-runtime',
-  'runtime-loader',
-  'system-runtime',
-  'commercial-segments-destination',
-  '/assets/index-',
+  'responsive-v67', 'responsive-auto-v95', 'preview-editor', 'editor-runtime',
+  'runtime-loader', 'system-runtime', 'commercial-segments-destination', '/assets/index-',
 ]) {
   assert.equal(portalHtml.includes(forbidden), false, `Portal V97 não pode carregar runtime legado/editor: ${forbidden}`);
 }
 
-const executable = `${portalCss}\n${portalJs}\n${bridgeJs}`;
+const executable = `${portalCss}\n${bridgeCss}\n${portalJs}\n${bridgeJs}`;
 for (const forbidden of [
   /\bzoom\s*:/i,
   /transform\s*:\s*scale\s*\(/i,
@@ -54,6 +50,9 @@ assert.ok(portalCss.includes('--container: 85rem'), 'Portal V97 precisa de conta
 assert.ok(portalCss.includes('@media (max-width: 74.9375rem)'), 'Breakpoint tablet/desktop V97 ausente.');
 assert.ok(portalCss.includes('@media (max-width: 47.9375rem)'), 'Breakpoint mobile V97 ausente.');
 assert.ok(portalCss.includes('repeat(auto-fill, minmax(14.5rem, 1fr))'), 'Grade pública precisa ser responsiva sem miniaturização.');
+assert.ok(bridgeCss.includes('@media (max-width: 74.9375rem)'), 'Ponte precisa limitar tipografia publicada no tablet.');
+assert.ok(bridgeCss.includes('@media (max-width: 47.9375rem)'), 'Ponte precisa limitar tipografia publicada no celular.');
+assert.ok(bridgeCss.includes('.hero h1'), 'Ponte precisa proteger título principal em telas menores.');
 
 for (const source of [portalJs, bridgeJs]) {
   assert.equal(/supabase\.co/i.test(source), false, 'Portal V97 não pode acessar Supabase diretamente.');
