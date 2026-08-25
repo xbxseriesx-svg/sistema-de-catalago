@@ -2,7 +2,10 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testMatch: ['production-ui-compat.spec.mjs', 'auto-responsive.spec.mjs', 'public-portal.spec.mjs'],
+  // A V97 substitui somente o visitante público. O antigo auto-responsive.spec.mjs
+  // valida o runtime público V95 legado e não deve rodar contra o novo entrypoint.
+  // O editor/admin V95 continua coberto por production-ui-compat.spec.mjs.
+  testMatch: ['production-ui-compat.spec.mjs', 'public-portal.spec.mjs'],
   timeout: 45_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
