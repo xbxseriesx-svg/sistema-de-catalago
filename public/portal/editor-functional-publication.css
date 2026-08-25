@@ -1,0 +1,133 @@
+.editor-functional-slot {
+  width: 100%;
+  min-width: 0;
+  margin-top: 1.25rem;
+  overflow: hidden;
+}
+
+.editor-functional-video,
+.editor-functional-banner img,
+.editor-functional-carousel-stage img,
+.editor-functional-gallery img,
+.editor-functional-embed {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  border: 0;
+}
+
+.editor-functional-video,
+.editor-functional-carousel-stage img,
+.editor-functional-banner img {
+  max-height: 34rem;
+}
+
+.editor-functional-video {
+  background: #071326;
+}
+
+.editor-functional-banner {
+  display: grid;
+  gap: 0.85rem;
+  align-items: center;
+  padding: 1rem;
+}
+
+.editor-functional-banner strong {
+  color: inherit;
+  font-size: 1.25rem;
+}
+
+.editor-functional-carousel {
+  position: relative;
+  overflow: hidden;
+  border-radius: inherit;
+  background: #eef2f8;
+}
+
+.editor-functional-carousel-stage {
+  min-height: 12rem;
+  display: grid;
+  place-items: center;
+}
+
+.editor-functional-carousel-controls {
+  position: absolute;
+  inset: 50% 0 auto;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 0.75rem;
+  pointer-events: none;
+}
+
+.editor-functional-carousel-controls button {
+  width: 2.75rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.65);
+  border-radius: 999px;
+  background: rgba(9, 20, 44, .72);
+  color: #fff;
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.editor-functional-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.75rem;
+}
+
+.editor-functional-gallery img {
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  border-radius: 0.75rem;
+  background: #fff;
+}
+
+.editor-functional-promotion,
+.editor-functional-html {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+}
+
+.editor-functional-promotion strong {
+  font-size: 1.2rem;
+}
+
+.editor-functional-promotion p {
+  margin: 0;
+}
+
+.editor-functional-action {
+  justify-self: start;
+}
+
+.editor-functional-embed {
+  min-height: 26rem;
+  background: #fff;
+}
+
+@media (max-width: 47.9375rem) {
+  .editor-functional-slot {
+    margin-top: 0.9rem;
+  }
+
+  .editor-functional-video,
+  .editor-functional-carousel-stage img,
+  .editor-functional-banner img {
+    max-height: 22rem;
+  }
+
+  .editor-functional-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .editor-functional-embed {
+    min-height: 20rem;
+  }
+}

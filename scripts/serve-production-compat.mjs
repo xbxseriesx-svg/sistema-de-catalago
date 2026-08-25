@@ -39,12 +39,23 @@ function serveFile(req, res, file) {
   return true;
 }
 
+function isPublicPortalPath(pathname) {
+  return pathname === '/'
+    || pathname === '/catalogo'
+    || pathname === '/catalogo/'
+    || pathname.startsWith('/catalogo/');
+}
+
 const server = http.createServer((req, res) => {
   if (!req.url) return json(res, 400, { ok: false, error: 'missing_url' });
   if (!['GET', 'HEAD'].includes(req.method || 'GET')) return json(res, 405, { ok: false, error: 'method_not_allowed' });
   const url = new URL(req.url, `http://${req.headers.host || `${HOST}:${PORT}`}`);
   if (url.pathname === '/__e2e_health') return json(res, 200, { ok: true, service: 'asteryon-production-compat' });
   if (url.pathname.startsWith('/api/')) return json(res, 501, { ok: false, error: 'unmocked_api_in_ui_e2e', path: url.pathname });
+  if (isPublicPortalPath(url.pathname)) {
+    if (serveFile(req, res, resolve(PUBLIC_ROOT, 'portal', 'index.html'))) return;
+    return json(res, 404, { ok: false, error: 'portal_missing' });
+  }
   const direct = safePublicPath(url.pathname);
   if (!direct) return json(res, 400, { ok: false, error: 'invalid_path' });
   if (serveFile(req, res, direct)) return;

@@ -26,6 +26,25 @@ import { handleTemplatesRoute } from './services/templates';
 import { handleAiRoute } from './services/ai';
 import { handleCommercialSegmentsRoute } from './services/commercial-segments';
 
+const PUBLIC_PORTAL_ENTRY = '/portal/index.html';
+
+function isPublicPortalPath(path: string) {
+  return path === '/'
+    || path === '/catalogo'
+    || path === '/catalogo/'
+    || path.startsWith('/catalogo/');
+}
+
+async function publicPortalAsset(req: Request, env: Env) {
+  const url = new URL(req.url);
+  url.pathname = PUBLIC_PORTAL_ENTRY;
+  url.search = '';
+  return env.ASSETS.fetch(new Request(url.toString(), {
+    method: req.method,
+    headers: req.headers,
+  }));
+}
+
 async function firstResponse(promises: Array<() => Promise<Response | null>>) {
   for (const run of promises) {
     const response = await run();
@@ -68,6 +87,12 @@ export default {
       let effectiveReq = req;
       let refreshed: RefreshedSession | null = null;
       const finish = (response: Response) => secure(attachRefreshedSession(response, refreshed));
+
+      // V97: o visitante recebe um frontend público independente. O /admin não
+      // entra nesta condição e continua usando exatamente o asset SPA existente.
+      if (['GET', 'HEAD'].includes(req.method) && isPublicPortalPath(path)) {
+        return finish(await publicPortalAsset(req, env));
+      }
 
       if (!path.startsWith('/api/')) {
         return finish(await env.ASSETS.fetch(req));
