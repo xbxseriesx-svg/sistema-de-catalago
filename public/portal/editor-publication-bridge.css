@@ -1,55 +1,59 @@
-[data-editor-font-role] {
-  font-size: var(--editor-published-font-size) !important;
-}
-
+/* A publicação pode definir tipografia no desktop. Nos breakpoints menores,
+   o portal V97 mantém limites responsivos para impedir overflow e miniaturização. */
 @media (max-width: 74.9375rem) {
-  [data-editor-font-role="hero"] {
-    font-size: min(var(--editor-published-font-size), 2.65rem) !important;
+  .hero h1 {
+    font-size: 2.65rem !important;
   }
 
-  [data-editor-font-role="heading"] {
-    font-size: min(var(--editor-published-font-size), 2rem) !important;
+  .section-heading h2,
+  .contact-grid h2 {
+    font-size: 2rem !important;
   }
 
-  [data-editor-font-role="body"] {
-    font-size: min(var(--editor-published-font-size), 1.0625rem) !important;
+  .hero-text,
+  .section-heading > p,
+  .contact-grid > div > p:not(.eyebrow) {
+    font-size: 1.0625rem !important;
   }
 
-  [data-editor-font-role="nav"] {
-    font-size: min(var(--editor-published-font-size), 0.875rem) !important;
+  .main-nav a {
+    font-size: 0.875rem !important;
   }
 
-  [data-editor-font-role="button"] {
-    font-size: min(var(--editor-published-font-size), 1rem) !important;
+  .button {
+    font-size: 1rem !important;
   }
 
-  [data-editor-font-role="eyebrow"] {
-    font-size: min(var(--editor-published-font-size), 0.8125rem) !important;
+  .eyebrow {
+    font-size: 0.8125rem !important;
   }
 }
 
 @media (max-width: 47.9375rem) {
-  [data-editor-font-role="hero"] {
-    font-size: min(var(--editor-published-font-size), 2rem) !important;
+  .hero h1 {
+    font-size: 2rem !important;
   }
 
-  [data-editor-font-role="heading"] {
-    font-size: min(var(--editor-published-font-size), 1.65rem) !important;
+  .section-heading h2,
+  .contact-grid h2 {
+    font-size: 1.65rem !important;
   }
 
-  [data-editor-font-role="body"] {
-    font-size: min(var(--editor-published-font-size), 1rem) !important;
+  .hero-text,
+  .section-heading > p,
+  .contact-grid > div > p:not(.eyebrow) {
+    font-size: 1rem !important;
   }
 
-  [data-editor-font-role="nav"] {
-    font-size: min(var(--editor-published-font-size), 0.85rem) !important;
+  .main-nav a {
+    font-size: 0.85rem !important;
   }
 
-  [data-editor-font-role="button"] {
-    font-size: min(var(--editor-published-font-size), 0.95rem) !important;
+  .button {
+    font-size: 0.95rem !important;
   }
 
-  [data-editor-font-role="eyebrow"] {
-    font-size: min(var(--editor-published-font-size), 0.78rem) !important;
+  .eyebrow {
+    font-size: 0.78rem !important;
   }
 }
