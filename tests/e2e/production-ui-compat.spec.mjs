@@ -95,9 +95,11 @@ test('segmento comercial usa o popup V97, filtra produtos e mantém o usuário n
   const errors = runtimeErrors(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await waitPublicPortal(page);
-  const before = await page.evaluate(() => window.scrollY);
 
-  await page.locator('[data-segment-id="seg-padaria"]').click();
+  const segmentButton = page.locator('[data-segment-id="seg-padaria"]');
+  await segmentButton.scrollIntoViewIfNeeded();
+  const before = await page.evaluate(() => window.scrollY);
+  await segmentButton.click();
   await expect(page.locator('#portal-popup')).toBeVisible();
   await expect(page.locator('#portal-popup-body #produtos')).toBeVisible();
   await expect(page.getByText('Farinha Profissional QA 25KG').first()).toBeVisible();
