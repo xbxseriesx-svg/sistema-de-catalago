@@ -5,12 +5,15 @@ const read = (path) => fs.readFileSync(path, 'utf8');
 const portalHtml = read('public/portal/index.html');
 const portalCss = read('public/portal/styles.css');
 const portalJs = read('public/portal/app.js');
+const bridgeJs = read('public/portal/editor-publication-bridge.js');
 const legacyIndex = read('public/index.html');
 const worker = read('worker/app/index.ts');
 const wrangler = JSON.parse(read('wrangler.jsonc'));
 
 assert.ok(portalHtml.includes('/portal/styles.css?v=97'), 'Portal V97 sem stylesheet próprio.');
 assert.ok(portalHtml.includes('/portal/app.js?v=97'), 'Portal V97 sem runtime próprio.');
+assert.ok(portalHtml.includes('/portal/editor-publication-bridge.js?v=97'), 'Portal V97 sem ponte de publicação do editor.');
+assert.ok(portalHtml.indexOf('/portal/editor-publication-bridge.js?v=97') > portalHtml.indexOf('/portal/app.js?v=97'), 'Ponte do editor deve carregar depois do runtime público V97.');
 assert.ok(portalHtml.includes('width=device-width, initial-scale=1.0'), 'Viewport V97 precisa iniciar em 100%.');
 assert.ok(portalHtml.includes('user-scalable=yes'), 'Zoom nativo precisa permanecer habilitado.');
 assert.ok(portalHtml.includes('maximum-scale=5.0'), 'Zoom nativo precisa permitir ampliação real.');
@@ -28,7 +31,7 @@ for (const forbidden of [
   assert.equal(portalHtml.includes(forbidden), false, `Portal V97 não pode carregar runtime legado/editor: ${forbidden}`);
 }
 
-const executable = `${portalCss}\n${portalJs}`;
+const executable = `${portalCss}\n${portalJs}\n${bridgeJs}`;
 for (const forbidden of [
   /\bzoom\s*:/i,
   /transform\s*:\s*scale\s*\(/i,
@@ -52,11 +55,18 @@ assert.ok(portalCss.includes('@media (max-width: 74.9375rem)'), 'Breakpoint tabl
 assert.ok(portalCss.includes('@media (max-width: 47.9375rem)'), 'Breakpoint mobile V97 ausente.');
 assert.ok(portalCss.includes('repeat(auto-fill, minmax(14.5rem, 1fr))'), 'Grade pública precisa ser responsiva sem miniaturização.');
 
-assert.equal(/supabase\.co/i.test(portalJs), false, 'Portal V97 não pode acessar Supabase diretamente.');
-assert.equal(/SUPABASE/i.test(portalJs), false, 'Portal V97 não pode depender de configuração Supabase.');
-assert.equal(portalJs.includes('/api/admin/'), false, 'Portal V97 não pode chamar API administrativa.');
+for (const source of [portalJs, bridgeJs]) {
+  assert.equal(/supabase\.co/i.test(source), false, 'Portal V97 não pode acessar Supabase diretamente.');
+  assert.equal(/SUPABASE/i.test(source), false, 'Portal V97 não pode depender de configuração Supabase.');
+  assert.equal(source.includes('/api/admin/'), false, 'Portal V97 não pode chamar API administrativa.');
+}
 assert.ok(portalJs.includes('/api/public/catalog'), 'Portal V97 precisa consumir a API pública oficial do catálogo.');
 assert.ok(portalJs.includes('/api/public/commercial-segments'), 'Portal V97 precisa consumir segmentos pela API pública.');
+assert.ok(bridgeJs.includes("const PAGE_SLUG = 'home'"), 'Ponte pública precisa acompanhar a página home usada pelo editor.');
+assert.ok(bridgeJs.includes('/api/public/pages/${PAGE_SLUG}'), 'Ponte pública precisa ler apenas a publicação pública da página home.');
+assert.ok(bridgeJs.includes("cache: 'no-store'"), 'Publicação deve ser consultada sem cache para refletir a última versão publicada.');
+assert.ok(bridgeJs.includes("dataset.editorPublication = 'applied'"), 'Ponte pública precisa expor diagnóstico de publicação aplicada.');
+assert.ok(bridgeJs.includes('editorPublicationRevision'), 'Ponte pública precisa expor a revisão publicada aplicada.');
 
 assert.ok(worker.includes("const PUBLIC_PORTAL_ENTRY = '/portal/index.html'"), 'Worker sem entrypoint público V97.');
 assert.ok(worker.includes("path === '/'"), 'Worker precisa rotear a raiz pública.');
@@ -73,5 +83,6 @@ assert.ok(legacyIndex.includes('<title>ASTERYON Editor V95</title>'), 'Entrypoin
 assert.ok(legacyIndex.includes('/editor-runtime-v87.js?v=95'), 'Runtime do editor precisa permanecer no entrypoint administrativo existente.');
 assert.ok(legacyIndex.includes('/assets/index-V60Excel.js?v=95&perf=88'), 'Bundle administrativo existente precisa permanecer intacto.');
 assert.equal(legacyIndex.includes('/portal/app.js?v=97'), false, 'Entrypoint administrativo não pode carregar o portal V97.');
+assert.equal(legacyIndex.includes('/portal/editor-publication-bridge.js?v=97'), false, 'Entrypoint administrativo não pode carregar a ponte do portal público.');
 
-console.log('QA Portal Público: OK — frontend público isolado, zoom nativo convencional, APIs públicas somente e editor preservado.');
+console.log('QA Portal Público: OK — V97 isolada, zoom nativo, publicação home conectada por API pública e editor preservado.');
