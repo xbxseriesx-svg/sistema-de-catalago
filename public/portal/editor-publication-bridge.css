@@ -1,0 +1,55 @@
+[data-editor-font-role] {
+  font-size: var(--editor-published-font-size) !important;
+}
+
+@media (max-width: 74.9375rem) {
+  [data-editor-font-role="hero"] {
+    font-size: min(var(--editor-published-font-size), 2.65rem) !important;
+  }
+
+  [data-editor-font-role="heading"] {
+    font-size: min(var(--editor-published-font-size), 2rem) !important;
+  }
+
+  [data-editor-font-role="body"] {
+    font-size: min(var(--editor-published-font-size), 1.0625rem) !important;
+  }
+
+  [data-editor-font-role="nav"] {
+    font-size: min(var(--editor-published-font-size), 0.875rem) !important;
+  }
+
+  [data-editor-font-role="button"] {
+    font-size: min(var(--editor-published-font-size), 1rem) !important;
+  }
+
+  [data-editor-font-role="eyebrow"] {
+    font-size: min(var(--editor-published-font-size), 0.8125rem) !important;
+  }
+}
+
+@media (max-width: 47.9375rem) {
+  [data-editor-font-role="hero"] {
+    font-size: min(var(--editor-published-font-size), 2rem) !important;
+  }
+
+  [data-editor-font-role="heading"] {
+    font-size: min(var(--editor-published-font-size), 1.65rem) !important;
+  }
+
+  [data-editor-font-role="body"] {
+    font-size: min(var(--editor-published-font-size), 1rem) !important;
+  }
+
+  [data-editor-font-role="nav"] {
+    font-size: min(var(--editor-published-font-size), 0.85rem) !important;
+  }
+
+  [data-editor-font-role="button"] {
+    font-size: min(var(--editor-published-font-size), 0.95rem) !important;
+  }
+
+  [data-editor-font-role="eyebrow"] {
+    font-size: min(var(--editor-published-font-size), 0.78rem) !important;
+  }
+}
