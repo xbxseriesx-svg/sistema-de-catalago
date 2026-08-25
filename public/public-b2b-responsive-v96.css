@@ -1,0 +1,427 @@
+/* ASTERYON Catálogo V96 — site público B2B convencional.
+   Escopo estrito: visitante. Não altera editor/admin.
+   Princípios: zoom nativo do navegador, sem contra-escala, sem CSS zoom,
+   sem transform:scale e responsividade por CSS/media queries. */
+
+html[data-asteryon-surface="public"] {
+  --asteryon-public-content: 1360px;
+  --asteryon-public-gutter: clamp(18px, 2.1vw, 32px);
+  --asteryon-public-inline: max(
+    var(--asteryon-public-gutter),
+    calc((100vw - var(--asteryon-public-content)) / 2 + var(--asteryon-public-gutter))
+  );
+}
+
+html[data-asteryon-surface="public"],
+html[data-asteryon-surface="public"] body,
+html[data-asteryon-surface="public"] #root {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+/* O shell público deixa de crescer como uma prancheta de 1440 px.
+   As seções seguem full-bleed; o conteúdo interno recebe gutters B2B. */
+html[data-asteryon-surface="public"] .ltp-shell {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  min-width: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-topline {
+  min-height: 30px !important;
+  height: auto !important;
+  padding: 7px var(--asteryon-public-inline) !important;
+  font-size: 10px !important;
+  line-height: 1.35 !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-mainnav {
+  grid-template-columns: minmax(210px, 300px) minmax(0, 1fr) auto !important;
+  gap: clamp(16px, 2vw, 26px) !important;
+  padding: 16px var(--asteryon-public-inline) !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-mainnav img {
+  width: min(280px, 100%) !important;
+  max-height: 64px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-navlinks {
+  gap: 7px 16px !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-navbadge {
+  padding: 8px 12px !important;
+  font-size: 10px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-searchrow {
+  gap: 10px !important;
+  padding: 0 var(--asteryon-public-inline) 16px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-searchrow input {
+  min-height: 44px !important;
+  padding: 11px 15px !important;
+  font-size: 13px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-searchrow button {
+  min-height: 44px !important;
+  padding-inline: 22px !important;
+  font-size: 12px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-deptbar {
+  gap: 8px !important;
+  padding: 10px var(--asteryon-public-inline) !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-deptbar span {
+  padding: 7px 12px !important;
+  font-size: 10px !important;
+}
+
+/* 100% passa a ser o enquadramento base confortável do portal. */
+html[data-asteryon-surface="public"] .ltp-hero {
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr) !important;
+  gap: clamp(28px, 3vw, 42px) !important;
+  min-height: 440px !important;
+  padding: 48px var(--asteryon-public-inline) !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-kicker {
+  margin-bottom: 12px !important;
+  font-size: 10px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-hero h1 {
+  max-width: 16ch;
+  font-size: clamp(36px, 3.6vw, 56px) !important;
+  line-height: 1.04 !important;
+  letter-spacing: -.035em !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-hero p {
+  max-width: 58ch !important;
+  margin-top: 17px !important;
+  font-size: 15px !important;
+  line-height: 1.58 !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-hero-actions {
+  gap: 10px !important;
+  margin-top: 22px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-btn {
+  padding: 11px 17px !important;
+  font-size: 11px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-hero-visual {
+  min-height: 310px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-hero-card {
+  inset: 18px 8px 10px 36px !important;
+  border-radius: 26px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-hero-logo {
+  left: 28px !important;
+  right: 28px !important;
+  top: 34px !important;
+  padding: 12px 16px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-hero-logo img {
+  height: 94px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-hero-stats {
+  left: 28px !important;
+  right: 28px !important;
+  bottom: 28px !important;
+  gap: 8px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-hero-stat {
+  padding: 11px 10px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-hero-stat strong {
+  font-size: 20px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-section {
+  padding: 54px var(--asteryon-public-inline) !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-section-head {
+  margin-bottom: 22px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-section h2 {
+  font-size: clamp(26px, 2.5vw, 38px) !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-products {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 13px !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-segments,
+html[data-asteryon-surface="public"] .ltp-brand-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+}
+
+html[data-asteryon-surface="public"] .ltp-departments,
+html[data-asteryon-surface="public"] .ltp-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+/* Tablet real: reflow, não miniatura de desktop. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  html[data-asteryon-surface="public"] {
+    --asteryon-public-gutter: clamp(20px, 3vw, 30px);
+    --asteryon-public-inline: var(--asteryon-public-gutter);
+  }
+
+  html[data-asteryon-surface="public"] .ltp-mainnav {
+    grid-template-columns: minmax(190px, 250px) minmax(0, 1fr) !important;
+    gap: 18px !important;
+    padding-block: 14px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-mainnav img {
+    width: min(235px, 100%) !important;
+    max-height: 58px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-navbadge {
+    display: none !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-navlinks {
+    justify-content: flex-end !important;
+    gap: 7px 12px !important;
+    font-size: 10px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-height: 0 !important;
+    gap: 28px !important;
+    padding-block: 42px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero h1 {
+    max-width: 18ch;
+    font-size: clamp(38px, 5.4vw, 50px) !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero-visual {
+    width: min(100%, 720px) !important;
+    min-height: 300px !important;
+    margin-inline: auto !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero-card {
+    inset: 0 !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-products,
+  html[data-asteryon-surface="public"] .ltp-segments {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-brand-grid,
+  html[data-asteryon-surface="public"] .ltp-departments,
+  html[data-asteryon-surface="public"] .ltp-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-story,
+  html[data-asteryon-surface="public"] .ltp-contact {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* Celular: uma coluna natural, controles acessíveis e sem overflow lateral. */
+@media (max-width: 767px) {
+  html[data-asteryon-surface="public"] {
+    --asteryon-public-gutter: clamp(16px, 5vw, 22px);
+    --asteryon-public-inline: var(--asteryon-public-gutter);
+  }
+
+  html[data-asteryon-surface="public"] .ltp-topline {
+    justify-content: flex-start !important;
+    text-align: left !important;
+    font-size: 9px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-mainnav {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding-block: 13px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-mainnav img {
+    width: min(220px, 78vw) !important;
+    max-height: 54px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-navbadge {
+    display: none !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-navlinks {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    justify-content: stretch !important;
+    gap: 6px 10px !important;
+    font-size: 9px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-navlinks span {
+    white-space: normal !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-searchrow {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-searchrow button {
+    width: 100% !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-deptbar {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    scrollbar-width: thin;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 24px !important;
+    min-height: 0 !important;
+    padding-block: 32px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-kicker {
+    margin-bottom: 10px !important;
+    font-size: 9px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero h1 {
+    max-width: none;
+    font-size: clamp(31px, 9.5vw, 40px) !important;
+    line-height: 1.06 !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero p {
+    margin-top: 14px !important;
+    font-size: 14px !important;
+    line-height: 1.55 !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero-actions {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    margin-top: 20px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-btn {
+    text-align: center !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero-visual {
+    min-height: 250px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero-card {
+    inset: 0 !important;
+    border-radius: 22px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero-logo {
+    left: 18px !important;
+    right: 18px !important;
+    top: 22px !important;
+    padding: 10px 12px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero-logo img {
+    height: 72px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero-stats {
+    left: 18px !important;
+    right: 18px !important;
+    bottom: 18px !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero-stat {
+    padding: 9px 6px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero-stat strong {
+    font-size: 17px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-hero-stat span {
+    font-size: 7px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-section {
+    padding-block: 38px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-section-head {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    margin-bottom: 18px !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-section h2 {
+    font-size: clamp(24px, 7vw, 32px) !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-products,
+  html[data-asteryon-surface="public"] .ltp-departments,
+  html[data-asteryon-surface="public"] .ltp-story,
+  html[data-asteryon-surface="public"] .ltp-contact,
+  html[data-asteryon-surface="public"] .ltp-hierarchy {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-segments,
+  html[data-asteryon-surface="public"] .ltp-brand-grid,
+  html[data-asteryon-surface="public"] .ltp-metrics,
+  html[data-asteryon-surface="public"] .ltp-story-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html[data-asteryon-surface="public"] .ltp-product-media {
+    height: 170px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  html[data-asteryon-surface="public"] .ltp-segments,
+  html[data-asteryon-surface="public"] .ltp-brand-grid,
+  html[data-asteryon-surface="public"] .ltp-metrics,
+  html[data-asteryon-surface="public"] .ltp-story-list {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
