@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testMatch: ['production-ui-compat.spec.mjs', 'auto-responsive.spec.mjs'],
+  testMatch: ['production-ui-compat.spec.mjs', 'auto-responsive.spec.mjs', 'public-portal-v97.spec.mjs'],
   timeout: 45_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
