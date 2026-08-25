@@ -129,6 +129,15 @@ async function metrics(page) {
   }));
 }
 
+async function openMainNavIfNeeded(page) {
+  const link = page.locator('#main-nav a[href="#departamentos"]');
+  if (!(await link.isVisible())) {
+    await page.locator('.nav-toggle').click();
+    await expect(page.locator('#main-nav')).toHaveAttribute('data-open', 'true');
+  }
+  return link;
+}
+
 test.beforeEach(async ({ page }) => mockApis(page));
 
 test('portal público V97 usa somente publicação pública e não carrega runtime administrativo', async ({ page }) => {
@@ -152,7 +161,8 @@ test('menu, busca e áreas públicas abrem popup sem alterar a posição da pág
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await waitPortal(page);
   const before = await page.evaluate(() => window.scrollY);
-  await page.locator('#main-nav a[href="#departamentos"]').click();
+  const departmentLink = await openMainNavIfNeeded(page);
+  await departmentLink.click();
   await expect(page.locator('#portal-popup-body #departamentos')).toBeVisible();
   expect(await page.evaluate(() => window.scrollY)).toBe(before);
   await page.locator('.portal-popup-close').click();
@@ -166,10 +176,12 @@ test('menu, busca e áreas públicas abrem popup sem alterar a posição da pág
 test('segmento filtra no popup e detalhe do produto fica acima do popup principal', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await waitPortal(page);
+  const before = await page.evaluate(() => window.scrollY);
   await page.locator('[data-segment-id="s1"]').click();
   await expect(page.locator('#portal-popup-body #produtos')).toBeVisible();
   await expect(page.locator('.product-card')).toHaveCount(2);
   await expect(page.locator('#results-label')).toContainText('Mercados & Supermercados');
+  expect(await page.evaluate(() => window.scrollY)).toBe(before);
   await page.locator('[data-product-id="p1"]').click();
   await expect(page.locator('#product-modal')).toBeVisible();
   await expect(page.locator('#product-modal-title')).toHaveText('Produto Alpha');
@@ -241,7 +253,10 @@ test('zoom nativo mantém tipografia estável e sem overflow horizontal', async 
   const samples = [];
   for (const width of [1498, 1872, 2340]) {
     await page.setViewportSize({ width, height: 1026 });
-    if (!samples.length) { await page.goto('/', { waitUntil: 'domcontentloaded' }); await waitPortal(page); }
+    if (!samples.length) {
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      await waitPortal(page);
+    }
     samples.push(await metrics(page));
   }
   for (const sample of samples) {
