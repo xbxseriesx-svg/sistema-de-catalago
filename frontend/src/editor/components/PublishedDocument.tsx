@@ -4,18 +4,63 @@ import { frameOf } from "../geometry";
 
 const MOBILE_MAX = 767;
 const TABLET_MAX = 1100;
+const ZOOM_TABLET_MAX = 1280;
+const ZOOM_EPSILON = 0.08;
+const ZOOM_BASE_DPR_KEY = "asteryon-native-zoom-base-dpr";
 
-function layoutViewportWidth(): number {
-  if (typeof window === "undefined") return 1440;
-  const rootWidth = document.documentElement?.clientWidth || 0;
-  const innerWidth = window.innerWidth || 0;
-  const width = rootWidth > 0 && innerWidth > 0 ? Math.min(rootWidth, innerWidth) : Math.max(rootWidth, innerWidth);
-  return Math.max(320, Math.round(width || 1440));
+type ViewportMetrics = {
+  width: number;
+  browserZoom: number;
+  nativeZoomActive: boolean;
+};
+
+function storedBaseDpr(current: number): number {
+  if (typeof window === "undefined") return current;
+  try {
+    const stored = Number(window.sessionStorage.getItem(ZOOM_BASE_DPR_KEY) || 0);
+    if (Number.isFinite(stored) && stored > 0) return stored;
+    window.sessionStorage.setItem(ZOOM_BASE_DPR_KEY, String(current));
+  } catch {
+    // sessionStorage pode estar indisponível em contextos restritos; o zoom continua funcional.
+  }
+  return current;
 }
 
-function deviceForWidth(width: number): Device {
+function layoutViewportMetrics(): ViewportMetrics {
+  if (typeof window === "undefined") return { width: 1440, browserZoom: 1, nativeZoomActive: false };
+
+  const rootWidth = document.documentElement?.clientWidth || 0;
+  const innerWidth = window.innerWidth || 0;
+  const width = Math.max(320, Math.round(
+    rootWidth > 0 && innerWidth > 0 ? Math.min(rootWidth, innerWidth) : Math.max(rootWidth, innerWidth) || 1440,
+  ));
+
+  const currentDpr = Math.max(0.25, Number(window.devicePixelRatio || 1));
+  const baseDpr = Math.max(0.25, storedBaseDpr(currentDpr));
+  const dprZoom = currentDpr / baseDpr;
+  const visualZoom = Math.max(0.25, Number(window.visualViewport?.scale || 1));
+  const outerZoom = window.outerWidth > 0 && innerWidth > 0
+    ? Math.max(0.25, Math.min(5, window.outerWidth / innerWidth))
+    : 1;
+
+  const candidates = [dprZoom, visualZoom, outerZoom].filter((value) => Number.isFinite(value) && value > 0);
+  const browserZoom = candidates.reduce((selected, value) => (
+    Math.abs(value - 1) > Math.abs(selected - 1) ? value : selected
+  ), 1);
+
+  return {
+    width,
+    browserZoom,
+    nativeZoomActive: Math.abs(browserZoom - 1) >= ZOOM_EPSILON,
+  };
+}
+
+function deviceForWidth(width: number, nativeZoomActive: boolean): Device {
   if (width <= MOBILE_MAX) return "mobile";
   if (width <= TABLET_MAX) return "tablet";
+  // Com zoom nativo ativo, a faixa intermediária usa o layout tablet em vez de
+  // reduzir matematicamente o desktop. Assim o navegador continua ampliando de verdade.
+  if (nativeZoomActive && width <= ZOOM_TABLET_MAX) return "tablet";
   return "desktop";
 }
 
@@ -23,21 +68,23 @@ function PublicNode({
   doc,
   id,
   device,
-  horizontalScale,
+  fitScale,
 }: {
   doc: EditorDocument;
   id: string;
   device: Device;
-  horizontalScale: number;
+  fitScale: number;
 }) {
   const node = doc.nodes[id];
   if (!node || !node.visible) return null;
   const sourceFrame = frameOf(node, device);
-  const frame = {
-    ...sourceFrame,
-    x: sourceFrame.x * horizontalScale,
-    width: sourceFrame.width * horizontalScale,
-  };
+  const frame = fitScale === 1
+    ? sourceFrame
+    : {
+        ...sourceFrame,
+        x: sourceFrame.x * fitScale,
+        width: sourceFrame.width * fitScale,
+      };
   const styles = node.styles;
   const props = node.props;
   const actionSegmentId = String(props["actionSegmentId"] ?? "").trim();
@@ -185,7 +232,7 @@ function PublicNode({
           doc={doc}
           id={childId}
           device={device}
-          horizontalScale={horizontalScale}
+          fitScale={fitScale}
         />
       ))}
     </div>
@@ -193,7 +240,7 @@ function PublicNode({
 }
 
 export function PublishedDocument({ doc }: { doc: EditorDocument }) {
-  const [viewportWidth, setViewportWidth] = useState(layoutViewportWidth);
+  const [metrics, setMetrics] = useState(layoutViewportMetrics);
 
   useEffect(() => {
     let raf = 0;
@@ -201,7 +248,7 @@ export function PublishedDocument({ doc }: { doc: EditorDocument }) {
       if (raf) return;
       raf = window.requestAnimationFrame(() => {
         raf = 0;
-        setViewportWidth(layoutViewportWidth());
+        setMetrics(layoutViewportMetrics());
       });
     };
 
@@ -220,17 +267,23 @@ export function PublishedDocument({ doc }: { doc: EditorDocument }) {
   const root = doc.nodes[doc.rootId];
   if (!root) return null;
 
-  const device = deviceForWidth(viewportWidth);
+  const device = deviceForWidth(metrics.width, metrics.nativeZoomActive);
   const frame = frameOf(root, device);
-  const designWidth = Math.max(1, Number(frame.width) || viewportWidth);
-  const horizontalScale = Math.max(0.25, Math.min(4, viewportWidth / designWidth));
+  const designWidth = Math.max(1, Number(frame.width) || metrics.width);
+  // A contra-escala só é permitida em redimensionamento normal. Quando o navegador
+  // está com zoom, fitScale=1 deixa Chrome/Edge/Firefox ampliarem o conteúdo de verdade.
+  const fitScale = metrics.nativeZoomActive
+    ? 1
+    : Math.max(0.25, Math.min(4, metrics.width / designWidth));
   const minHeight = Math.max(1, Number(frame.height) || 1);
 
   return (
     <div
       data-asteryon-published-document="true"
       data-asteryon-published-device={device}
-      data-asteryon-published-viewport={viewportWidth}
+      data-asteryon-published-viewport={metrics.width}
+      data-asteryon-native-browser-zoom={metrics.nativeZoomActive ? "active" : "normal"}
+      data-asteryon-browser-zoom={metrics.browserZoom.toFixed(3)}
       style={{
         position: "relative",
         width: "100%",
@@ -248,7 +301,7 @@ export function PublishedDocument({ doc }: { doc: EditorDocument }) {
           doc={doc}
           id={childId}
           device={device}
-          horizontalScale={horizontalScale}
+          fitScale={fitScale}
         />
       ))}
     </div>
