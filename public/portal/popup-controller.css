@@ -1,0 +1,157 @@
+.portal-popup[hidden] {
+  display: none !important;
+}
+
+.portal-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.portal-popup-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(9, 20, 44, 0.72);
+  backdrop-filter: blur(3px);
+  cursor: default;
+}
+
+.portal-popup-panel {
+  position: relative;
+  z-index: 1;
+  width: min(92rem, 96vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(21, 52, 103, 0.16);
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 1.5rem 4rem rgba(8, 24, 54, 0.28);
+}
+
+.portal-popup-header {
+  min-height: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1rem 0.8rem 1.25rem;
+  border-bottom: 1px solid #e4e9f1;
+  background: #ffffff;
+}
+
+.portal-popup-header h2 {
+  margin: 0;
+  color: #102a59;
+  font-size: 1.125rem;
+  line-height: 1.3;
+}
+
+.portal-popup-close {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid #d7deea;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #173a78;
+  font-size: 1.65rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.portal-popup-close:hover,
+.portal-popup-close:focus-visible {
+  background: #eef3fb;
+  outline: 2px solid #173a78;
+  outline-offset: 2px;
+}
+
+.portal-popup-body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: #f7f9fc;
+}
+
+.portal-popup-body > .hero,
+.portal-popup-body > .section,
+.portal-popup-body > .contact-section {
+  width: 100%;
+  min-height: 0;
+  margin: 0;
+}
+
+.portal-popup-body > .section .container,
+.portal-popup-body > .hero .container,
+.portal-popup-body > .contact-section .container {
+  width: min(85rem, calc(100% - 2rem));
+  max-width: 100%;
+}
+
+.portal-popup-open {
+  overflow: hidden !important;
+}
+
+[data-portal-popup-mounted="true"] {
+  scroll-margin: 0 !important;
+}
+
+.portal-action-popup {
+  min-height: 12rem;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.portal-action-popup p {
+  margin: 0;
+  color: #4d5c75;
+}
+
+.product-card {
+  cursor: pointer;
+}
+
+@media (max-width: 47.9375rem) {
+  .portal-popup {
+    padding: 0;
+    align-items: end;
+  }
+
+  .portal-popup-panel {
+    width: 100%;
+    max-height: 94vh;
+    border-radius: 1rem 1rem 0 0;
+  }
+
+  .portal-popup-header {
+    min-height: 3.5rem;
+    padding: 0.65rem 0.75rem 0.65rem 1rem;
+  }
+
+  .portal-popup-header h2 {
+    font-size: 1rem;
+  }
+
+  .portal-popup-close {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .portal-popup-body > .section .container,
+  .portal-popup-body > .hero .container,
+  .portal-popup-body > .contact-section .container {
+    width: min(100% - 1rem, 85rem);
+  }
+}
