@@ -132,6 +132,20 @@ const publishedPageFixture = {
   },
 };
 
+const productsSource = publishedPageFixture.page.nodes[0].children.find((node) => node.id === 'products-source');
+productsSource.children.push(
+  {
+    id: 'carousel-publicado', type: 'carousel', name: 'Carrossel publicado', x: 40, y: 250, width: 900, height: 320,
+    visible: true, opacity: 1, styles: { backgroundColor: '#eef3fb', radius: 16 },
+    props: { images: ['/asteryon.svg', '/asteryon.svg'], interval: 2000, fit: 'contain' }, children: [],
+  },
+  {
+    id: 'promocao-publicada', type: 'promotion', name: 'Promoção publicada', x: 40, y: 600, width: 500, height: 180,
+    visible: true, opacity: 1, styles: { backgroundColor: '#ffffff', radius: 12 },
+    props: { title: 'Oferta publicada pelo editor', text: 'Componente funcional vindo de published_nodes.', label: 'Ver produtos', href: '#produtos' }, children: [],
+  },
+);
+
 async function mockPublicApis(page) {
   await page.route('**/api/public/catalog', (route) => route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify(catalogFixture) }));
   await page.route('**/api/public/commercial-segments', (route) => route.fulfill({ status: 200, contentType: 'application/json; charset=utf-8', body: JSON.stringify(segmentsFixture) }));
@@ -150,6 +164,8 @@ async function mockPublicApis(page) {
 async function waitPortal(page) {
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.portalReady)).toBe('true');
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.editorPublication)).toBe('applied');
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.editorFunctionalPublication)).toBe('applied');
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.portalPopupController)).toBe('ready');
 }
 
 async function portalMetrics(page) {
@@ -166,6 +182,7 @@ async function portalMetrics(page) {
       styles: [...document.querySelectorAll('link[rel="stylesheet"]')].map((link) => link.getAttribute('href') || ''),
       publication: document.documentElement.dataset.editorPublication || '',
       publicationRevision: document.documentElement.dataset.editorPublicationRevision || '',
+      functionalPublication: document.documentElement.dataset.editorFunctionalPublication || '',
     };
   });
 }
@@ -190,8 +207,19 @@ test('portal público é independente e aplica somente a publicação pública d
   expect(metrics.titleTransform).toBe('none');
   expect(metrics.publication).toBe('applied');
   expect(metrics.publicationRevision).toBe('91');
-  expect(metrics.scripts).toEqual(['/portal/app.js?v=97', '/portal/editor-publication-bridge.js?v=97']);
-  expect(metrics.styles).toEqual(['/portal/styles.css?v=97', '/portal/editor-publication-bridge.css?v=97']);
+  expect(metrics.functionalPublication).toBe('applied');
+  expect(metrics.scripts).toEqual([
+    '/portal/app.js?v=97',
+    '/portal/editor-publication-bridge.js?v=97',
+    '/portal/popup-controller.js?v=97',
+    '/portal/editor-functional-publication.js?v=97',
+  ]);
+  expect(metrics.styles).toEqual([
+    '/portal/styles.css?v=97',
+    '/portal/editor-publication-bridge.css?v=97',
+    '/portal/popup-controller.css?v=97',
+    '/portal/editor-functional-publication.css?v=97',
+  ]);
   expect(metrics.scripts.join(' ')).not.toMatch(/preview-editor|responsive-v67|runtime-loader|editor-runtime/i);
 });
 
@@ -234,16 +262,53 @@ test('portal reflowa tablet e celular mesmo com tipografia publicada pelo editor
 
   await page.locator('#catalog-search').fill('Beta');
   await page.locator('#search-button').click();
+  await expect(page.locator('#portal-popup')).toBeVisible();
+  await expect(page.locator('#portal-popup-body #produtos')).toBeVisible();
   await expect(page.locator('.product-card')).toHaveCount(1);
   await expect(page.locator('.product-card h3')).toHaveText('Produto Beta');
 });
 
-test('filtro de segmento e modal de produto permanecem funcionais após aplicar publicação', async ({ page }) => {
+test('menu e busca abrem conteúdo em popup sem rolar a página', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await waitPortal(page);
+
+  const before = await page.evaluate(() => window.scrollY);
+  await page.locator('#main-nav a[href="#departamentos"]').click();
+  await expect(page.locator('#portal-popup')).toBeVisible();
+  await expect(page.locator('#portal-popup-body #departamentos')).toBeVisible();
+  expect(await page.evaluate(() => window.scrollY)).toBe(before);
+
+  await page.locator('.portal-popup-close').click();
+  await expect(page.locator('#portal-popup')).toBeHidden();
+  await expect(page.locator('main #departamentos')).toHaveCount(1);
+
+  await page.locator('#catalog-search').fill('Beta');
+  await page.locator('#search-button').click();
+  await expect(page.locator('#portal-popup-body #produtos')).toBeVisible();
+  await expect(page.locator('.product-card h3')).toHaveText('Produto Beta');
+  expect(await page.evaluate(() => window.scrollY)).toBe(before);
+});
+
+test('componentes funcionais publicados pelo editor aparecem no portal', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await waitPortal(page);
+
+  await expect(page.locator('[data-editor-functional-node="carousel-publicado"]')).toHaveCount(1);
+  await expect(page.locator('[data-editor-functional-node="promocao-publicada"]')).toHaveCount(1);
+  await expect(page.locator('[data-editor-functional-node="promocao-publicada"]')).toContainText('Oferta publicada pelo editor');
+  await expect(page.locator('[data-editor-functional-node="carousel-publicado"] img')).toHaveCount(1);
+});
+
+test('filtro de segmento e modal de produto permanecem funcionais dentro do popup', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await waitPortal(page);
 
   await page.locator('[data-segment-id="s1"]').click();
+  await expect(page.locator('#portal-popup')).toBeVisible();
+  await expect(page.locator('#portal-popup-body #produtos')).toBeVisible();
   await expect(page.locator('.product-card')).toHaveCount(2);
   await expect(page.locator('#results-label')).toContainText('Mercados & Supermercados');
 
@@ -252,4 +317,5 @@ test('filtro de segmento e modal de produto permanecem funcionais após aplicar 
   await expect(page.locator('#product-modal-title')).toHaveText('Produto Alpha');
   await page.locator('.modal-close').click();
   await expect(page.locator('#product-modal')).toBeHidden();
+  await expect(page.locator('#portal-popup')).toBeVisible();
 });
