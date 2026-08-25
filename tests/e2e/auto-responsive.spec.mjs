@@ -107,23 +107,19 @@ test('motor V95.3 faz reflow real e automático em tablet/mobile, sem miniaturiz
   expect(result.props.autoResponsive).toBe(true);
   expect(result.props.autoResponsiveMode).toBe('css-reflow');
 
-  // Tablet: segmentos em 3 colunas e produtos em 3 colunas.
   expect(Math.abs(result.segments[0].tablet.y - result.segments[2].tablet.y)).toBeLessThan(2);
   expect(result.segments[3].tablet.y).toBeGreaterThan(result.segments[0].tablet.y + 100);
   expect(Math.abs(result.products[0].tablet.y - result.products[2].tablet.y)).toBeLessThan(2);
   expect(result.products[3].tablet.y).toBeGreaterThan(result.products[0].tablet.y + 180);
 
-  // Mobile 390 px: segmentos em 2 colunas e produtos em uma coluna pela regra <= 430px.
   expect(Math.abs(result.segments[0].mobile.y - result.segments[1].mobile.y)).toBeLessThan(2);
   expect(result.segments[2].mobile.y).toBeGreaterThan(result.segments[0].mobile.y + 100);
   expect(Math.abs(result.products[0].mobile.x - result.products[1].mobile.x)).toBeLessThan(2);
   expect(result.products[1].mobile.y).toBeGreaterThan(result.products[0].mobile.y + 150);
 
-  // O conteúdo cresce verticalmente; não pode voltar à escala matemática 390/1440.
   expect(result.root.mobile.width).toBe(390);
   expect(result.root.mobile.height).toBeGreaterThan(1300);
 
-  // Elementos livres também são ancorados automaticamente dentro de cada viewport.
   expect(result.free.mobile.x).toBeGreaterThanOrEqual(0);
   expect(result.free.mobile.x + result.free.mobile.width).toBeLessThanOrEqual(390.01);
   expect(result.free.tablet.x + result.free.tablet.width).toBeLessThanOrEqual(834.01);
@@ -140,13 +136,10 @@ test('runtime público muda automaticamente entre desktop, tablet e celular nas 
   const matrix = [
     { width: 1920, height: 1080, device: 'desktop' },
     { width: 1440, height: 900, device: 'desktop' },
-    // 1440 px físicos em 125% ficam próximos de 1152 CSS px: ainda desktop.
     { width: 1152, height: 800, device: 'desktop' },
-    // Em 150% ficam próximos de 960 CSS px: reflow de tablet.
     { width: 960, height: 800, device: 'tablet' },
     { width: 834, height: 1112, device: 'tablet' },
     { width: 768, height: 1024, device: 'tablet' },
-    // Em 200% ficam próximos de 720 CSS px: reflow de celular, sem bloquear o zoom nativo.
     { width: 720, height: 900, device: 'mobile' },
     { width: 430, height: 932, device: 'mobile' },
     { width: 390, height: 844, device: 'mobile' },
@@ -162,4 +155,36 @@ test('runtime público muda automaticamente entre desktop, tablet e celular nas 
     }));
     expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth + 1);
   }
+});
+
+test('zoom nativo do Chromium amplia a visual viewport e não é bloqueado pelo catálogo', async ({ page }) => {
+  await page.route('**/api/**', route => route.fulfill({
+    status: 200,
+    contentType: 'application/json; charset=utf-8',
+    body: JSON.stringify({ ok: true }),
+  }));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/catalogo', { waitUntil: 'domcontentloaded' });
+
+  const session = await page.context().newCDPSession(page);
+  const before = await page.evaluate(() => ({
+    scale: window.visualViewport?.scale || 1,
+    width: window.visualViewport?.width || window.innerWidth,
+  }));
+
+  await session.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1.5 });
+  await expect.poll(() => page.evaluate(() => window.visualViewport?.scale || 1)).toBeGreaterThan(1.4);
+
+  const after = await page.evaluate(() => ({
+    scale: window.visualViewport?.scale || 1,
+    width: window.visualViewport?.width || window.innerWidth,
+    meta: document.querySelector('meta[name="viewport"]')?.getAttribute('content') || '',
+  }));
+
+  expect(after.scale).toBeGreaterThan(before.scale);
+  expect(after.width).toBeLessThan(before.width);
+  expect(after.meta).toContain('user-scalable=yes');
+  expect(after.meta).toContain('maximum-scale=5.0');
+
+  await session.send('Emulation.setPageScaleFactor', { pageScaleFactor: 1 });
 });
