@@ -56,6 +56,6 @@ assert.ok(e2e.includes("device: 'tablet'"));
 assert.ok(e2e.includes("device: 'mobile'"));
 assert.ok(e2e.includes('scrollWidth'), 'E2E precisa bloquear regressão de overflow horizontal');
 assert.ok(e2e.includes('Emulation.setPageScaleFactor'), 'E2E precisa provar zoom nativo real no Chromium');
-assert.ok(e2e.includes('visualViewport.scale'), 'E2E precisa observar a escala visual nativa do navegador');
+assert.ok(e2e.includes('visualViewport?.scale'), 'E2E precisa observar a escala visual nativa do navegador');
 
 console.log('QA Responsivo: OK — reflow automático preservado e contra-escala do zoom nativo bloqueada.');
