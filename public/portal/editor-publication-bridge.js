@@ -5,6 +5,10 @@
   const PUBLICATION_ENDPOINT = `/api/public/pages/${PAGE_SLUG}`;
   const MAX_TEXT_LENGTH = 12000;
 
+  let currentDocument = null;
+  let lastRevision = null;
+  let loading = false;
+
   const normalize = (value) => String(value ?? '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -250,7 +254,8 @@
     if (!source || !target) return;
     applyBoxStyles(source, target);
     const eyebrowSource = findPreviewClass(doc, source, 'ltp-eyebrow');
-    const headingSource = findTag(doc, source, ['h1', 'h2', 'h3']) || findIn(doc, source, (node) => ['heading'].includes(String(node.type || '')) && Boolean(textOf(node)));
+    const headingSource = findTag(doc, source, ['h1', 'h2', 'h3'])
+      || findIn(doc, source, (node) => node.type === 'heading' && Boolean(textOf(node)));
     const excluded = new Set([eyebrowSource?.id, headingSource?.id].filter(Boolean));
     const bodySource = longestBodyText(doc, source, excluded);
 
@@ -294,9 +299,9 @@
 
     const navSource = findPreviewClass(doc, source, 'ltp-navlinks');
     if (navSource) {
-      const labels = findAllIn(doc, navSource, (node) => Boolean(textOf(node)) && (domTagOf(node) === 'span' || domTagOf(node) === 'a' || node.type === 'text'))
-        .filter((node) => textOf(node).length <= 40)
-        .slice(0, 6);
+      const labels = findAllIn(doc, navSource, (node) => Boolean(textOf(node)) && (
+        domTagOf(node) === 'span' || domTagOf(node) === 'a' || node.type === 'text'
+      )).filter((node) => textOf(node).length <= 40).slice(0, 6);
       const anchors = [...target.querySelectorAll('.main-nav a')];
       labels.forEach((node, index) => {
         const anchor = anchors[index];
@@ -310,6 +315,11 @@
         else if (normalize(textOf(node)).includes('inicio')) anchor.href = '#inicio';
       });
     }
+
+    const searchSource = findIn(doc, source, (node) => node.type === 'search' || domTagOf(node) === 'input');
+    const search = document.getElementById('catalog-search');
+    const placeholder = String(searchSource?.props?.placeholder || '').trim();
+    if (search && placeholder) search.placeholder = placeholder;
   }
 
   function applyHero(doc, source) {
@@ -327,6 +337,7 @@
         const button = targets[index];
         if (!button) return;
         writeText(node, button, 'button');
+        applyBoxStyles(node, button);
         button.setAttribute('href', safeHref(node?.props?.href, index === 0 ? '#produtos' : '#contato'));
       });
     }
@@ -355,12 +366,13 @@
     const target = document.querySelector('.site-footer');
     if (!source || !target) return;
     applyBoxStyles(source, target);
-    const texts = findAllIn(doc, source, (node) => Boolean(textOf(node)) && textOf(node).length <= 140).slice(0, 2);
-    const spans = [...target.querySelectorAll('.footer-row > span')];
-    if (texts[0] && spans[0]) writeText(texts[0], spans[0], 'body');
+    const text = findIn(doc, source, (node) => Boolean(textOf(node)) && textOf(node).length <= 140);
+    const first = target.querySelector('.footer-row > span');
+    writeText(text, first, 'body');
   }
 
   function styleDynamicCards(doc) {
+    if (!doc) return;
     const rules = [
       ['product-card', '.product-card'],
       ['brand-card', '.brand-card'],
@@ -374,26 +386,8 @@
     }
   }
 
-  function reorderSemanticSections(doc) {
-    const main = document.getElementById('conteudo');
-    if (!main) return;
-    const searchBand = main.querySelector('.search-band');
-    const mappings = [
-      ['hero', document.querySelector('.hero')],
-      ['segmentos', document.querySelector('#segmentos')],
-      ['produtos', document.querySelector('#produtos')],
-      ['departamentos', document.querySelector('#departamentos')],
-      ['marcas', document.querySelector('#marcas')],
-      ['contato', document.querySelector('#contato')],
-    ].map(([key, target]) => ({ key, target, source: sourceForKey(doc, key) }))
-      .filter((entry) => entry.target && entry.source)
-      .sort((a, b) => finite(a.source.y) - finite(b.source.y));
-
-    if (searchBand) main.append(searchBand);
-    mappings.forEach((entry) => main.append(entry.target));
-  }
-
   function applyPublication(doc, page) {
+    currentDocument = doc;
     const sources = {
       header: sourceForKey(doc, 'header'),
       hero: sourceForKey(doc, 'hero'),
@@ -413,7 +407,6 @@
     applyHeadingBlock(doc, sources.marcas, document.querySelector('#marcas'), 'h2');
     applyContact(doc, sources.contato);
     applyFooter(doc, sources.footer);
-    reorderSemanticSections(doc);
     styleDynamicCards(doc);
 
     const revision = Number(page?.versionNumber ?? 0) || 0;
@@ -424,9 +417,6 @@
       detail: { slug: PAGE_SLUG, revision, versionId: page?.versionId || null },
     }));
   }
-
-  let lastRevision = null;
-  let loading = false;
 
   async function refreshPublication() {
     if (loading) return;
@@ -442,7 +432,10 @@
       const payload = await response.json();
       const page = payload?.page;
       const revision = Number(page?.versionNumber ?? 0) || 0;
-      if (lastRevision !== null && revision === lastRevision) return;
+      if (lastRevision !== null && revision === lastRevision) {
+        styleDynamicCards(currentDocument);
+        return;
+      }
       const doc = flattenStoredDocument(page?.nodes);
       if (!doc) throw new Error('Documento publicado inválido');
       applyPublication(doc, page);
@@ -455,17 +448,14 @@
     }
   }
 
-  const observeDynamicContent = () => {
+  function observeDynamicContent() {
     const targets = ['product-grid', 'brand-rail', 'department-grid', 'segment-grid']
       .map((id) => document.getElementById(id))
       .filter(Boolean);
     if (!targets.length) return;
-    const observer = new MutationObserver(() => {
-      if (document.documentElement.dataset.editorPublication !== 'applied') return;
-      refreshPublication().catch(() => {});
-    });
+    const observer = new MutationObserver(() => styleDynamicCards(currentDocument));
     targets.forEach((target) => observer.observe(target, { childList: true }));
-  };
+  }
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
