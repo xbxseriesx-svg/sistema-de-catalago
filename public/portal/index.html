@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+  <meta name="theme-color" content="#173a78" />
+  <meta name="description" content="Catálogo B2B institucional com produtos, marcas, departamentos e segmentos comerciais." />
+  <link rel="icon" type="image/svg+xml" href="/asteryon.svg" />
+  <link rel="stylesheet" href="/portal/styles.css?v=97" />
+  <title>Catálogo B2B</title>
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Ir para o conteúdo</a>
+
+  <header class="site-header" id="inicio">
+    <div class="top-strip" aria-hidden="true"></div>
+    <div class="container header-row">
+      <a class="brand" href="/" aria-label="Página inicial do catálogo">
+        <span class="brand-mark" aria-hidden="true">A</span>
+        <span class="brand-copy">
+          <strong>Catálogo Digital</strong>
+          <small>Portal B2B</small>
+        </span>
+      </a>
+
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="main-nav">
+        <span aria-hidden="true">☰</span>
+        <span>Menu</span>
+      </button>
+
+      <nav class="main-nav" id="main-nav" aria-label="Navegação principal">
+        <a href="#inicio">Início</a>
+        <a href="#segmentos">Segmentos</a>
+        <a href="#departamentos">Departamentos</a>
+        <a href="#marcas">Marcas</a>
+        <a href="#produtos">Produtos</a>
+        <a href="#contato">Contato</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="conteudo">
+    <section class="search-band" aria-label="Busca no catálogo">
+      <div class="container search-panel">
+        <label class="search-field" for="catalog-search">
+          <span class="sr-only">Buscar produtos</span>
+          <span class="search-icon" aria-hidden="true">⌕</span>
+          <input id="catalog-search" type="search" autocomplete="off" placeholder="Busque por produto, código, EAN, marca ou categoria" />
+        </label>
+        <select id="department-filter" aria-label="Filtrar por departamento">
+          <option value="">Todos os departamentos</option>
+        </select>
+        <select id="brand-filter" aria-label="Filtrar por marca">
+          <option value="">Todas as marcas</option>
+        </select>
+        <button class="button button-primary" id="search-button" type="button">Buscar</button>
+        <button class="button button-light" id="clear-button" type="button">Limpar</button>
+      </div>
+    </section>
+
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Catálogo institucional</p>
+          <h1 id="hero-title">Um catálogo completo para apresentar a força da distribuidora.</h1>
+          <p class="hero-text">Página B2B com busca, segmentos, produtos, departamentos, marcas e apresentação institucional. Responsiva de forma nativa em desktop, tablet e celular.</p>
+          <div class="hero-actions">
+            <a class="button button-accent" href="#produtos">Explorar catálogo</a>
+            <a class="button button-light" href="#contato">Conhecer a empresa</a>
+          </div>
+        </div>
+
+        <aside class="hero-summary" aria-label="Resumo do catálogo">
+          <div class="summary-screen">
+            <span>Catálogo</span>
+            <strong>Produtos para o seu negócio</strong>
+          </div>
+          <div class="summary-stats">
+            <div><strong id="stat-products">—</strong><span>Produtos</span></div>
+            <div><strong id="stat-brands">—</strong><span>Marcas</span></div>
+            <div><strong id="stat-categories">—</strong><span>Categorias</span></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section" id="segmentos" aria-labelledby="segments-title">
+      <div class="container">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Segmentos comerciais</p>
+            <h2 id="segments-title">Atendimento para diferentes perfis de clientes</h2>
+          </div>
+          <p>Selecione um segmento para priorizar os produtos mais aderentes ao perfil de compra.</p>
+        </div>
+        <div class="segment-grid" id="segment-grid" aria-live="polite">
+          <div class="loading-card">Carregando segmentos…</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section-soft" id="departamentos" aria-labelledby="departments-title">
+      <div class="container">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Departamentos</p>
+            <h2 id="departments-title">Encontre produtos pela estrutura do catálogo</h2>
+          </div>
+          <p>Navegação direta pelas principais famílias de produtos cadastradas.</p>
+        </div>
+        <div class="department-grid" id="department-grid" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="section" id="marcas" aria-labelledby="brands-title">
+      <div class="container">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Marcas</p>
+            <h2 id="brands-title">Marcas disponíveis no catálogo</h2>
+          </div>
+          <p>Selecione uma marca para filtrar rapidamente os produtos disponíveis.</p>
+        </div>
+        <div class="brand-rail" id="brand-rail" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="section section-soft products-section" id="produtos" aria-labelledby="products-title">
+      <div class="container">
+        <div class="section-heading products-heading">
+          <div>
+            <p class="eyebrow">Produtos</p>
+            <h2 id="products-title">Produtos do catálogo</h2>
+            <p class="results-label" id="results-label">Carregando produtos…</p>
+          </div>
+          <button class="button button-light" id="remove-segment-filter" type="button" hidden>Remover filtro de segmento</button>
+        </div>
+        <div class="product-grid" id="product-grid" aria-live="polite"></div>
+        <div class="load-more-wrap">
+          <button class="button button-primary" id="load-more" type="button" hidden>Carregar mais produtos</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section contact-section" id="contato" aria-labelledby="contact-title">
+      <div class="container contact-grid">
+        <div>
+          <p class="eyebrow eyebrow-light">Atendimento comercial</p>
+          <h2 id="contact-title">Catálogo preparado para apoiar sua compra.</h2>
+          <p>Consulte os produtos, filtre por marca ou departamento e navegue pelos segmentos comerciais.</p>
+        </div>
+        <a class="button button-white" href="#inicio">Voltar ao início</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-row">
+      <span>Catálogo Digital B2B</span>
+      <span id="footer-status">Conectando ao catálogo…</span>
+    </div>
+  </footer>
+
+  <div class="modal" id="product-modal" hidden>
+    <button class="modal-backdrop" type="button" data-close-modal aria-label="Fechar detalhes do produto"></button>
+    <section class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Produto</p>
+          <h2 id="product-modal-title">Detalhes do produto</h2>
+        </div>
+        <button class="modal-close" type="button" data-close-modal aria-label="Fechar">×</button>
+      </div>
+      <div class="modal-body" id="product-modal-body"></div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script src="/portal/app.js?v=97" defer></script>
+</body>
+</html>
