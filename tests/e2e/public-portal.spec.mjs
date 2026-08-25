@@ -176,8 +176,10 @@ test('menu, busca e áreas públicas abrem popup sem alterar a posição da pág
 test('segmento filtra no popup e detalhe do produto fica acima do popup principal', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await waitPortal(page);
+  const segmentButton = page.locator('[data-segment-id="s1"]');
+  await segmentButton.scrollIntoViewIfNeeded();
   const before = await page.evaluate(() => window.scrollY);
-  await page.locator('[data-segment-id="s1"]').click();
+  await segmentButton.click();
   await expect(page.locator('#portal-popup-body #produtos')).toBeVisible();
   await expect(page.locator('.product-card')).toHaveCount(2);
   await expect(page.locator('#results-label')).toContainText('Mercados & Supermercados');
