@@ -25,6 +25,25 @@
     if (toggle instanceof HTMLElement) toggle.setAttribute('aria-expanded', 'false');
   }
 
+  function createPlaceholder(target) {
+    const rect = target.getBoundingClientRect();
+    const styles = getComputedStyle(target);
+    const placeholder = document.createElement('div');
+    placeholder.className = 'portal-popup-placeholder';
+    placeholder.setAttribute('aria-hidden', 'true');
+    placeholder.dataset.portalPopupPlaceholder = target.id || 'section';
+    placeholder.style.display = 'block';
+    placeholder.style.width = '100%';
+    placeholder.style.height = `${Math.max(0, rect.height)}px`;
+    placeholder.style.minHeight = `${Math.max(0, rect.height)}px`;
+    placeholder.style.marginTop = styles.marginTop;
+    placeholder.style.marginBottom = styles.marginBottom;
+    placeholder.style.pointerEvents = 'none';
+    placeholder.style.visibility = 'hidden';
+    placeholder.style.overflow = 'hidden';
+    return placeholder;
+  }
+
   function ensurePopup() {
     if (state.modal) return state.modal;
     const modal = document.createElement('div');
@@ -86,7 +105,7 @@
     if (state.mounted) restoreMounted();
 
     state.lastFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const placeholder = document.createComment(`asteryon-popup:${target.id || 'section'}`);
+    const placeholder = createPlaceholder(target);
     target.parentNode?.insertBefore(placeholder, target);
     state.placeholder = placeholder;
     state.mounted = target;
