@@ -29,10 +29,12 @@ if (pkg.scripts?.['prepare:rollback'] || pkg.scripts?.['prepare:bundle']) fail('
 if (version !== '95') fail(`release atual deveria ser 95, recebido ${version || 'vazio'}.`);
 
 const wrangler = readFileSync('wrangler.jsonc', 'utf8');
+const wranglerConfig = JSON.parse(wrangler);
 if (!wrangler.includes('"main": "worker/app/index.ts"')) fail('Wrangler não aponta para worker/app/index.ts.');
 if (!wrangler.includes('"directory": "./public"')) fail('Wrangler não serve a UI V95 em public/.');
 if (wrangler.includes('"directory": "./frontend/dist"')) fail('produção voltou a apontar para o SPA Enterprise que trocou as rotas visuais.');
-if (!wrangler.includes('"run_worker_first": ["/api/*"]')) fail('Worker não intercepta /api/* antes dos assets.');
+const workerFirst = Array.isArray(wranglerConfig?.assets?.run_worker_first) ? wranglerConfig.assets.run_worker_first : [];
+if (!workerFirst.includes('/api/*')) fail('Worker não intercepta /api/* antes dos assets.');
 if (/\bD1\b|d1_databases|\bR2\b|r2_buckets/.test(wrangler)) fail('Wrangler reintroduziu D1/R2.');
 
 for (const path of [
