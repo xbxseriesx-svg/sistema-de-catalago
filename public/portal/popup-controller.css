@@ -100,6 +100,10 @@
   overflow: hidden !important;
 }
 
+body.portal-popup-open #product-modal:not([hidden]) {
+  z-index: 10020;
+}
+
 [data-portal-popup-mounted="true"] {
   scroll-margin: 0 !important;
 }
