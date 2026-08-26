@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import * as productionSpreadsheet from '../public/spreadsheet-import-v96.js';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
 
@@ -168,12 +169,67 @@ assert.equal(product.packaging, '12X40G');
 assert.equal(product.unit, 'DISPLAY');
 assert.equal(product.ncm, '21069090');
 assert.equal(product.ean, '7896321005601');
+
+const rowsWithPreambleAndDuplicateHeader = [
+  ['Relatório de cadastro de produtos', 'Gerado pelo ERP'],
+  [],
+  [
+    'Código',
+    'Descrição',
+    'Descrição do departamento',
+    'Descrição da seção',
+    'Marca',
+    'Nome da categoria',
+    'Embalagem',
+    'Descrição da unidade',
+    'Embalagem Master',
+    'Descrição da unidade',
+    'NCM + Exceção',
+    'NCM',
+    'Unidade Venda EAN',
+    'Unidade Master EAN',
+  ],
+  [
+    '00032',
+    'BALA FLOPI DIET 40G FLORESTAL',
+    'ATACADO',
+    'BOMBONIERI',
+    'FLORESTAL',
+    'BALAS & DROPS',
+    '12X40G',
+    'DISPLAY',
+    '04X12X40G',
+    'CAIXA',
+    '21069090.',
+    '21069090',
+    '078963210056',
+    '17896321005608',
+  ],
+];
+const normalizedRows = spreadsheet.rowsToObjects(rowsWithPreambleAndDuplicateHeader);
+assert.equal(normalizedRows.length, 1, 'linhas de título antes do cabeçalho oficial devem ser ignoradas');
+assert.equal(normalizedRows[0]['Descrição da unidade'], 'DISPLAY');
+assert.equal(normalizedRows[0]['Descrição da unidade_1'], 'CAIXA', 'cabeçalho duplicado deve preservar a unidade Master');
+const normalizedProduct = spreadsheet.mapProductRow(normalizedRows[0]);
+assert.equal(normalizedProduct.code, '00032', 'Código deve permanecer texto e preservar zeros à esquerda');
+assert.equal(normalizedProduct.ean, '078963210056', 'EAN deve permanecer texto e preservar zeros à esquerda');
+assert.equal(normalizedProduct.technical['Descrição da unidade Master'], 'CAIXA');
+const productionRows = productionSpreadsheet.rowsToObjects(rowsWithPreambleAndDuplicateHeader);
+const productionProduct = productionSpreadsheet.mapProductRow(productionRows[0]);
+assert.equal(productionProduct.code, '00032', 'camada publicada deve preservar zeros à esquerda');
+assert.equal(productionProduct.ean, '078963210056', 'camada publicada deve preservar EAN como texto');
+assert.equal(productionProduct.technical['Descrição da unidade Master'], 'CAIXA');
+assert.equal(Object.keys(productionProduct.sourceColumns).length, 14, 'camada publicada deve preservar as 14 colunas');
 assert.equal(product.technical['Embalagem Master'], '04X12X40G');
 assert.equal(product.technical['Descrição da unidade Master'], 'CAIXA');
 assert.equal(product.technical['NCM + Exceção'], '21069090.');
 assert.equal(product.technical['Unidade Master EAN'], '17896321005608');
 assert.equal(Object.keys(product.sourceColumns).length, 14, 'as 14 colunas originais precisam ser preservadas');
-assert.equal(spreadsheet.mapProductRow({ ...realRow, 'Nome da categoria': '' }), null, 'categoria continua obrigatória');
+assert.equal(
+  spreadsheet.mapProductRow({ ...realRow, 'Nome da categoria': '' })?.categoriaName,
+  'Sem categoria',
+  'categoria vazia deve receber o fallback controlado',
+);
 
 const adapterSource = read('src/editor/documentAdapter.ts');
 const adapterJs = ts.transpileModule(adapterSource, {

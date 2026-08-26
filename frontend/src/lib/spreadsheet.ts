@@ -60,7 +60,7 @@ export function mapProductRow(row: Record<string, unknown>): ImportProduct | nul
   const departamentoName = pick(row, ["Descrição do departamento", "Descricao do departamento", "Departamento"]);
   const secaoName = pick(row, ["Descrição da seção", "Descricao da secao", "Seção", "Secao"]);
   const brandName = pick(row, ["Marca", "Descrição da marca", "Descricao da marca"]);
-  const categoriaName = pick(row, ["Nome da categoria", "Categoria", "Descrição da categoria", "Descricao da categoria"]);
+  const categoriaName = pick(row, ["Nome da categoria", "Categoria", "Descrição da categoria", "Descricao da categoria"]) || "Sem categoria";
   const packaging = pick(row, ["Embalagem", "Embalagem venda", "Embalagem de venda"]);
   const unit = pick(row, ["Descrição da unidade", "Descricao da unidade", "Unidade", "Unidade venda"]);
   const masterPackaging = pick(row, ["Embalagem Master", "Embalagem master"]);
@@ -70,7 +70,7 @@ export function mapProductRow(row: Record<string, unknown>): ImportProduct | nul
   const ean = pick(row, ["Unidade Venda [EAN8, UPC12, EAN13, e DUN14]", "Unidade Venda EAN", "EAN", "EAN Venda"]);
   const masterEan = pick(row, ["Unidade Master [EAN8, UPC12, EAN13, e DUN14]", "Unidade Master EAN", "EAN Master"]);
 
-  if (!code || !name || !departamentoName || !secaoName || !categoriaName) return null;
+  if (!code || !name || !departamentoName || !secaoName) return null;
 
   const sourceColumns = Object.fromEntries(
     Object.entries(row).map(([key, value]) => [key, text(value)]),
@@ -139,13 +139,44 @@ function parseDelimited(textValue: string): string[][] {
   return rows;
 }
 
-function rowsToObjects(rows: string[][]): Record<string, unknown>[] {
-  const headerIndex = rows.findIndex((row) => row.filter((value) => value.trim()).length >= 2);
+const requiredHeaderGroups = [
+  ["Código", "Codigo", "Cod", "Código do produto", "Codigo do produto"],
+  ["Descrição", "Descricao", "Nome", "Produto", "Descrição do produto"],
+  ["Descrição do departamento", "Descricao do departamento", "Departamento"],
+  ["Descrição da seção", "Descricao da secao", "Seção", "Secao"],
+  ["Nome da categoria", "Categoria", "Descrição da categoria", "Descricao da categoria"],
+];
+
+function isOfficialHeaderRow(row: string[]) {
+  const normalized = new Set(row.map(normalizeHeader).filter(Boolean));
+  return requiredHeaderGroups.every((aliases) => aliases.some((alias) => normalized.has(normalizeHeader(alias))));
+}
+
+function disambiguateHeaders(values: string[]) {
+  const occurrences = new Map<string, number>();
+  return values.map((value, index) => {
+    const header = value.trim() || `Coluna ${index + 1}`;
+    const key = normalizeHeader(header);
+    const occurrence = occurrences.get(key) ?? 0;
+    occurrences.set(key, occurrence + 1);
+    return occurrence ? `${header}_${occurrence}` : header;
+  });
+}
+
+export function rowsToObjects(rows: string[][]): Record<string, unknown>[] {
+  const headerIndex = rows.findIndex(isOfficialHeaderRow);
   if (headerIndex < 0) return [];
-  const headers = rows[headerIndex]!.map((value, index) => value.trim() || `Coluna ${index + 1}`);
-  return rows.slice(headerIndex + 1).map((values) => Object.fromEntries(
-    headers.map((header, index) => [header, values[index] ?? ""]),
-  ));
+  const rawHeaders = rows[headerIndex]!;
+  const lastHeaderColumn = rawHeaders.reduce(
+    (last, value, index) => value.trim() ? index : last,
+    -1,
+  );
+  const headers = disambiguateHeaders(rawHeaders.slice(0, lastHeaderColumn + 1));
+  return rows.slice(headerIndex + 1)
+    .filter((values) => values.some((value) => text(value)))
+    .map((values) => Object.fromEntries(
+      headers.map((header, index) => [header, values[index] ?? ""]),
+    ));
 }
 
 function u16(view: DataView, offset: number) { return view.getUint16(offset, true); }
@@ -232,8 +263,9 @@ async function parseXlsx(buffer: ArrayBuffer): Promise<string[][]> {
     if (relationId) {
       const rels = parseXml(decoder.decode(relBytes));
       const relationship = Array.from(rels.getElementsByTagName("Relationship")).find((node) => node.getAttribute("Id") === relationId);
-      const target = relationship?.getAttribute("Target")?.replace(/^\.\.\//, "") ?? "";
-      if (target) sheetPath = target.startsWith("xl/") ? target : `xl/${target.replace(/^\//, "")}`;
+      const target = relationship?.getAttribute("Target") ?? "";
+      const normalizedTarget = target.replace(/^\.\.\//, "").replace(/^\//, "");
+      if (normalizedTarget) sheetPath = normalizedTarget.startsWith("xl/") ? normalizedTarget : `xl/${normalizedTarget}`;
     }
   }
   const sheetBytes = files.get(sheetPath) ?? files.get("xl/worksheets/sheet1.xml");

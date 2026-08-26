@@ -51,6 +51,7 @@ const response = await worker.fetch(new Request('https://example.test/api/admin/
     products: [
       { code: '10001', name: 'Produto atualizado', departamentoName: 'Distribuição', secaoName: 'Higiene', categoriaName: 'Sabonetes', brandName: 'Marca QA', status: 'ativo' },
       { code: '10001', name: 'Linha repetida', departamentoName: 'Atacado', secaoName: 'Outra', categoriaName: 'Outra' },
+      { code: '20002', name: 'Linha deslocada', departamentoName: '10', secaoName: '10024', categoriaName: '10106' },
     ],
   }),
 }), {
@@ -64,8 +65,9 @@ assert.equal(response.status, 200);
 const result = await response.json();
 assert.equal(result.inserted, 0);
 assert.equal(result.updated, 1);
-assert.equal(result.ignored, 1);
+assert.equal(result.ignored, 2);
 assert.equal(savedProducts.length, 1, 'códigos repetidos não podem gerar dois upserts conflitantes');
+assert.equal(hierarchy.some(node => /^\d+$/.test(node.name)), false, 'valores numéricos deslocados não podem virar hierarquia');
 
 const saved = savedProducts[0];
 assert.equal(saved.id, 'prd_fixed', 'atualizações devem preservar o ID primário');

@@ -6,6 +6,8 @@ import { clean, fail, ok, requestBody } from '../http';
 import { requireUser } from '../auth/session';
 import { table, tableByValues } from '../supabase';
 
+const validHierarchyLabel = (value: string) => /\p{L}/u.test(value);
+
 export async function handleProductsRoute(req: Request, env: Env, path: string): Promise<Response | null> {
   if (path === '/api/admin/catalog/products/bulk' && req.method === 'POST') {
     const auth = await requireUser(req, env, ['EDITOR', 'ADMIN']);
@@ -51,11 +53,23 @@ export async function handleProductsRoute(req: Request, env: Env, path: string):
 
     const missingDepartments = new Map<string, any>();
     for (const product of incoming) {
+      const code = clean(product?.code ?? product?.codigo);
+      const name = clean(product?.name ?? product?.shortDescription ?? product?.description ?? product?.descricao);
       const department = normalizeDepartment(
         product?.departamentoName ?? product?.department ?? product?.departamento,
       );
+      const section = clean(product?.secaoName ?? product?.section ?? product?.secao);
+      const category = clean(product?.categoriaName ?? product?.category ?? product?.categoria);
       const key = slug(department);
-      if (department && !departments.has(department) && !missingDepartments.has(key)) {
+      if (
+        code
+        && name
+        && validHierarchyLabel(department)
+        && validHierarchyLabel(section)
+        && validHierarchyLabel(category)
+        && !departments.has(department)
+        && !missingDepartments.has(key)
+      ) {
         missingDepartments.set(key, {
           id: uid('hier'),
           company_id: COMPANY_ID,
@@ -112,6 +126,7 @@ export async function handleProductsRoute(req: Request, env: Env, path: string):
       const category = clean(
         product.categoriaName ?? product.category ?? product.categoria ?? previousData.categoriaName,
       ) || 'Sem categoria';
+      const invalidHierarchy = [department, section, category].some((value) => !validHierarchyLabel(value));
 
       if (seenCodes.has(code)) {
         ignored++;
@@ -120,11 +135,13 @@ export async function handleProductsRoute(req: Request, env: Env, path: string):
       }
       if (code) seenCodes.add(code);
 
-      if (!code || !name || !department || !section || !category) {
+      if (!code || !name || !department || !section || !category || invalidHierarchy) {
         ignored++;
         if (errors.length < 30) {
           errors.push(
-            `Linha ${index + 2}: ${!code ? 'Código; ' : ''}${!name ? 'Descrição; ' : ''}${!department ? 'Departamento; ' : ''}${!section ? 'Seção; ' : ''}`.replace(/; $/, ''),
+            invalidHierarchy
+              ? `Linha ${index + 2}: hierarquia inválida; Departamento, Seção e Categoria precisam ser descrições textuais`
+              : `Linha ${index + 2}: ${!code ? 'Código; ' : ''}${!name ? 'Descrição; ' : ''}${!department ? 'Departamento; ' : ''}${!section ? 'Seção; ' : ''}`.replace(/; $/, ''),
           );
         }
         continue;

@@ -2,6 +2,12 @@ import { test, expect } from '@playwright/test';
 
 const XLSX_FIXTURE = 'UEsDBBQAAAAAAAAAAAAAAAAAMwcAADMHAAAYAAAAeGwvd29ya3NoZWV0cy9zaGVldDEueG1sPD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9InllcyI/Pjx3b3Jrc2hlZXQgeG1sbnM9Imh0dHA6Ly9zY2hlbWFzLm9wZW54bWxmb3JtYXRzLm9yZy9zcHJlYWRzaGVldG1sLzIwMDYvbWFpbiI+PHNoZWV0RGF0YT48cm93IHI9IjEiPjxjIHI9IkExIiB0PSJpbmxpbmVTdHIiPjxpcz48dD5Dw7NkaWdvPC90PjwvaXM+PC9jPjxjIHI9IkIxIiB0PSJpbmxpbmVTdHIiPjxpcz48dD5EZXNjcmnDp8OjbzwvdD48L2lzPjwvYz48YyByPSJDMSIgdD0iaW5saW5lU3RyIj48aXM+PHQ+RGVzY3Jpw6fDo28gZG8gZGVwYXJ0YW1lbnRvPC90PjwvaXM+PC9jPjxjIHI9IkQxIiB0PSJpbmxpbmVTdHIiPjxpcz48dD5EZXNjcmnDp8OjbyBkYSBzZcOnw6NvPC90PjwvaXM+PC9jPjxjIHI9IkUxIiB0PSJpbmxpbmVTdHIiPjxpcz48dD5NYXJjYTwvdD48L2lzPjwvYz48YyByPSJGMSIgdD0iaW5saW5lU3RyIj48aXM+PHQ+Tm9tZSBkYSBjYXRlZ29yaWE8L3Q+PC9pcz48L2M+PGMgcj0iRzEiIHQ9ImlubGluZVN0ciI+PGlzPjx0PkVtYmFsYWdlbTwvdD48L2lzPjwvYz48YyByPSJIMSIgdD0iaW5saW5lU3RyIj48aXM+PHQ+RGVzY3Jpw6fDo28gZGEgdW5pZGFkZTwvdD48L2lzPjwvYz48YyByPSJJMSIgdD0iaW5saW5lU3RyIj48aXM+PHQ+RW1iYWxhZ2VtIE1hc3RlcjwvdD48L2lzPjwvYz48YyByPSJKMSIgdD0iaW5saW5lU3RyIj48aXM+PHQ+RGVzY3Jpw6fDo28gZGEgdW5pZGFkZV8xPC90PjwvaXM+PC9jPjxjIHI9IksxIiB0PSJpbmxpbmVTdHIiPjxpcz48dD5OQ00gKyBFeGNlw6fDo288L3Q+PC9pcz48L2M+PGMgcj0iTDEiIHQ9ImlubGluZVN0ciI+PGlzPjx0Pk5DTTwvdD48L2lzPjwvYz48YyByPSJNMSIgdD0iaW5saW5lU3RyIj48aXM+PHQ+VW5pZGFkZSBWZW5kYSBbRUFOOCwgVVBDMTIsIEVBTjEzLCBlIERVTjE0XTwvdD48L2lzPjwvYz48YyByPSJOMSIgdD0iaW5saW5lU3RyIj48aXM+PHQ+VW5pZGFkZSBNYXN0ZXIgW0VBTjgsIFVQQzEyLCBFQU4xMywgZSBEVU4xNF08L3Q+PC9pcz48L2M+PC9yb3c+PHJvdyByPSIyIj48YyByPSJBMiIgdD0iaW5saW5lU3RyIj48aXM+PHQ+MzI8L3Q+PC9pcz48L2M+PGMgcj0iQjIiIHQ9ImlubGluZVN0ciI+PGlzPjx0PkJBTEEgRkxPUEkgRElFVCA0MEcgRkxPUkVTVEFMPC90PjwvaXM+PC9jPjxjIHI9IkMyIiB0PSJpbmxpbmVTdHIiPjxpcz48dD5BVEFDQURPPC90PjwvaXM+PC9jPjxjIHI9IkQyIiB0PSJpbmxpbmVTdHIiPjxpcz48dD5CT01CT05JRVJJPC90PjwvaXM+PC9jPjxjIHI9IkUyIiB0PSJpbmxpbmVTdHIiPjxpcz48dD5GTE9SRVNUQUw8L3Q+PC9pcz48L2M+PGMgcj0iRjIiIHQ9ImlubGluZVN0ciI+PGlzPjx0PkJBTEFTICZhbXA7IERST1BTPC90PjwvaXM+PC9jPjxjIHI9IkcyIiB0PSJpbmxpbmVTdHIiPjxpcz48dD4xMlg0MEc8L3Q+PC9pcz48L2M+PGMgcj0iSDIiIHQ9ImlubGluZVN0ciI+PGlzPjx0PkRJU1BMQVk8L3Q+PC9pcz48L2M+PGMgcj0iSTIiIHQ9ImlubGluZVN0ciI+PGlzPjx0PjA0WDEyWDQwRzwvdD48L2lzPjwvYz48YyByPSJKMiIgdD0iaW5saW5lU3RyIj48aXM+PHQ+Q0FJWEE8L3Q+PC9pcz48L2M+PGMgcj0iSzIiIHQ9ImlubGluZVN0ciI+PGlzPjx0PjIxMDY5MDkwLjwvdD48L2lzPjwvYz48YyByPSJMMiIgdD0iaW5saW5lU3RyIj48aXM+PHQ+MjEwNjkwOTA8L3Q+PC9pcz48L2M+PGMgcj0iTTIiIHQ9ImlubGluZVN0ciI+PGlzPjx0Pjc4OTYzMjEwMDU2MDE8L3Q+PC9pcz48L2M+PGMgcj0iTjIiIHQ9ImlubGluZVN0ciI+PGlzPjx0PjE3ODk2MzIxMDA1NjA4PC90PjwvaXM+PC9jPjwvcm93Pjwvc2hlZXREYXRhPjwvd29ya3NoZWV0PlBLAQIUABQAAAAAAAAAAAAAAAAAMwcAADMHAAAYAAAAAAAAAAAAAAAAAAAAAAB4bC93b3Jrc2hlZXRzL3NoZWV0MS54bWxQSwUGAAAAAAEAAQBGAAAAaQcAAAAA';
 
+const CSV_WITH_PREAMBLE = [
+  'Relatório de cadastro de produtos;Gerado pelo ERP',
+  'Código;Descrição;Descrição do departamento;Descrição da seção;Marca;Nome da categoria;Embalagem;Descrição da unidade;Embalagem Master;Descrição da unidade;NCM + Exceção;NCM;Unidade Venda EAN;Unidade Master EAN',
+  '00032;BALA FLOPI DIET 40G FLORESTAL;ATACADO;BOMBONIERI;FLORESTAL;BALAS & DROPS;12X40G;DISPLAY;04X12X40G;CAIXA;21069090.;21069090;078963210056;17896321005608',
+].join('\n');
+
 async function installMocks(page) {
   const imports = [];
   await page.route('**/api/**', async route => {
@@ -47,4 +53,23 @@ test('Importar processa XLSX e envia os 14 campos oficiais ao Worker Enterprise'
   expect(Object.keys(product.sourceColumns)).toHaveLength(14);
   await expect(page.locator('[data-asteryon-import-summary]')).toContainText('Novos: 1');
   await expect(page.getByText('Importação de produtos concluída com sucesso.')).toBeVisible();
+});
+
+test('Importar localiza o cabeçalho oficial após linhas de título e preserva cabeçalhos duplicados', async ({ page }, testInfo) => {
+  const imports = await installMocks(page);
+  await page.goto('/admin', { waitUntil: 'networkidle' });
+  await openPanel(page, testInfo);
+  await page.getByRole('button', { name: /^Importar$/i }).first().click();
+  await page.getByLabel('Arquivo para importar').setInputFiles({
+    name: 'produtos-com-titulo.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(CSV_WITH_PREAMBLE, 'utf8'),
+  });
+  await page.getByRole('button', { name: /^Importar produtos$/i }).click();
+  await expect.poll(() => imports.length).toBe(1);
+  const product = imports[0].products[0];
+  expect(product.code).toBe('00032');
+  expect(product.ean).toBe('078963210056');
+  expect(product.technical['Descrição da unidade Master']).toBe('CAIXA');
+  expect(Object.keys(product.sourceColumns)).toHaveLength(14);
 });

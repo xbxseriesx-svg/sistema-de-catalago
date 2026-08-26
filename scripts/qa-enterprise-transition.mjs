@@ -38,6 +38,7 @@ if (/\bD1\b|d1_databases|\bR2\b|r2_buckets/.test(wrangler)) fail('Wrangler reint
 for (const path of [
   'public/index.html',
   'public/assets/index-V60Excel.js',
+  'public/spreadsheet-import-v96.js',
   'public/editor-runtime-v87.js',
   'public/runtime-loader-v87.js',
   'public/responsive-v67.css',
@@ -45,6 +46,7 @@ for (const path of [
   'public/commercial-segments-v95.js',
   'public/commercial-segments-destination-v95.js',
   'public/public-commercial-segment-popup-v95.js',
+  'public/catalog-reset-control.js',
 ]) {
   if (!existsSync(path)) fail(`asset obrigatório da release V95 ausente: ${path}`);
 }
@@ -54,11 +56,13 @@ if (gitBlobSha('public/assets/index-V60Excel.js') !== VERIFIED_BUNDLE_BLOB) fail
 const publicIndex = readFileSync('public/index.html', 'utf8');
 for (const marker of [
   'ASTERYON Editor V95',
-  'index-V60Excel.js?v=95',
+  'spreadsheet-import-v96.js?v=95.6',
+  'index-V60Excel.js?v=95.6',
   'preview-editor-v93-source.js?v=95',
   'responsive-auto-v95.js?v=95.3',
   'commercial-segments-v95.js?v=95',
   'commercial-segments-destination-v95.js?v=95.1',
+  'catalog-reset-control.js?v=95.6',
 ]) {
   if (!publicIndex.includes(marker)) fail(`public/index.html perdeu marcador obrigatório V95: ${marker}`);
 }
@@ -70,9 +74,39 @@ if (!(coreIndex >= 0 && autoResponsiveIndex > coreIndex && previewSourceIndex > 
 }
 const baseSegmentIndex = publicIndex.indexOf('commercial-segments-v95.js?v=95');
 const destinationSegmentIndex = publicIndex.indexOf('commercial-segments-destination-v95.js?v=95.1');
-const bundleIndex = publicIndex.indexOf('index-V60Excel.js?v=95');
+const importLayerIndex = publicIndex.indexOf('spreadsheet-import-v96.js?v=95.6');
+const bundleIndex = publicIndex.indexOf('index-V60Excel.js?v=95.6');
 if (!(baseSegmentIndex >= 0 && destinationSegmentIndex > baseSegmentIndex && bundleIndex > destinationSegmentIndex)) {
   fail('integração do destino Segmento comercial precisa carregar após a camada V95 e antes do bundle principal.');
+}
+const catalogResetIndex = publicIndex.indexOf('catalog-reset-control.js?v=95.6');
+if (!(catalogResetIndex > destinationSegmentIndex && importLayerIndex > catalogResetIndex && bundleIndex > importLayerIndex)) {
+  fail('controle seguro de limpeza do catálogo precisa carregar antes do bundle principal.');
+}
+
+const catalogResetControl = readFileSync('public/catalog-reset-control.js', 'utf8');
+for (const marker of [
+  '/api/admin/catalog/reset',
+  "const CONFIRMATION = 'APAGAR CATÁLOGO'",
+  'credentials: \'same-origin\'',
+  'Preserva usuários, páginas, modelos, configurações e segmentos comerciais.',
+]) {
+  if (!catalogResetControl.includes(marker)) fail(`controle de limpeza do catálogo incompleto: ${marker}`);
+}
+
+const importBundle = readFileSync('public/spreadsheet-import-v96.js', 'utf8');
+for (const marker of [
+  'Cabeçalho oficial não encontrado.',
+  'Descrição do departamento',
+  'Descrição da seção',
+  'Nome da categoria',
+  "`${header}_${occurrence}`",
+  "document.addEventListener('change'",
+  'event.stopImmediatePropagation()',
+  '/api/admin/catalog/products/bulk',
+  'sourceColumns:',
+]) {
+  if (!importBundle.includes(marker)) fail(`camada de importação V96 incompleta: ${marker}`);
 }
 
 const autoResponsive = readFileSync('public/responsive-auto-v95.js', 'utf8');
